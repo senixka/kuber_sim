@@ -1,0 +1,16 @@
+kind: Pod
+metadata:
+  labels:
+    key1: value1
+    key2: value2
+spec:
+  arrival_time: 23
+  request_cpu: 30
+  request_memory: 1024
+  limit_cpu: 4
+  limit_memory: 0
+  load_profile:
+    - spike:
+      cpu: 30
+      memory: 1024
+      duration: 6

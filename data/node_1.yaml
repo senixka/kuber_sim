@@ -1,0 +1,7 @@
+kind: Node
+metadata:
+  labels:
+    key1: value1
+spec:
+  installed_cpu: 100
+  installed_memory: 4048
