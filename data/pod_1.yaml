@@ -1,14 +1,14 @@
 kind: Pod
 metadata:
   labels:
-    key1: value1
-    key2: value2
+    gpu: amd
+    product: true
 spec:
   arrival_time: 23
   request_cpu: 30
   request_memory: 1024
-  limit_cpu: 4
-  limit_memory: 0
+  limit_cpu: 60
+  limit_memory: 2048
   load_profile:
     - spike:
       cpu: 30

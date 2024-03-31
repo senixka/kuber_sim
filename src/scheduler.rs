@@ -58,7 +58,7 @@ impl Scheduler {
                     let data = APIUpdatePodFromScheduler {
                         pod: pod.clone(),
                         new_phase: PodPhase::Running,
-                        kubelet_sim_id: node.kubelet_sim_id.unwrap(),
+                        node_uid: node_uid.clone(),
                     };
 
                     println!("Scheduler Pod_{0} placed to Node_{1}", pod_uid, node.metadata.uid);
@@ -92,7 +92,7 @@ impl dsc::EventHandler for Scheduler {
                 self.pods.insert(pod.metadata.uid, pod);
                 self.schedule();
             }
-            APIAddNode { node } => {
+            APIAddNode { kubelet_sim_id: _ , node } => {
                 println!("Scheduler <Add Kubelet>");
 
                 self.nodes.insert(node.metadata.uid, node);

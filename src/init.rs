@@ -1,11 +1,12 @@
+use std::process::abort;
 use crate::my_imports::*;
 
-pub struct Workload {
+pub struct Init {
     ctx: dsc::SimulationContext,
     api_sim_id: dsc::Id,
 }
 
-impl Workload {
+impl Init {
     pub fn new(ctx: dsc::SimulationContext) -> Self {
         Self {
             ctx,
@@ -35,11 +36,25 @@ impl Workload {
         self.ctx.emit(APIAddPod{pod: pod_3.clone()}, self.api_sim_id, pod_3.spec.arrival_time);
         self.ctx.emit(APIAddPod{pod: pod_4.clone()}, self.api_sim_id, pod_4.spec.arrival_time);
     }
+
+    pub fn submit_nodes(&self, sim: &mut dsc::Simulation) {
+        let kubelet_1 = Rc::new(RefCell::new(Kubelet::new(
+            sim.create_context("kubelet_1"),
+            Node::from_yaml("./data/node_1.yaml")
+        )));
+        let kubelet_1_id = sim.add_handler("kubelet_1", kubelet_1.clone());
+        kubelet_1.borrow_mut().presimulation_init(self.api_sim_id);
+
+        self.ctx.emit_now(APIAddNode{
+            kubelet_sim_id: kubelet_1_id,
+            node: kubelet_1.borrow().node.clone()
+        }, self.api_sim_id);
+    }
 }
 
-impl dsc::EventHandler for Workload {
-    fn on(&mut self, event: dsc::Event) {
-        println!("Workload EventHandler ------>");
-        println!("Workload EventHandler <------");
+impl dsc::EventHandler for Init {
+    fn on(&mut self, _: dsc::Event) {
+        println!("Init EventHandler -> Abort");
+        abort();
     }
 }

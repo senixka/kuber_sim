@@ -1,11 +1,10 @@
 mod pod;
 mod node;
-mod etcd;
 mod types;
 mod api;
 mod scheduler;
 mod kubelet;
-mod workload;
+mod init;
 
 pub mod my_imports {
     pub use std::rc::Rc;
@@ -21,7 +20,6 @@ pub mod my_imports {
     pub use crate::pod::Pod;
     pub use crate::pod::PodPhase;
     pub use crate::node::Node;
-    pub use crate::etcd::Etcd;
     pub use crate::scheduler::Scheduler;
     pub use crate::kubelet::Kubelet;
 
@@ -29,13 +27,12 @@ pub mod my_imports {
     pub use crate::types::*;
 }
 use my_imports::*;
-use crate::workload::Workload;
+use crate::init::Init;
 
 fn main() {
     let mut sim = dsc::Simulation::new(179);
 
-    let etcd = Rc::new(RefCell::new(Etcd::new(sim.create_context("etcd"))));
-    let etcd_id = sim.add_handler("etcd", etcd.clone());
+    // Create components
 
     let api = Rc::new(RefCell::new(APIServer::new(sim.create_context("api"))));
     let api_id = sim.add_handler("api", api.clone());
@@ -43,32 +40,29 @@ fn main() {
     let scheduler = Rc::new(RefCell::new(Scheduler::new(sim.create_context("scheduler"))));
     let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
 
-    let workload = Rc::new(RefCell::new(Workload::new(sim.create_context("workload"))));
-    let _ = sim.add_handler("workload", workload.clone());
+    let init = Rc::new(RefCell::new(Init::new(sim.create_context("init"))));
 
-    let kubelet_1 = Rc::new(RefCell::new(Kubelet::new(
-        sim.create_context("kubelet_1"),
-        Node::from_yaml("./data/node_1.yaml")
-    )));
-    let kubelet_1_id = sim.add_handler("kubelet_1", kubelet_1.clone());
+    // Init components
 
+    api.borrow_mut().presimulation_init(scheduler_id);
     scheduler.borrow_mut().presimulation_init(api_id);
-    api.borrow_mut().presimulation_init(etcd_id, scheduler_id);
-    workload.borrow_mut().presimulation_init(api_id);
-    kubelet_1.borrow_mut().presimulation_init(kubelet_1_id, api_id);
+    init.borrow_mut().presimulation_init(api_id);
 
-    api.borrow_mut().presimulation_check();
-    scheduler.borrow_mut().presimulation_check();
-    workload.borrow_mut().presimulation_check();
+    // Final check
 
-    let init = sim.create_context("init");
-    init.emit_now(APIAddNode{node: kubelet_1.borrow().node.clone()}, api_id);
+    api.borrow().presimulation_check();
+    scheduler.borrow().presimulation_check();
+    init.borrow().presimulation_check();
+
+    // Simulation
+
+    init.borrow().submit_nodes(&mut sim);
 
     while sim.step() == true {
         println!("-------------------------------");
     }
 
-    workload.borrow().submit_pods();
+    init.borrow().submit_pods();
 
     while sim.step() == true {
         println!("-------------------------------");

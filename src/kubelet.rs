@@ -15,17 +15,17 @@ impl Kubelet {
         }
     }
 
-    pub fn presimulation_init(&mut self, kubelet_sim_id: dsc::Id, api_sim_id: dsc::Id) {
-        self.node.kubelet_sim_id = Some(kubelet_sim_id);
+    pub fn presimulation_init(&mut self, api_sim_id: dsc::Id) {
         self.api_sim_id = api_sim_id;
     }
 }
 
 impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
-        println!("Kubelet_{0} Node_{1} EventHandler ------>", self.node.kubelet_sim_id.unwrap(), self.node.metadata.uid);
+        println!("Kubelet Node_{0} EventHandler ------>", self.node.metadata.uid);
         dsc::cast!(match event.data {
-            APIUpdatePodFromScheduler { pod, new_phase, kubelet_sim_id } => {
+            APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
+                assert_eq!(node_uid, self.node.metadata.uid);
                 assert_eq!(new_phase, PodPhase::Running);
 
                 let data = APIUpdatePodFromKubelet {
@@ -36,6 +36,6 @@ impl dsc::EventHandler for Kubelet {
                 self.ctx.emit(data, self.api_sim_id, pod.spec.load_profile[0].duration);
             }
         });
-        println!("Kubelet_{0} Node_{1} EventHandler <------", self.node.kubelet_sim_id.unwrap(), self.node.metadata.uid);
+        println!("Kubelet Node_{0} EventHandler <------", self.node.metadata.uid);
     }
 }

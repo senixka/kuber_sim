@@ -87,6 +87,9 @@ impl Pod {
             pod.spec.limit_memory = u64::MAX;
         }
 
+        assert_eq!((pod.spec.limit_cpu >= pod.spec.request_cpu), true);
+        assert_eq!((pod.spec.limit_memory >= pod.spec.request_memory), true);
+
         return pod;
     }
 }

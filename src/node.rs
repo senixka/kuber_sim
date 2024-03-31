@@ -1,8 +1,6 @@
 use std::fs;
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
-use std::option::Option;
-use crate::my_imports::dsc;
 use crate::pod::{ObjectMeta, Pod};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,9 +27,6 @@ pub struct Node {
     pub metadata: ObjectMeta,
     #[serde(default)]
     pub status: NodeStatus,
-
-    #[serde(default)]
-    pub kubelet_sim_id: Option<dsc::Id>
 }
 
 
@@ -45,8 +40,6 @@ impl Node {
         let mut node: Node = serde_yaml::from_str(s.as_str()).unwrap();
         node.metadata.uid = UID_COUNTER.load(Ordering::SeqCst);
         UID_COUNTER.fetch_add(1, Ordering::SeqCst);
-
-        node.kubelet_sim_id = None;
 
         node.spec.available_cpu = node.spec.installed_cpu;
         node.spec.available_memory = node.spec.installed_memory;
