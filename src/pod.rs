@@ -1,13 +1,11 @@
 use std::collections::HashMap;
-use std::fs;
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
-use crate::{types};
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PodSpec {
-    pub arrival_time: types::Time,
+    pub arrival_time: f64,
     pub load_profile: Vec<Spike>,
     pub request_cpu: u64,
     pub request_memory: u64,
@@ -22,7 +20,7 @@ pub struct PodSpec {
 pub struct Spike {
     pub cpu: u64,
     pub memory: u64,
-    pub duration: types::Time,
+    pub duration: f64,
 }
 
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
@@ -67,29 +65,23 @@ pub struct Pod {
 }
 
 impl Pod {
-    pub fn from_yaml(path: &str) -> Self {
+    pub fn init(&mut self) {
         static UID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
-        let s: String = fs::read_to_string(path).expect(format!("Unable to read file: {}", path).as_str());
-        assert_eq!(s.starts_with("kind: Pod"), true);
+        self.metadata.uid = UID_COUNTER.load(Ordering::Relaxed);
+        UID_COUNTER.fetch_add(1, Ordering::Relaxed);
 
-        let mut pod: Pod = serde_yaml::from_str(s.as_str()).unwrap();
-        pod.metadata.uid = UID_COUNTER.load(Ordering::SeqCst);
-        UID_COUNTER.fetch_add(1, Ordering::SeqCst);
+        self.status.phase = PodPhase::Pending;
+        self.status.node_uid = None;
 
-        pod.status.phase = PodPhase::Pending;
-        pod.status.node_uid = None;
-
-        if pod.spec.limit_cpu == 0 {
-            pod.spec.limit_cpu = u64::MAX;
+        if self.spec.limit_cpu == 0 {
+            self.spec.limit_cpu = u64::MAX;
         }
-        if pod.spec.limit_memory == 0 {
-            pod.spec.limit_memory = u64::MAX;
+        if self.spec.limit_memory == 0 {
+            self.spec.limit_memory = u64::MAX;
         }
 
-        assert_eq!((pod.spec.limit_cpu >= pod.spec.request_cpu), true);
-        assert_eq!((pod.spec.limit_memory >= pod.spec.request_memory), true);
-
-        return pod;
+        assert_eq!((self.spec.limit_cpu >= self.spec.request_cpu), true);
+        assert_eq!((self.spec.limit_memory >= self.spec.request_memory), true);
     }
 }

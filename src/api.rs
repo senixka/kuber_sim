@@ -32,7 +32,6 @@ pub struct APIRemoveKubelet {
     pub node_uid: u64,
 }
 
-
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIUpdatePodFromScheduler {
     pub pod: Pod,
@@ -92,25 +91,25 @@ impl dsc::EventHandler for APIServer {
                 println!("API route <Update Pod From Scheduler>");
 
                 self.pods.get_mut(&pod.metadata.uid).unwrap().status.phase = new_phase.clone();
-                self.ctx.emit_now(APIUpdatePodFromScheduler { pod, new_phase, node_uid }, self.kubelets[&node_uid]);
+                self.ctx.emit(APIUpdatePodFromScheduler { pod, new_phase, node_uid }, self.kubelets[&node_uid], NetworkDelays::api2kubelet());
             }
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid} => {
                 println!("API route <Update Pod From Kubelet>");
 
                 self.pods.get_mut(&pod_uid).unwrap().status.phase = new_phase.clone();
-                self.ctx.emit_now(APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid }, self.scheduler_sim_id);
+                self.ctx.emit(APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid }, self.scheduler_sim_id, NetworkDelays::api2scheduler());
             }
             APIAddPod { pod } => {
                 println!("API route <Add Pod>");
 
                 self.pods.insert(pod.metadata.uid, pod.clone());
-                self.ctx.emit_now(APIAddPod { pod }, self.scheduler_sim_id);
+                self.ctx.emit(APIAddPod { pod }, self.scheduler_sim_id, NetworkDelays::api2scheduler());
             }
             APIAddNode { kubelet_sim_id, node } => {
                 println!("API route <Insert Node>");
 
                 self.kubelets.insert(node.metadata.uid, kubelet_sim_id);
-                self.ctx.emit_now(APIAddNode { kubelet_sim_id, node }, self.scheduler_sim_id);
+                self.ctx.emit(APIAddNode { kubelet_sim_id, node }, self.scheduler_sim_id, NetworkDelays::api2scheduler());
             }
         });
         println!("API EventHandler <------");

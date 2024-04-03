@@ -62,7 +62,7 @@ impl Scheduler {
                     };
 
                     println!("Scheduler Pod_{0} placed to Node_{1}", pod_uid, node.metadata.uid);
-                    self.ctx.emit_now(data, self.api_sim_id);
+                    self.ctx.emit(data, self.api_sim_id, NetworkDelays::scheduler2api());
                     break;
                 }
             }

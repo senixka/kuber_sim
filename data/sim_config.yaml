@@ -1,0 +1,60 @@
+network_delays:
+  api2scheduler: 0
+  scheduler2api: 0
+  api2kubelet: 0
+  kubelet2api: 0
+
+pods:
+  - pod_group:
+    amount: 3
+    pod:
+      metadata:
+        labels:
+          gpu: amd
+          product: true
+      spec:
+        arrival_time: 1
+        request_cpu: 30
+        request_memory: 1024
+        limit_cpu: 60
+        limit_memory: 2048
+        load_profile:
+          - spike:
+            cpu: 30
+            memory: 1024
+            duration: 6
+  - pod_group:
+    amount: 1
+    pod:
+      metadata:
+        labels:
+          gpu: amd
+          product: true
+      spec:
+        arrival_time: 4
+        request_cpu: 30
+        request_memory: 1024
+        limit_cpu: 60
+        limit_memory: 2048
+        load_profile:
+          - spike:
+            cpu: 30
+            memory: 1024
+            duration: 6
+
+nodes:
+  - node_group:
+    amount: 1
+    node:
+      metadata:
+        labels:
+          gpu: amd
+      spec:
+        installed_cpu: 100
+        installed_memory: 4048
+  - node_group:
+    amount: 1
+    node:
+      spec:
+        installed_cpu: 10
+        installed_memory: 1024

@@ -23,32 +23,35 @@ impl Init {
     }
 
     pub fn submit_pods(&self) {
-        let pod_1 = Pod::from_yaml("./data/pod_1.yaml");
-        let pod_2 = Pod::from_yaml("./data/pod_1.yaml");
-        let mut pod_3 = Pod::from_yaml("./data/pod_1.yaml");
-        let mut pod_4 = Pod::from_yaml("./data/pod_1.yaml");
+        for pod_group in SimConfig::pods().iter() {
+            for _ in 0..pod_group.amount {
+                let mut pod = pod_group.pod.clone();
+                pod.init();
 
-        pod_3.spec.arrival_time = pod_1.spec.arrival_time + 1.0;
-        pod_4.spec.arrival_time = pod_3.spec.arrival_time;
-
-        self.ctx.emit(APIAddPod{pod: pod_1.clone()}, self.api_sim_id, pod_1.spec.arrival_time);
-        self.ctx.emit(APIAddPod{pod: pod_2.clone()}, self.api_sim_id, pod_2.spec.arrival_time);
-        self.ctx.emit(APIAddPod{pod: pod_3.clone()}, self.api_sim_id, pod_3.spec.arrival_time);
-        self.ctx.emit(APIAddPod{pod: pod_4.clone()}, self.api_sim_id, pod_4.spec.arrival_time);
+                self.ctx.emit(APIAddPod{ pod: pod.clone() }, self.api_sim_id, pod.spec.arrival_time);
+            }
+        }
     }
 
     pub fn submit_nodes(&self, sim: &mut dsc::Simulation) {
-        let kubelet_1 = Rc::new(RefCell::new(Kubelet::new(
-            sim.create_context("kubelet_1"),
-            Node::from_yaml("./data/node_1.yaml")
-        )));
-        let kubelet_1_id = sim.add_handler("kubelet_1", kubelet_1.clone());
-        kubelet_1.borrow_mut().presimulation_init(self.api_sim_id);
+        for node_group in SimConfig::nodes().iter() {
+            for _ in 0..node_group.amount {
+                let mut node = node_group.node.clone();
+                node.init();
 
-        self.ctx.emit_now(APIAddNode{
-            kubelet_sim_id: kubelet_1_id,
-            node: kubelet_1.borrow().node.clone()
-        }, self.api_sim_id);
+                let name = "kubelet_".to_owned() + &*node.metadata.uid.to_string();
+                println!("{0}", name);
+
+                let kubelet = Rc::new(RefCell::new(Kubelet::new(
+                    sim.create_context(name.clone()),
+                    node.clone(),
+                )));
+                kubelet.borrow_mut().presimulation_init(self.api_sim_id);
+
+                let kubelet_id = sim.add_handler(name, kubelet.clone());
+                self.ctx.emit_now(APIAddNode{ kubelet_sim_id: kubelet_id, node: node.clone(), }, self.api_sim_id);
+            }
+        }
     }
 }
 

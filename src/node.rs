@@ -1,4 +1,3 @@
-use std::fs;
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 use crate::pod::{ObjectMeta, Pod};
@@ -31,19 +30,12 @@ pub struct Node {
 
 
 impl Node {
-    pub fn from_yaml(path: &str) -> Self {
+    pub fn init(&mut self) {
         static UID_COUNTER: AtomicU64 = AtomicU64::new(1);
+        self.metadata.uid = UID_COUNTER.load(Ordering::Relaxed);
+        UID_COUNTER.fetch_add(1, Ordering::Relaxed);
 
-        let s: String = fs::read_to_string(path).expect(format!("Unable to read file: {}", path).as_str());
-        assert_eq!(s.starts_with("kind: Node"), true);
-
-        let mut node: Node = serde_yaml::from_str(s.as_str()).unwrap();
-        node.metadata.uid = UID_COUNTER.load(Ordering::SeqCst);
-        UID_COUNTER.fetch_add(1, Ordering::SeqCst);
-
-        node.spec.available_cpu = node.spec.installed_cpu;
-        node.spec.available_memory = node.spec.installed_memory;
-
-        return node;
+        self.spec.available_cpu = self.spec.installed_cpu;
+        self.spec.available_memory = self.spec.installed_memory;
     }
 }

@@ -1,10 +1,10 @@
 mod pod;
 mod node;
-mod types;
 mod api;
 mod scheduler;
 mod kubelet;
 mod init;
+mod sim_config;
 
 pub mod my_imports {
     pub use std::rc::Rc;
@@ -22,9 +22,9 @@ pub mod my_imports {
     pub use crate::node::Node;
     pub use crate::scheduler::Scheduler;
     pub use crate::kubelet::Kubelet;
+    pub use crate::sim_config::*;
 
     pub use crate::api::*;
-    pub use crate::types::*;
 }
 use my_imports::*;
 use crate::init::Init;
@@ -44,6 +44,8 @@ fn main() {
 
     // Init components
 
+    sim_config::SimConfig::from_yaml("./data/sim_config.yaml");
+    sim_config::NetworkDelays::from_yaml("./data/sim_config.yaml");
     api.borrow_mut().presimulation_init(scheduler_id);
     scheduler.borrow_mut().presimulation_init(api_id);
     init.borrow_mut().presimulation_init(api_id);
