@@ -23,12 +23,15 @@ impl Init {
     }
 
     pub fn submit_pods(&self) {
+        let mut last_time: f64 = 0.0;
         for pod_group in SimConfig::pods().iter() {
             for _ in 0..pod_group.amount {
                 let mut pod = pod_group.pod.clone();
                 pod.init();
 
-                self.ctx.emit(APIAddPod{ pod: pod.clone() }, self.api_sim_id, pod.spec.arrival_time);
+                assert!(last_time <= pod.spec.arrival_time);
+                self.ctx.emit_ordered(APIAddPod{ pod: pod.clone() }, self.api_sim_id, pod.spec.arrival_time);
+                last_time = pod.spec.arrival_time;
             }
         }
     }
