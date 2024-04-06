@@ -37,10 +37,13 @@ pods:
         limit_cpu: 60
         limit_memory: 2048
         load_profile:
-          - !Constant
-            cpu: 30
-            memory: 1024
+          - !BusyBox
+            cpu_down: 30
+            memory_down: 1024
+            cpu_up: 30
+            memory_up: 1024
             duration: 6
+            shift_time: 2
 
 nodes:
   - node_group:

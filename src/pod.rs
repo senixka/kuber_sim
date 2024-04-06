@@ -8,14 +8,15 @@ pub enum LoadType {
     // fn update(&mut self, current_time: f64) -> (u64, u64, bool);
 
     Constant(Constant),
+    BusyBox(BusyBox),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Constant {
     #[serde(skip_deserializing)]
-    start_time: f64,
+    pub start_time: f64,
     #[serde(skip_deserializing)]
-    next_spike_time: f64,
+    pub next_spike_time: f64,
 
     pub duration: f64,
     pub cpu: u64,
@@ -34,18 +35,38 @@ impl Constant {
     }
 }
 
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct BusyBox {
-//     time_from: f64,
-//     time_to: f64,
-//     init_time: f64,
-//     shift_time: f64,
-//     next_spike: f64,
-//     cpu_down: u64,
-//     memory_down: u64,
-//     cpu_up: u64,
-//     memory_up: u64,
-// }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BusyBox {
+    #[serde(skip_deserializing)]
+    pub start_time: f64,
+    #[serde(skip_deserializing)]
+    pub next_spike_time: f64,
+
+    pub duration: f64,
+    pub shift_time: f64,
+    pub cpu_down: u64,
+    pub memory_down: u64,
+    pub cpu_up: u64,
+    pub memory_up: u64,
+}
+
+impl BusyBox {
+    fn start(&mut self, current_time: f64) -> (u64, u64, bool) {
+        self.start_time = current_time;
+        self.next_spike_time = current_time + self.shift_time;
+        return (self.cpu_down, self.memory_down, self.duration == 0.0);
+    }
+
+    fn update(&mut self, current_time: f64) -> (u64, u64, bool) {
+        let epoch: u64 = ((current_time - self.start_time) / self.shift_time) as u64;
+        self.next_spike_time = (epoch as f64 + 1.0) * self.shift_time;
+
+        if epoch % 2 == 0 {
+            return (self.cpu_down, self.memory_down, current_time - self.start_time >= self.duration);
+        }
+        return (self.cpu_up, self.memory_up, current_time - self.start_time >= self.duration);
+    }
+}
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -37,6 +37,9 @@ impl dsc::EventHandler for Kubelet {
                     LoadType::Constant(load) => {
                         self.ctx.emit(data, self.api_sim_id, load.duration + NetworkDelays::kubelet2api());
                     }
+                    LoadType::BusyBox(load) => {
+                        self.ctx.emit(data, self.api_sim_id, load.duration + NetworkDelays::kubelet2api());
+                    }
                 }
             }
         });
