@@ -19,7 +19,7 @@ pods:
         limit_cpu: 60
         limit_memory: 2048
         load_profile:
-          - spike:
+          - !Constant
             cpu: 30
             memory: 1024
             duration: 6
@@ -37,7 +37,7 @@ pods:
         limit_cpu: 60
         limit_memory: 2048
         load_profile:
-          - spike:
+          - !Constant
             cpu: 30
             memory: 1024
             duration: 6

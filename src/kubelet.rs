@@ -33,7 +33,11 @@ impl dsc::EventHandler for Kubelet {
                     new_phase: PodPhase::Succeeded,
                     node_uid: self.node.metadata.uid,
                 };
-                self.ctx.emit(data, self.api_sim_id, pod.spec.load_profile[0].duration + NetworkDelays::kubelet2api());
+                match pod.spec.load_profile[0].clone() {
+                    LoadType::Constant(load) => {
+                        self.ctx.emit(data, self.api_sim_id, load.duration + NetworkDelays::kubelet2api());
+                    }
+                }
             }
         });
         println!("Kubelet Node_{0} EventHandler <------", self.node.metadata.uid);

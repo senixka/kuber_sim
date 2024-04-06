@@ -18,6 +18,8 @@ pub mod my_imports {
     }
 
     pub use crate::pod::Pod;
+    pub use crate::pod::LoadType;
+
     pub use crate::pod::PodPhase;
     pub use crate::node::Node;
     pub use crate::scheduler::Scheduler;

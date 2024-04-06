@@ -2,11 +2,56 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LoadType {
+    // fn start(&mut self, current_time: f64) -> (u64, u64, bool);
+    // fn update(&mut self, current_time: f64) -> (u64, u64, bool);
+
+    Constant(Constant),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Constant {
+    #[serde(skip_deserializing)]
+    start_time: f64,
+    #[serde(skip_deserializing)]
+    next_spike_time: f64,
+
+    pub duration: f64,
+    pub cpu: u64,
+    pub memory: u64,
+}
+
+impl Constant {
+    fn start(&mut self, current_time: f64) -> (u64, u64, bool) {
+        self.start_time = current_time;
+        self.next_spike_time = current_time + self.duration;
+        return (self.cpu, self.memory, self.duration == 0.0);
+    }
+
+    fn update(&mut self, current_time: f64) -> (u64, u64, bool) {
+        return (self.cpu, self.memory, current_time - self.start_time >= self.duration);
+    }
+}
+
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct BusyBox {
+//     time_from: f64,
+//     time_to: f64,
+//     init_time: f64,
+//     shift_time: f64,
+//     next_spike: f64,
+//     cpu_down: u64,
+//     memory_down: u64,
+//     cpu_up: u64,
+//     memory_up: u64,
+// }
+
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PodSpec {
     pub arrival_time: f64,
-    pub load_profile: Vec<Spike>,
+    pub load_profile: Vec<LoadType>,
     pub request_cpu: u64,
     pub request_memory: u64,
 
@@ -16,12 +61,12 @@ pub struct PodSpec {
     pub limit_memory: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Spike {
-    pub cpu: u64,
-    pub memory: u64,
-    pub duration: f64,
-}
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct Spike {
+//     pub cpu: u64,
+//     pub memory: u64,
+//     pub duration: f64,
+// }
 
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
