@@ -5,6 +5,8 @@ mod scheduler;
 mod kubelet;
 mod init;
 mod sim_config;
+mod load_types;
+mod object_meta;
 
 pub mod my_imports {
     pub use std::rc::Rc;
@@ -14,11 +16,12 @@ pub mod my_imports {
     pub use std::collections::HashMap;
 
     pub mod dsc {
-        pub use dslab_core::{cast, Simulation, SimulationContext, Id, EventHandler, Event};
+        pub use dslab_core::{cast, Simulation, SimulationContext, Id, EventHandler, Event, EPSILON};
     }
 
     pub use crate::pod::Pod;
-    pub use crate::pod::LoadType;
+    pub use crate::load_types::LoadType;
+    pub use crate::object_meta::ObjectMeta;
 
     pub use crate::pod::PodPhase;
     pub use crate::node::Node;

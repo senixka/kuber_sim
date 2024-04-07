@@ -4,9 +4,12 @@ network_delays:
   api2kubelet: 0
   kubelet2api: 0
 
+constants:
+  kubelet_self_update_period: 2
+
 pods:
   - pod_group:
-    amount: 3
+    amount: 5
     pod:
       metadata:
         labels:
@@ -18,13 +21,13 @@ pods:
         request_memory: 1024
         limit_cpu: 60
         limit_memory: 2048
-        load_profile:
-          - !Constant
-            cpu: 30
-            memory: 1024
-            duration: 6
+        load:
+          !Constant
+          cpu: 30
+          memory: 1024
+          duration: 6
   - pod_group:
-    amount: 1
+    amount: 0
     pod:
       metadata:
         labels:
@@ -32,18 +35,18 @@ pods:
           product: true
       spec:
         arrival_time: 4
-        request_cpu: 30
-        request_memory: 1024
+        request_cpu: 5
+        request_memory: 128
         limit_cpu: 60
         limit_memory: 2048
-        load_profile:
-          - !BusyBox
-            cpu_down: 30
-            memory_down: 1024
-            cpu_up: 30
-            memory_up: 1024
-            duration: 6
-            shift_time: 2
+        load:
+          !BusyBox
+          cpu_down: 5
+          memory_down: 128
+          cpu_up: 60
+          memory_up: 2000
+          duration: 6
+          shift_time: 2
 
 nodes:
   - node_group:
@@ -54,10 +57,4 @@ nodes:
           gpu: amd
       spec:
         installed_cpu: 100
-        installed_memory: 4048
-  - node_group:
-    amount: 1
-    node:
-      spec:
-        installed_cpu: 10
-        installed_memory: 1024
+        installed_memory: 2048

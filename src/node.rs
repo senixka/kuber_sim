@@ -1,6 +1,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
-use crate::pod::{ObjectMeta, Pod};
+
+use crate::object_meta::ObjectMeta;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeSpec {
@@ -15,7 +17,6 @@ pub struct NodeSpec {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NodeStatus {
-    pub pods: Vec<Pod>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,7 +29,6 @@ pub struct Node {
     pub status: NodeStatus,
 }
 
-
 impl Node {
     pub fn init(&mut self) {
         static UID_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -37,5 +37,23 @@ impl Node {
 
         self.spec.available_cpu = self.spec.installed_cpu;
         self.spec.available_memory = self.spec.installed_memory;
+    }
+
+    pub fn is_consumable(&self, cpu: u64, memory: u64) -> bool {
+        return self.spec.available_cpu >= cpu && self.spec.available_memory >= memory;
+    }
+
+    pub fn consume(&mut self, cpu: u64, memory: u64) {
+        assert!(self.spec.available_cpu >= cpu);
+        assert!(self.spec.available_memory >= memory);
+        self.spec.available_cpu -= cpu;
+        self.spec.available_memory -= memory;
+    }
+
+    pub fn restore(&mut self, cpu: u64, memory: u64) {
+        self.spec.available_cpu += cpu;
+        self.spec.available_memory += memory;
+        assert!(self.spec.available_cpu <= self.spec.installed_cpu);
+        assert!(self.spec.available_memory <= self.spec.installed_memory);
     }
 }

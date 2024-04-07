@@ -27,12 +27,27 @@ pub struct SimConfig {
     pub network_delays: NetworkDelays,
     pub pods: Vec<PodGroup>,
     pub nodes: Vec<NodeGroup>,
+    pub constants: SimConstants,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SimConstants {
+    pub kubelet_self_update_period: f64,
+}
+
+impl SimConstants {
+    pub const fn new() -> Self {
+        Self {
+            kubelet_self_update_period: 10.0,
+        }
+    }
 }
 
 static mut NETWORK_DELAYS: NetworkDelays = NetworkDelays::new();
 
 static mut SIM_CONFIG: SimConfig = SimConfig {
     network_delays: NetworkDelays::new(),
+    constants: SimConstants::new(),
     pods: Vec::new(),
     nodes: Vec::new(),
 };
@@ -55,6 +70,12 @@ impl SimConfig {
     pub fn nodes() -> &'static Vec<NodeGroup> {
         unsafe {
             &SIM_CONFIG.nodes
+        }
+    }
+
+    pub fn kubelet_self_update_period() -> f64 {
+        unsafe {
+            SIM_CONFIG.constants.kubelet_self_update_period
         }
     }
 }

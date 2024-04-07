@@ -46,6 +46,11 @@ pub struct APIUpdatePodFromKubelet {
     pub node_uid: u64,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIKubeletSelfUpdate {
+}
+
+
 // ################# API SERVER #################
 
 pub struct APIServer {
