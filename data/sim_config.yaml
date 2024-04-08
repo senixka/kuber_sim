@@ -1,15 +1,15 @@
 network_delays:
-  api2scheduler: 0
-  scheduler2api: 0
-  api2kubelet: 0
-  kubelet2api: 0
+  api2scheduler: 1
+  scheduler2api: 1
+  api2kubelet: 1
+  kubelet2api: 1
 
 constants:
   kubelet_self_update_period: 2
 
 pods:
   - pod_group:
-    amount: 5
+    amount: 20
     pod:
       metadata:
         labels:
@@ -27,7 +27,7 @@ pods:
           memory: 1024
           duration: 6
   - pod_group:
-    amount: 0
+    amount: 50
     pod:
       metadata:
         labels:

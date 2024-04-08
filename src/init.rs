@@ -1,4 +1,3 @@
-use std::process::abort;
 use crate::my_imports::*;
 
 pub struct Init {
@@ -60,7 +59,6 @@ impl Init {
 
 impl dsc::EventHandler for Init {
     fn on(&mut self, _: dsc::Event) {
-        println!("Init EventHandler -> Abort");
-        abort();
+        panic!("Init EventHandler -> Panic");
     }
 }

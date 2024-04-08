@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+use std::io;
+use std::process::Command;
 use crate::my_imports::*;
 
 pub struct Kubelet {
@@ -6,7 +9,7 @@ pub struct Kubelet {
     pub node: Node,
 
     pub pods: HashMap<u64, Pod>,
-    pub running_loads: HashMap<u64, (u64, u64, LoadType)>,
+    pub running_loads: BTreeMap<u64, (u64, u64, LoadType)>,
     pub self_update_enabled: bool,
 }
 
@@ -17,7 +20,7 @@ impl Kubelet {
             api_sim_id: dsc::Id::MAX,
             node,
             pods: HashMap::new(),
-            running_loads: HashMap::new(),
+            running_loads: BTreeMap::new(),
             self_update_enabled: false,
         }
     }
@@ -33,8 +36,13 @@ impl Kubelet {
         }
     }
 
-    pub fn place_new_pod(&mut self, pod: Pod) {
+    pub fn place_new_pod(&mut self, pod: Pod) -> bool {
         let pod_uid = pod.metadata.uid;
+
+        println!("Pods: {0}", self.pods.len());
+        println!("MEM: Available/Installed: {0}/{1}", self.node.spec.available_memory, self.node.spec.installed_memory);
+        println!("CPU: Available/Installed: {0}/{1}", self.node.spec.available_cpu, self.node.spec.installed_cpu);
+
 
         // Store pod
         assert!(!self.pods.contains_key(&pod_uid));
@@ -46,39 +54,74 @@ impl Kubelet {
         assert!(!is_finished);
 
         if !self.node.is_consumable(cpu, memory) {
-            // TODO: can't place pod
-            panic!("TODO: can't place pod");
+            self.pods.remove(&pod_uid).unwrap();
+            return false;
         }
         self.node.consume(cpu, memory);
         self.running_loads.insert(pod_uid, (cpu, memory, load));
+
+        return true;
     }
 
     pub fn update_load(&mut self) {
+        // Restore current resources, find finished pods
         let mut finished_pods: Vec<u64> = Vec::new();
         for (pod_uid, (prev_cpu, prev_memory, load)) in self.running_loads.iter_mut() {
             self.node.restore(prev_cpu.clone(), prev_memory.clone());
-            let (tmp_cpu, tmp_memory, is_finished) = load.update(self.ctx.time());
+            let (_, _, is_finished) = load.update(self.ctx.time());
 
             if is_finished {
                 finished_pods.push(pod_uid.clone());
-                self.pods.remove(pod_uid).unwrap();
+            }
+        }
+        // println!("MEM: Available/Installed: {0}/{1}", self.node.spec.available_memory, self.node.spec.installed_memory);
+        // println!("CPU: Available/Installed: {0}/{1}", self.node.spec.available_cpu, self.node.spec.installed_cpu);
+        assert_eq!(self.node.spec.installed_memory, self.node.spec.available_memory);
+        assert_eq!(self.node.spec.installed_cpu, self.node.spec.available_cpu);
 
-                let data = APIUpdatePodFromKubelet {
-                    pod_uid: pod_uid.clone(),
-                    new_phase: PodPhase::Succeeded,
-                    node_uid: self.node.metadata.uid,
-                };
-                self.ctx.emit(data, self.api_sim_id, NetworkDelays::kubelet2api());
-            } else if self.node.is_consumable(tmp_cpu, tmp_memory) {
+        // println!("##########################################");
+        // let mut buffer = String::new();
+        // io::stdin().read_line(&mut buffer).unwrap();
+
+        // Delete finished pods
+        for pod_uid in finished_pods.iter() {
+            self.running_loads.remove(pod_uid).unwrap();
+            self.pods.remove(pod_uid).unwrap();
+
+            let data = APIUpdatePodFromKubelet {
+                pod_uid: pod_uid.clone(),
+                new_phase: PodPhase::Succeeded,
+                node_uid: self.node.metadata.uid,
+            };
+            self.ctx.emit(data, self.api_sim_id, NetworkDelays::kubelet2api());
+        }
+
+        // Consume resources. Find pods to evict
+        let mut evicted_pods: Vec<u64> = Vec::new();
+        for (pod_uid, (prev_cpu, prev_memory, load)) in self.running_loads.iter_mut() {
+            let (tmp_cpu, tmp_memory, is_finished) = load.update(self.ctx.time());
+            assert!(!is_finished);
+
+            if self.node.is_consumable(tmp_cpu, tmp_memory) {
                 self.node.consume(tmp_cpu, tmp_memory);
+                *prev_cpu = tmp_cpu;
+                *prev_memory = tmp_memory;
             } else {
-                // TODO: evict pod
-                panic!("TODO: evict pod");
+                evicted_pods.push(pod_uid.clone());
             }
         }
 
-        for pod_uid in finished_pods.iter() {
+        // Evict pods
+        for pod_uid in evicted_pods.iter() {
             self.running_loads.remove(pod_uid).unwrap();
+            self.pods.remove(pod_uid).unwrap();
+
+            let data = APIUpdatePodFromKubelet {
+                pod_uid: pod_uid.clone(),
+                new_phase: PodPhase::Pending,
+                node_uid: self.node.metadata.uid,
+            };
+            self.ctx.emit(data, self.api_sim_id, NetworkDelays::kubelet2api());
         }
     }
 }
@@ -95,8 +138,18 @@ impl dsc::EventHandler for Kubelet {
                 assert_eq!(self.running_loads.len(), self.pods.len());
 
                 if !self.pods.contains_key(&pod.metadata.uid) {
-                    self.place_new_pod(pod);
-                    self.self_update_on();
+                    self.update_load();
+
+                    if self.place_new_pod(pod.clone()) {
+                        self.self_update_on();
+                    } else {
+                        let data = APIUpdatePodFromKubelet {
+                            pod_uid: pod.metadata.uid,
+                            new_phase: PodPhase::Pending,
+                            node_uid: self.node.metadata.uid,
+                        };
+                        self.ctx.emit(data, self.api_sim_id, NetworkDelays::kubelet2api());
+                    }
                     assert_eq!(self.running_loads.len(), self.pods.len());
                 }
             }

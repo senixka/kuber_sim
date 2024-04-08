@@ -6,6 +6,7 @@ pub struct Scheduler {
 
     pods: HashMap<u64, Pod>,
     nodes: HashMap<u64, Node>,
+    self_update_enabled: bool,
 }
 
 impl Scheduler {
@@ -15,6 +16,7 @@ impl Scheduler {
             api_sim_id: dsc::Id::MAX,
             pods: HashMap::new(),
             nodes: HashMap::new(),
+            self_update_enabled: false,
         }
     }
 
@@ -39,6 +41,13 @@ impl Scheduler {
     pub fn unplace_pod(pod: &Pod, node: &mut Node) {
         node.spec.available_cpu += pod.spec.request_cpu;
         node.spec.available_memory += pod.spec.request_memory;
+    }
+
+    pub fn self_update_on(&mut self) {
+        if !self.self_update_enabled {
+            self.self_update_enabled = true;
+            self.ctx.emit_self(APISchedulerSelfUpdate {}, 10.0);
+        }
     }
 
     pub fn schedule(&mut self) {
@@ -83,8 +92,10 @@ impl dsc::EventHandler for Scheduler {
                 }
                 if new_phase == PodPhase::Pending {
                     self.pods.get_mut(&pod_uid).unwrap().status.phase = new_phase;
+                    Scheduler::unplace_pod(self.pods.get_mut(&pod_uid).unwrap(), self.nodes.get_mut(&node_uid).unwrap());
                 }
                 self.schedule();
+                self.self_update_on();
             }
             APIAddPod { pod } => {
                 println!("Scheduler <Add Pod>");
@@ -96,6 +107,14 @@ impl dsc::EventHandler for Scheduler {
                 println!("Scheduler <Add Kubelet>");
 
                 self.nodes.insert(node.metadata.uid, node);
+            }
+            APISchedulerSelfUpdate { } => {
+                println!("Scheduler <Self Update>");
+                self.schedule();
+
+                if self.pods.len() > 0 {
+                    self.ctx.emit_self(APISchedulerSelfUpdate{}, 10.0);
+                }
             }
         });
         println!("Scheduler EventHandler <------");

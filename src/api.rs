@@ -50,6 +50,9 @@ pub struct APIUpdatePodFromKubelet {
 pub struct APIKubeletSelfUpdate {
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APISchedulerSelfUpdate {
+}
 
 // ################# API SERVER #################
 
