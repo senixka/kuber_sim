@@ -1,22 +1,41 @@
+use std::collections::BinaryHeap;
 use crate::my_imports::*;
 
-pub struct Scheduler {
+pub struct Scheduler<ActiveQCmp> {
     ctx: dsc::SimulationContext,
     api_sim_id: dsc::Id,
 
     pods: HashMap<u64, Pod>,
     nodes: HashMap<u64, Node>,
     self_update_enabled: bool,
+
+    active_queue: BinaryHeap<ActiveQCmp>,
 }
 
-impl Scheduler {
-    pub fn new(ctx: dsc::SimulationContext) -> Self {
+pub fn place_pod(pod: &Pod, node: &mut Node) {
+    node.spec.available_cpu -= pod.spec.request_cpu;
+    node.spec.available_memory -= pod.spec.request_memory;
+}
+
+pub fn unplace_pod(pod: &Pod, node: &mut Node) {
+    node.spec.available_cpu += pod.spec.request_cpu;
+    node.spec.available_memory += pod.spec.request_memory;
+}
+
+pub fn is_pod_placeable(pod: &Pod, node: &Node) -> bool {
+    return pod.spec.request_cpu <= node.spec.available_cpu
+        && pod.spec.request_memory <= node.spec.available_memory;
+}
+
+impl<ActiveQCmp: Ord> Scheduler<ActiveQCmp> {
+    pub fn new(ctx: dsc::SimulationContext) -> Scheduler<ActiveQCmp> {
         Self {
             ctx,
             api_sim_id: dsc::Id::MAX,
             pods: HashMap::new(),
             nodes: HashMap::new(),
             self_update_enabled: false,
+            active_queue: BinaryHeap::new(),
         }
     }
 
@@ -26,21 +45,6 @@ impl Scheduler {
 
     pub fn presimulation_check(&self) {
         assert_ne!(self.api_sim_id, dsc::Id::MAX);
-    }
-
-    pub fn is_pod_placeable(pod: &Pod, node: &Node) -> bool {
-        return pod.spec.request_cpu <= node.spec.available_cpu
-            && pod.spec.request_memory <= node.spec.available_memory;
-    }
-
-    pub fn place_pod(pod: &Pod, node: &mut Node) {
-        node.spec.available_cpu -= pod.spec.request_cpu;
-        node.spec.available_memory -= pod.spec.request_memory;
-    }
-
-    pub fn unplace_pod(pod: &Pod, node: &mut Node) {
-        node.spec.available_cpu += pod.spec.request_cpu;
-        node.spec.available_memory += pod.spec.request_memory;
     }
 
     pub fn self_update_on(&mut self) {
@@ -59,8 +63,8 @@ impl Scheduler {
 
             for (node_uid, node) in self.nodes.iter_mut() {
                 println!("Try node_{0}", node.metadata.uid);
-                if Scheduler::is_pod_placeable(&pod, &node) {
-                    Scheduler::place_pod(&pod, node);
+                if is_pod_placeable(&pod, &node) {
+                    place_pod(&pod, node);
                     pod.status.node_uid = Some(node.metadata.uid);
                     pod.status.phase = PodPhase::Running;
 
@@ -79,7 +83,7 @@ impl Scheduler {
     }
 }
 
-impl dsc::EventHandler for Scheduler {
+impl<ActiveQCmp: Ord> dsc::EventHandler for Scheduler<ActiveQCmp> {
     fn on(&mut self, event: dsc::Event) {
         println!("Scheduler EventHandler ------>");
         dsc::cast!(match event.data {
@@ -87,12 +91,12 @@ impl dsc::EventHandler for Scheduler {
                 println!("Scheduler <Update Pod From Kubelet> pod_{0}", pod_uid);
 
                 if new_phase == PodPhase::Succeeded || new_phase == PodPhase::Failed {
-                    Scheduler::unplace_pod(self.pods.get_mut(&pod_uid).unwrap(), self.nodes.get_mut(&node_uid).unwrap());
+                    unplace_pod(self.pods.get_mut(&pod_uid).unwrap(), self.nodes.get_mut(&node_uid).unwrap());
                     self.pods.remove(&pod_uid);
                 }
                 if new_phase == PodPhase::Pending {
                     self.pods.get_mut(&pod_uid).unwrap().status.phase = new_phase;
-                    Scheduler::unplace_pod(self.pods.get_mut(&pod_uid).unwrap(), self.nodes.get_mut(&node_uid).unwrap());
+                    unplace_pod(self.pods.get_mut(&pod_uid).unwrap(), self.nodes.get_mut(&node_uid).unwrap());
                 }
                 self.schedule();
                 self.self_update_on();
@@ -102,10 +106,10 @@ impl dsc::EventHandler for Scheduler {
 
                 self.pods.insert(pod.metadata.uid, pod);
                 self.schedule();
+                self.self_update_on();
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
                 println!("Scheduler <Add Kubelet>");
-
                 self.nodes.insert(node.metadata.uid, node);
             }
             APISchedulerSelfUpdate { } => {
