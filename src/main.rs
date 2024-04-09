@@ -5,6 +5,7 @@ mod scheduler;
 mod load_types;
 mod objects;
 mod api_server;
+mod simulation;
 
 pub mod my_imports {
     pub use std::rc::Rc;
@@ -32,48 +33,9 @@ pub mod my_imports {
     pub use crate::api_server::*;
 }
 use my_imports::*;
-use crate::init::Init;
-use crate::scheduler::active_queue::ActiveQCmpUid;
-use crate::scheduler::backoff_queue::BackOffQExponential;
+use crate::simulation::experiment::*;
 
 fn main() {
-    let mut sim = dsc::Simulation::new(179);
-
-    // Create components
-
-    let api = Rc::new(RefCell::new(APIServer::new(sim.create_context("api"))));
-    let api_id = sim.add_handler("api", api.clone());
-
-    let scheduler = Rc::new(RefCell::new(Scheduler::<ActiveQCmpUid, BackOffQExponential>::new(sim.create_context("scheduler"))));
-    let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
-
-    let init = Rc::new(RefCell::new(Init::new(sim.create_context("init"))));
-
-    // Init components
-
-    sim_config::SimConfig::from_yaml("./data/sim_config.yaml");
-    sim_config::NetworkDelays::from_yaml("./data/sim_config.yaml");
-    api.borrow_mut().presimulation_init(scheduler_id);
-    scheduler.borrow_mut().presimulation_init(api_id);
-    init.borrow_mut().presimulation_init(api_id);
-
-    // Final check
-
-    api.borrow().presimulation_check();
-    scheduler.borrow().presimulation_check();
-    init.borrow().presimulation_check();
-
-    // Simulation
-
-    init.borrow().submit_nodes(&mut sim);
-
-    while sim.step() == true {
-        println!("-------------------------------");
-    }
-
-    init.borrow().submit_pods();
-
-    while sim.step() == true {
-        println!("-------------------------------");
-    }
+    let mut test_1 = Experiment::new("./data/sim_config.yaml", "./data/sim_config.yaml", 179);
+    test_1.run();
 }
