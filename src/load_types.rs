@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use crate::my_imports::dsc;
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum LoadType {
     Constant(Constant),
     BusyBox(BusyBox),
@@ -33,7 +33,7 @@ impl LoadType {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Constant {
     #[serde(skip_deserializing)]
     pub start_time: f64,
@@ -54,9 +54,11 @@ impl Constant {
     }
 }
 
+impl Eq for Constant {}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BusyBox {
     #[serde(skip_deserializing)]
     pub start_time: f64,
@@ -84,5 +86,7 @@ impl BusyBox {
         return (self.cpu_up, self.memory_up, current_time - self.start_time + dsc::EPSILON > self.duration);
     }
 }
+
+impl Eq for BusyBox {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

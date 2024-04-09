@@ -6,7 +6,7 @@ use crate::object_meta::ObjectMeta;
 
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PodSpec {
     pub arrival_time: f64,
     pub load: LoadType,
@@ -19,8 +19,10 @@ pub struct PodSpec {
     pub limit_memory: u64,
 }
 
+impl Eq for PodSpec {}
+
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum PodPhase {
     #[default]
     Pending = 0,
@@ -31,7 +33,7 @@ pub enum PodPhase {
 }
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podstatus-v1-core
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PodStatus {
     #[serde(default)]
     pub phase: PodPhase,
@@ -41,7 +43,7 @@ pub struct PodStatus {
 }
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Pod {
     pub spec: PodSpec,
 
