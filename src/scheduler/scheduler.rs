@@ -1,7 +1,8 @@
 use std::collections::BinaryHeap;
-use crate::active_queue::TraitActiveQCmp;
-use crate::backoff_queue::TraitBackOffQ;
-use crate::my_imports::*;
+use super::super::my_imports::*;
+use super::active_queue::*;
+use super::backoff_queue::*;
+
 
 pub struct Scheduler<ActiveQCmp, BackOffQ> {
     ctx: dsc::SimulationContext,
@@ -17,6 +18,8 @@ pub struct Scheduler<ActiveQCmp, BackOffQ> {
     active_queue: BinaryHeap<ActiveQCmp>,
     backoff_queue: BackOffQ,
     failed_attempts: HashMap<u64, u64>,
+
+
 }
 
 pub fn place_pod(pod: &Pod, node: &mut Node) {

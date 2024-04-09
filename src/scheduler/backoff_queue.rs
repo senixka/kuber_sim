@@ -1,11 +1,15 @@
 use std::collections::{BinaryHeap};
 use std::cmp::Ordering;
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub trait TraitBackOffQ {
     fn new(initial_backoff: f64, max_backoff: f64) -> Self;
     fn push(&mut self, pod_uid: u64, failed_attempts: u64, current_time: f64);
     fn try_pop(&mut self, current_time: f64) -> Option<u64>;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub struct BackOffQExponential {
     initial_backoff: f64,
@@ -44,6 +48,8 @@ impl TraitBackOffQ for BackOffQExponential {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Debug)]
 struct ItemWrapper {
     pub pod_uid: u64,
@@ -69,3 +75,5 @@ impl PartialEq for ItemWrapper {
 }
 
 impl Eq for ItemWrapper {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////

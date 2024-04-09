@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 
-use crate::object_meta::ObjectMeta;
+use crate::ObjectMeta;
 
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

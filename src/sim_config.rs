@@ -1,5 +1,5 @@
 use std::fs;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use crate::my_imports::*;
 
 #[derive(Debug, Serialize, Deserialize)]
