@@ -1,15 +1,22 @@
 use std::collections::BinaryHeap;
+use crate::active_queue::TraitActiveQCmp;
+use crate::backoff_queue::TraitBackOffQ;
 use crate::my_imports::*;
 
-pub struct Scheduler<ActiveQCmp> {
+pub struct Scheduler<ActiveQCmp, BackOffQ> {
     ctx: dsc::SimulationContext,
     api_sim_id: dsc::Id,
 
-    pods: HashMap<u64, Pod>,
-    nodes: HashMap<u64, Node>,
     self_update_enabled: bool,
 
+    // Cache
+    pods: HashMap<u64, Pod>,
+    nodes: HashMap<u64, Node>,
+
+    // Queues
     active_queue: BinaryHeap<ActiveQCmp>,
+    backoff_queue: BackOffQ,
+    failed_attempts: HashMap<u64, u64>,
 }
 
 pub fn place_pod(pod: &Pod, node: &mut Node) {
@@ -27,8 +34,8 @@ pub fn is_pod_placeable(pod: &Pod, node: &Node) -> bool {
         && pod.spec.request_memory <= node.spec.available_memory;
 }
 
-impl<ActiveQCmp: Ord> Scheduler<ActiveQCmp> {
-    pub fn new(ctx: dsc::SimulationContext) -> Scheduler<ActiveQCmp> {
+impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp, BackOffQ> {
+    pub fn new(ctx: dsc::SimulationContext) -> Scheduler<ActiveQCmp, BackOffQ> {
         Self {
             ctx,
             api_sim_id: dsc::Id::MAX,
@@ -36,7 +43,14 @@ impl<ActiveQCmp: Ord> Scheduler<ActiveQCmp> {
             nodes: HashMap::new(),
             self_update_enabled: false,
             active_queue: BinaryHeap::new(),
+            failed_attempts: HashMap::new(),
+            backoff_queue: BackOffQ::new(1.0, 10.0),
         }
+    }
+
+    pub fn test(&mut self, pod: Pod) -> Pod{
+        self.active_queue.push(ActiveQCmp::wrap(pod));
+        return self.active_queue.pop().unwrap().inner();
     }
 
     pub fn presimulation_init(&mut self, api_sim_id: dsc::Id) {
@@ -83,7 +97,7 @@ impl<ActiveQCmp: Ord> Scheduler<ActiveQCmp> {
     }
 }
 
-impl<ActiveQCmp: Ord> dsc::EventHandler for Scheduler<ActiveQCmp> {
+impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ> {
     fn on(&mut self, event: dsc::Event) {
         println!("Scheduler EventHandler ------>");
         dsc::cast!(match event.data {

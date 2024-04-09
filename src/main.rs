@@ -8,6 +8,7 @@ mod sim_config;
 mod load_types;
 mod object_meta;
 mod active_queue;
+mod backoff_queue;
 
 pub mod my_imports {
     pub use std::rc::Rc;
@@ -24,6 +25,8 @@ pub mod my_imports {
     pub use crate::load_types::LoadType;
     pub use crate::object_meta::ObjectMeta;
     pub use crate::active_queue::ActiveQCmpUid;
+    pub use crate::backoff_queue::BackOffQExponential;
+    pub use crate::backoff_queue::TraitBackOffQ;
 
     pub use crate::pod::PodPhase;
     pub use crate::node::Node;
@@ -44,7 +47,7 @@ fn main() {
     let api = Rc::new(RefCell::new(APIServer::new(sim.create_context("api"))));
     let api_id = sim.add_handler("api", api.clone());
 
-    let scheduler = Rc::new(RefCell::new(Scheduler::<ActiveQCmpUid>::new(sim.create_context("scheduler"))));
+    let scheduler = Rc::new(RefCell::new(Scheduler::<ActiveQCmpUid, BackOffQExponential>::new(sim.create_context("scheduler"))));
     let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
 
     let init = Rc::new(RefCell::new(Init::new(sim.create_context("init"))));
