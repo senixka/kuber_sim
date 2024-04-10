@@ -1,19 +1,22 @@
 use crate::my_imports::*;
 use crate::simulation::config::{ClusterState, WorkLoad};
+use crate::simulation::monitoring::Monitoring;
 
 pub struct Init {
     ctx: dsc::SimulationContext,
     api_sim_id: dsc::Id,
+    monitoring: Rc<RefCell<Monitoring>>,
 
     cluster_state: Rc<RefCell<ClusterState>>,
     workload: Rc<RefCell<WorkLoad>>,
 }
 
 impl Init {
-    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, workload:  Rc<RefCell<WorkLoad>>) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, workload: Rc<RefCell<WorkLoad>>, monitoring: Rc<RefCell<Monitoring>>) -> Self {
         Self {
             ctx,
             api_sim_id: dsc::Id::MAX,
+            monitoring,
             cluster_state,
             workload,
         }
@@ -28,8 +31,11 @@ impl Init {
     }
 
     pub fn submit_pods(&self) {
+        let mut pod_count: u64 = 0;
         let mut last_time: f64 = 0.0;
         for pod_group in self.workload.borrow().pods.iter() {
+            pod_count += pod_group.amount;
+
             for _ in 0..pod_group.amount {
                 let mut pod = pod_group.pod.clone();
                 pod.init();
@@ -39,6 +45,7 @@ impl Init {
                 last_time = pod.spec.arrival_time;
             }
         }
+        self.monitoring.borrow_mut().set_n_pod_in_simulation(pod_count);
     }
 
     pub fn submit_nodes(&self, sim: &mut dsc::Simulation) {
@@ -48,12 +55,13 @@ impl Init {
                 node.init();
 
                 let name = "kubelet_".to_owned() + &*node.metadata.uid.to_string();
-                println!("{0}", name);
+                // println!("{0}", name);
 
                 let kubelet = Rc::new(RefCell::new(Kubelet::new(
                     sim.create_context(name.clone()),
                     node.clone(),
                     self.cluster_state.clone(),
+                    self.monitoring.clone(),
                 )));
                 kubelet.borrow_mut().presimulation_init(self.api_sim_id);
 

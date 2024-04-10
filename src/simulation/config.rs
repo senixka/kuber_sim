@@ -22,6 +22,7 @@ pub struct NodeGroup {
 pub struct Constants {
     pub kubelet_self_update_period: f64,
     pub scheduler_self_update_period: f64,
+    pub monitoring_self_update_period: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

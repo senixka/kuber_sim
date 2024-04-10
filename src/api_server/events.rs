@@ -51,3 +51,8 @@ pub struct APIKubeletSelfUpdate {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APISchedulerSelfUpdate {
 }
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIMonitoringSelfUpdate {
+}
+

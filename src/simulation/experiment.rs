@@ -5,6 +5,7 @@ use crate::my_imports::{APIServer, dsc, Scheduler};
 use crate::scheduler::active_queue::ActiveQCmpUid;
 use crate::scheduler::backoff_queue::BackOffQExponential;
 use crate::simulation::config::{ClusterState, WorkLoad};
+use crate::simulation::monitoring::Monitoring;
 
 pub struct Experiment {
     cluster_state_file_path: String,
@@ -19,6 +20,7 @@ pub struct Experiment {
     api: Rc<RefCell<APIServer>>,
     scheduler: Rc<RefCell<Scheduler<ActiveQCmpUid, BackOffQExponential>>>,
     init: Rc<RefCell<Init>>,
+    monitoring: Rc<RefCell<Monitoring>>,
 
     api_id: dsc::Id,
     scheduler_id: dsc::Id,
@@ -34,6 +36,13 @@ impl Experiment {
 
         let mut sim = dsc::Simulation::new(seed);
 
+        let monitoring = Rc::new(RefCell::new(
+            Monitoring::new(
+                sim.create_context("monitoring"), cluster_state.clone()
+            )
+        ));
+        let _ = sim.add_handler("monitoring", monitoring.clone());
+
         let api = Rc::new(RefCell::new(
             APIServer::new(
                 sim.create_context("api"), cluster_state.clone()
@@ -43,14 +52,14 @@ impl Experiment {
 
         let scheduler = Rc::new(RefCell::new(
             Scheduler::<ActiveQCmpUid, BackOffQExponential>::new(
-                sim.create_context("scheduler"), cluster_state.clone()
+                sim.create_context("scheduler"), cluster_state.clone(), monitoring.clone()
             )
         ));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
 
         let init = Rc::new(RefCell::new(
             Init::new(
-                sim.create_context("init"), cluster_state.clone(), workload.clone()
+                sim.create_context("init"), cluster_state.clone(), workload.clone(), monitoring.clone()
             )
         ));
 
@@ -58,18 +67,20 @@ impl Experiment {
         api.borrow_mut().presimulation_init(scheduler_id);
         scheduler.borrow_mut().presimulation_init(api_id);
         init.borrow_mut().presimulation_init(api_id);
+        monitoring.borrow_mut().presimulation_init();
 
         // Final check
         api.borrow().presimulation_check();
         scheduler.borrow().presimulation_check();
         init.borrow().presimulation_check();
+        monitoring.borrow_mut().presimulation_check();
 
         Self {
             cluster_state_file_path: cluster_state_file_path.to_string(),
             workload_file_path: workload_file_path.to_string(),
             sim, seed,
             cluster_state, workload,
-            api, scheduler, init,
+            api, scheduler, init, monitoring,
             api_id, scheduler_id,
             is_done: false,
         }
@@ -82,9 +93,8 @@ impl Experiment {
         self.is_done = true;
 
         self.init.borrow().submit_nodes(&mut self.sim);
-        self.sim.step_until_no_events();
-
         self.init.borrow().submit_pods();
+
         self.sim.step_until_no_events();
     }
 }

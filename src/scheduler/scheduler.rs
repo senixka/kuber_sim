@@ -1,5 +1,6 @@
 use std::collections::BinaryHeap;
 use crate::simulation::config::ClusterState;
+use crate::simulation::monitoring::Monitoring;
 use super::super::my_imports::*;
 use super::active_queue::*;
 use super::backoff_queue::*;
@@ -9,6 +10,7 @@ pub struct Scheduler<ActiveQCmp, BackOffQ> {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
     api_sim_id: dsc::Id,
+    monitoring: Rc<RefCell<Monitoring>>,
 
     self_update_enabled: bool,
 
@@ -38,11 +40,12 @@ pub fn is_pod_placeable(pod: &Pod, node: &Node) -> bool {
 }
 
 impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp, BackOffQ> {
-    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>) -> Scheduler<ActiveQCmp, BackOffQ> {
+    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, monitoring: Rc<RefCell<Monitoring>>) -> Scheduler<ActiveQCmp, BackOffQ> {
         Self {
             ctx,
             cluster_state,
             api_sim_id: dsc::Id::MAX,
+            monitoring,
             pods: HashMap::new(),
             nodes: HashMap::new(),
             self_update_enabled: false,
@@ -73,14 +76,14 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
     }
 
     pub fn schedule(&mut self) {
-        for (pod_uid, pod) in self.pods.iter_mut() {
+        for (_, pod) in self.pods.iter_mut() {
             if pod.status.phase != PodPhase::Pending {
                 continue;
             }
-            println!("Scheduler Pod_{0} is Pending", pod_uid);
+            // println!("Scheduler Pod_{0} is Pending", pod_uid);
 
             for (node_uid, node) in self.nodes.iter_mut() {
-                println!("Try node_{0}", node.metadata.uid);
+                // println!("Try node_{0}", node.metadata.uid);
                 if is_pod_placeable(&pod, &node) {
                     place_pod(&pod, node);
                     pod.status.node_uid = Some(node.metadata.uid);
@@ -92,7 +95,8 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
                         node_uid: node_uid.clone(),
                     };
 
-                    println!("Scheduler Pod_{0} placed to Node_{1}", pod_uid, node.metadata.uid);
+                    // println!("Scheduler Pod_{0} placed to Node_{1}", pod_uid, node.metadata.uid);
+                    self.monitoring.borrow_mut().scheduler_on_pod_placed(&pod);
                     self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api);
                     break;
                 }
@@ -103,35 +107,43 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
 
 impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ> {
     fn on(&mut self, event: dsc::Event) {
-        println!("Scheduler EventHandler ------>");
+        // println!("Scheduler EventHandler ------>");
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid } => {
-                println!("Scheduler <Update Pod From Kubelet> pod_{0}", pod_uid);
+                // println!("Scheduler <Update Pod From Kubelet> pod_{0}", pod_uid);
 
                 if new_phase == PodPhase::Succeeded || new_phase == PodPhase::Failed {
-                    unplace_pod(self.pods.get_mut(&pod_uid).unwrap(), self.nodes.get_mut(&node_uid).unwrap());
+                    let pod = self.pods.get_mut(&pod_uid).unwrap();
+
+                    unplace_pod(pod, self.nodes.get_mut(&node_uid).unwrap());
+                    self.monitoring.borrow_mut().scheduler_on_pod_unplaced(&pod);
+
                     self.pods.remove(&pod_uid);
                 }
                 if new_phase == PodPhase::Pending {
-                    self.pods.get_mut(&pod_uid).unwrap().status.phase = new_phase;
+                    let pod = self.pods.get_mut(&pod_uid).unwrap();
+                    pod.status.phase = new_phase;
+
+                    self.monitoring.borrow_mut().scheduler_on_pod_unplaced(&pod);
                     unplace_pod(self.pods.get_mut(&pod_uid).unwrap(), self.nodes.get_mut(&node_uid).unwrap());
                 }
                 self.schedule();
                 self.self_update_on();
             }
             APIAddPod { pod } => {
-                println!("Scheduler <Add Pod>");
+                // println!("Scheduler <Add Pod>");
 
                 self.pods.insert(pod.metadata.uid, pod);
                 self.schedule();
                 self.self_update_on();
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
-                println!("Scheduler <Add Kubelet>");
+                // println!("Scheduler <Add Kubelet>");
+                self.monitoring.borrow_mut().scheduler_on_node_added(&node);
                 self.nodes.insert(node.metadata.uid, node);
             }
             APISchedulerSelfUpdate { } => {
-                println!("Scheduler <Self Update>");
+                // println!("Scheduler <Self Update>");
                 self.schedule();
 
                 if self.pods.len() > 0 {
@@ -139,6 +151,6 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for
                 }
             }
         });
-        println!("Scheduler EventHandler <------");
+        // println!("Scheduler EventHandler <------");
     }
 }

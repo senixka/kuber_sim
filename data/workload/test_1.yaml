@@ -18,7 +18,7 @@ pods:
           memory: 1024
           duration: 6
   - pod_group:
-    amount: 50
+    amount: 5000
     pod:
       metadata:
         labels:

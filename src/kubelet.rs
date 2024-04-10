@@ -1,11 +1,13 @@
 use std::collections::BTreeMap;
 use crate::my_imports::*;
+use crate::simulation::monitoring::Monitoring;
 
 pub struct Kubelet {
     pub ctx: dsc::SimulationContext,
     pub cluster_state: Rc<RefCell<ClusterState>>,
     pub api_sim_id: dsc::Id,
     pub node: Node,
+    monitoring: Rc<RefCell<Monitoring>>,
 
     pub pods: HashMap<u64, Pod>,
     pub running_loads: BTreeMap<u64, (u64, u64, LoadType)>,
@@ -13,11 +15,12 @@ pub struct Kubelet {
 }
 
 impl Kubelet {
-    pub fn new(ctx: dsc::SimulationContext, node: Node, cluster_state: Rc<RefCell<ClusterState>>) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, node: Node, cluster_state: Rc<RefCell<ClusterState>>, monitoring: Rc<RefCell<Monitoring>>) -> Self {
         Self {
             ctx,
             cluster_state,
             api_sim_id: dsc::Id::MAX,
+            monitoring,
             node,
             pods: HashMap::new(),
             running_loads: BTreeMap::new(),
@@ -39,9 +42,9 @@ impl Kubelet {
     pub fn place_new_pod(&mut self, pod: Pod) -> bool {
         let pod_uid = pod.metadata.uid;
 
-        println!("Pods: {0}", self.pods.len());
-        println!("MEM: Available/Installed: {0}/{1}", self.node.spec.available_memory, self.node.spec.installed_memory);
-        println!("CPU: Available/Installed: {0}/{1}", self.node.spec.available_cpu, self.node.spec.installed_cpu);
+        // println!("Pods: {0}", self.pods.len());
+        // println!("MEM: Available/Installed: {0}/{1}", self.node.spec.available_memory, self.node.spec.installed_memory);
+        // println!("CPU: Available/Installed: {0}/{1}", self.node.spec.available_cpu, self.node.spec.installed_cpu);
 
 
         // Store pod
@@ -60,6 +63,7 @@ impl Kubelet {
         self.node.consume(cpu, memory);
         self.running_loads.insert(pod_uid, (cpu, memory, load));
 
+        self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
         return true;
     }
 
@@ -68,6 +72,8 @@ impl Kubelet {
         let mut finished_pods: Vec<u64> = Vec::new();
         for (pod_uid, (prev_cpu, prev_memory, load)) in self.running_loads.iter_mut() {
             self.node.restore(prev_cpu.clone(), prev_memory.clone());
+            self.monitoring.borrow_mut().kubelet_on_pod_unplaced(prev_cpu.clone(), prev_memory.clone());
+
             let (_, _, is_finished) = load.update(self.ctx.time());
 
             if is_finished {
@@ -93,6 +99,7 @@ impl Kubelet {
                 new_phase: PodPhase::Succeeded,
                 node_uid: self.node.metadata.uid,
             };
+            self.monitoring.borrow_mut().kubelet_on_pod_finished();
             self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
         }
 
@@ -106,6 +113,7 @@ impl Kubelet {
                 self.node.consume(tmp_cpu, tmp_memory);
                 *prev_cpu = tmp_cpu;
                 *prev_memory = tmp_memory;
+                self.monitoring.borrow_mut().kubelet_on_pod_placed(tmp_cpu, tmp_memory);
             } else {
                 evicted_pods.push(pod_uid.clone());
             }
@@ -128,10 +136,10 @@ impl Kubelet {
 
 impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
-        println!("Kubelet Node_{0} EventHandler ------>", self.node.metadata.uid);
+        // println!("Kubelet Node_{0} EventHandler ------>", self.node.metadata.uid);
         dsc::cast!(match event.data {
             APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
-                println!("New pod");
+                // println!("New pod");
 
                 assert_eq!(node_uid, self.node.metadata.uid);
                 assert_eq!(new_phase, PodPhase::Running);
@@ -154,7 +162,7 @@ impl dsc::EventHandler for Kubelet {
                 }
             }
             APIKubeletSelfUpdate{} => {
-                println!("Self update");
+                // println!("Self update");
                 assert_eq!(self.running_loads.len(), self.pods.len());
                 self.update_load();
                 assert_eq!(self.running_loads.len(), self.pods.len());
@@ -167,6 +175,6 @@ impl dsc::EventHandler for Kubelet {
                 }
             }
         });
-        println!("Kubelet Node_{0} EventHandler <------", self.node.metadata.uid);
+        // println!("Kubelet Node_{0} EventHandler <------", self.node.metadata.uid);
     }
 }
