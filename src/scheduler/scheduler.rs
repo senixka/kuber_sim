@@ -1,4 +1,5 @@
 use std::collections::BinaryHeap;
+use crate::simulation::config::ClusterState;
 use super::super::my_imports::*;
 use super::active_queue::*;
 use super::backoff_queue::*;
@@ -6,6 +7,7 @@ use super::backoff_queue::*;
 
 pub struct Scheduler<ActiveQCmp, BackOffQ> {
     ctx: dsc::SimulationContext,
+    cluster_state: Rc<RefCell<ClusterState>>,
     api_sim_id: dsc::Id,
 
     self_update_enabled: bool,
@@ -18,8 +20,6 @@ pub struct Scheduler<ActiveQCmp, BackOffQ> {
     active_queue: BinaryHeap<ActiveQCmp>,
     backoff_queue: BackOffQ,
     failed_attempts: HashMap<u64, u64>,
-
-
 }
 
 pub fn place_pod(pod: &Pod, node: &mut Node) {
@@ -38,9 +38,10 @@ pub fn is_pod_placeable(pod: &Pod, node: &Node) -> bool {
 }
 
 impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp, BackOffQ> {
-    pub fn new(ctx: dsc::SimulationContext) -> Scheduler<ActiveQCmp, BackOffQ> {
+    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>) -> Scheduler<ActiveQCmp, BackOffQ> {
         Self {
             ctx,
+            cluster_state,
             api_sim_id: dsc::Id::MAX,
             pods: HashMap::new(),
             nodes: HashMap::new(),
@@ -67,7 +68,7 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
     pub fn self_update_on(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
-            self.ctx.emit_self(APISchedulerSelfUpdate {}, 10.0);
+            self.ctx.emit_self(APISchedulerSelfUpdate {}, self.cluster_state.borrow().constants.scheduler_self_update_period);
         }
     }
 
@@ -92,7 +93,7 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
                     };
 
                     println!("Scheduler Pod_{0} placed to Node_{1}", pod_uid, node.metadata.uid);
-                    self.ctx.emit(data, self.api_sim_id, NetworkDelays::scheduler2api());
+                    self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api);
                     break;
                 }
             }
@@ -134,7 +135,7 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for
                 self.schedule();
 
                 if self.pods.len() > 0 {
-                    self.ctx.emit_self(APISchedulerSelfUpdate{}, 10.0);
+                    self.ctx.emit_self(APISchedulerSelfUpdate{}, self.cluster_state.borrow().constants.scheduler_self_update_period);
                 }
             }
         });

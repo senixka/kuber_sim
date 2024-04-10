@@ -3,6 +3,7 @@ use crate::my_imports::*;
 
 pub struct Kubelet {
     pub ctx: dsc::SimulationContext,
+    pub cluster_state: Rc<RefCell<ClusterState>>,
     pub api_sim_id: dsc::Id,
     pub node: Node,
 
@@ -12,9 +13,10 @@ pub struct Kubelet {
 }
 
 impl Kubelet {
-    pub fn new(ctx: dsc::SimulationContext, node: Node) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, node: Node, cluster_state: Rc<RefCell<ClusterState>>) -> Self {
         Self {
             ctx,
+            cluster_state,
             api_sim_id: dsc::Id::MAX,
             node,
             pods: HashMap::new(),
@@ -30,7 +32,7 @@ impl Kubelet {
     pub fn self_update_on(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
-            self.ctx.emit_self(APIKubeletSelfUpdate {}, SimConfig::kubelet_self_update_period());
+            self.ctx.emit_self(APIKubeletSelfUpdate {}, self.cluster_state.borrow().constants.kubelet_self_update_period);
         }
     }
 
@@ -91,7 +93,7 @@ impl Kubelet {
                 new_phase: PodPhase::Succeeded,
                 node_uid: self.node.metadata.uid,
             };
-            self.ctx.emit(data, self.api_sim_id, NetworkDelays::kubelet2api());
+            self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
         }
 
         // Consume resources. Find pods to evict
@@ -119,7 +121,7 @@ impl Kubelet {
                 new_phase: PodPhase::Pending,
                 node_uid: self.node.metadata.uid,
             };
-            self.ctx.emit(data, self.api_sim_id, NetworkDelays::kubelet2api());
+            self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
         }
     }
 }
@@ -146,7 +148,7 @@ impl dsc::EventHandler for Kubelet {
                             new_phase: PodPhase::Pending,
                             node_uid: self.node.metadata.uid,
                         };
-                        self.ctx.emit(data, self.api_sim_id, NetworkDelays::kubelet2api());
+                        self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
                     }
                     assert_eq!(self.running_loads.len(), self.pods.len());
                 }
@@ -159,7 +161,7 @@ impl dsc::EventHandler for Kubelet {
 
                 if !self.pods.is_empty() {
                     self.self_update_enabled = true;
-                    self.ctx.emit_self(APIKubeletSelfUpdate{}, SimConfig::kubelet_self_update_period());
+                    self.ctx.emit_self(APIKubeletSelfUpdate{}, self.cluster_state.borrow().constants.kubelet_self_update_period);
                 } else {
                     self.self_update_enabled = false;
                 }

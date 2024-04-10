@@ -1,6 +1,4 @@
 mod kubelet;
-mod init;
-mod sim_config;
 mod scheduler;
 mod load_types;
 mod objects;
@@ -29,13 +27,17 @@ pub mod my_imports {
     pub use crate::api_server::api::*;
     pub use crate::api_server::events::*;
     pub use crate::kubelet::Kubelet;
-    pub use crate::sim_config::*;
+    pub use crate::simulation::config::*;
     pub use crate::api_server::*;
 }
 use my_imports::*;
 use crate::simulation::experiment::*;
 
 fn main() {
-    let mut test_1 = Experiment::new("./data/sim_config.yaml", "./data/sim_config.yaml", 179);
+    let mut test_1 = Experiment::new(
+        "./data/cluster_state/test_1.yaml",
+        "./data/workload/test_1.yaml",
+        179
+    );
     test_1.run();
 }

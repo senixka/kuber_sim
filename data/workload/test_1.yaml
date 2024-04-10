@@ -1,12 +1,3 @@
-network_delays:
-  api2scheduler: 1
-  scheduler2api: 1
-  api2kubelet: 1
-  kubelet2api: 1
-
-constants:
-  kubelet_self_update_period: 2
-
 pods:
   - pod_group:
     amount: 20
@@ -35,26 +26,15 @@ pods:
           product: true
       spec:
         arrival_time: 4
-        request_cpu: 5
-        request_memory: 128
+        request_cpu: 30
+        request_memory: 2000
         limit_cpu: 60
         limit_memory: 2048
         load:
           !BusyBox
           cpu_down: 5
           memory_down: 128
-          cpu_up: 60
-          memory_up: 2000
+          cpu_up: 30
+          memory_up: 1500
           duration: 6
           shift_time: 2
-
-nodes:
-  - node_group:
-    amount: 1
-    node:
-      metadata:
-        labels:
-          gpu: amd
-      spec:
-        installed_cpu: 100
-        installed_memory: 2048

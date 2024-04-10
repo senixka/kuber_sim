@@ -1,15 +1,21 @@
 use crate::my_imports::*;
+use crate::simulation::config::{ClusterState, WorkLoad};
 
 pub struct Init {
     ctx: dsc::SimulationContext,
     api_sim_id: dsc::Id,
+
+    cluster_state: Rc<RefCell<ClusterState>>,
+    workload: Rc<RefCell<WorkLoad>>,
 }
 
 impl Init {
-    pub fn new(ctx: dsc::SimulationContext) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, workload:  Rc<RefCell<WorkLoad>>) -> Self {
         Self {
             ctx,
             api_sim_id: dsc::Id::MAX,
+            cluster_state,
+            workload,
         }
     }
 
@@ -23,7 +29,7 @@ impl Init {
 
     pub fn submit_pods(&self) {
         let mut last_time: f64 = 0.0;
-        for pod_group in SimConfig::pods().iter() {
+        for pod_group in self.workload.borrow().pods.iter() {
             for _ in 0..pod_group.amount {
                 let mut pod = pod_group.pod.clone();
                 pod.init();
@@ -36,7 +42,7 @@ impl Init {
     }
 
     pub fn submit_nodes(&self, sim: &mut dsc::Simulation) {
-        for node_group in SimConfig::nodes().iter() {
+        for node_group in self.cluster_state.borrow().nodes.iter() {
             for _ in 0..node_group.amount {
                 let mut node = node_group.node.clone();
                 node.init();
@@ -47,6 +53,7 @@ impl Init {
                 let kubelet = Rc::new(RefCell::new(Kubelet::new(
                     sim.create_context(name.clone()),
                     node.clone(),
+                    self.cluster_state.clone(),
                 )));
                 kubelet.borrow_mut().presimulation_init(self.api_sim_id);
 

@@ -1,0 +1,20 @@
+network_delays:
+  api2scheduler: 0
+  scheduler2api: 0
+  api2kubelet: 0
+  kubelet2api: 0
+
+constants:
+  kubelet_self_update_period: 2
+  scheduler_self_update_period: 10
+
+nodes:
+  - node_group:
+    amount: 1
+    node:
+      metadata:
+        labels:
+          gpu: amd
+      spec:
+        installed_cpu: 100
+        installed_memory: 2048
