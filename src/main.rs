@@ -30,14 +30,31 @@ pub mod my_imports {
     pub use crate::simulation::config::*;
     pub use crate::api_server::*;
 }
+
+use std::env;
+use std::io::stdin;
 use my_imports::*;
 use crate::simulation::experiment::*;
 
 fn main() {
-    let mut test_1 = Experiment::new(
-        "./data/cluster_state/test_1.yaml",
-        "./data/workload/test_1.yaml",
-        179
-    );
-    test_1.run();
+    let mut value = String::new();
+    stdin().read_line(&mut value).unwrap();
+    value = value.trim().to_string();
+
+    if value == "1" {
+        let mut test = Experiment::new(
+            "./data/cluster_state/test_1.yaml",
+            "./data/workload/test_1.yaml",
+            179
+        );
+        test.run();
+    }
+    if value == "2" {
+        let mut test = Experiment::new(
+            "./data/cluster_state/state.yaml",
+            "./data/workload/pods.yaml",
+            179
+        );
+        test.run();
+    }
 }

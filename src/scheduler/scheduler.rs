@@ -95,7 +95,7 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
                         node_uid: node_uid.clone(),
                     };
 
-                    // println!("Scheduler Pod_{0} placed to Node_{1}", pod_uid, node.metadata.uid);
+                    // println!("{:?} Scheduler Pod_{:?} placed to Node_{:?} artime: {:?}", self.ctx.time(), pod.metadata.uid, node.metadata.uid, pod.spec.arrival_time);
                     self.monitoring.borrow_mut().scheduler_on_pod_placed(&pod);
                     self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api);
                     break;
@@ -110,7 +110,7 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for
         // println!("Scheduler EventHandler ------>");
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid } => {
-                // println!("Scheduler <Update Pod From Kubelet> pod_{0}", pod_uid);
+                // println!("{:?} Scheduler <Update Pod From Kubelet> pod_{:?} new_phase: {:?}", self.ctx.time(), pod_uid, new_phase);
 
                 if new_phase == PodPhase::Succeeded || new_phase == PodPhase::Failed {
                     let pod = self.pods.get_mut(&pod_uid).unwrap();

@@ -108,11 +108,13 @@ impl Monitoring {
             self.self_update_enabled = false;
             self.makespan_time = self.ctx.time();
         }
+        // println!("{:?} Finished pod", self.ctx.time());
     }
 
     pub fn print_statistics(&self) {
         print!(
-            "CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%\n",
+            "{:12.1} CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%\n",
+            self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.kubelets_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
