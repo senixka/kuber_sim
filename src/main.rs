@@ -31,12 +31,20 @@ pub mod my_imports {
     pub use crate::api_server::*;
 }
 
-use std::env;
 use std::io::stdin;
 use my_imports::*;
+use crate::scheduler::backoff_queue::{BackOffQExponential, TraitBackOffQ};
 use crate::simulation::experiment::*;
 
 fn main() {
+    {
+        // Test
+        let mut backoff = BackOffQExponential::new(1.0, 10.0);
+        backoff.push(1, 0, 0.0);
+        assert_eq!(backoff.try_pop(0.5), None);
+        assert_eq!(backoff.try_pop(1.1), Some(1));
+    }
+
     let mut value = String::new();
     stdin().read_line(&mut value).unwrap();
     value = value.trim().to_string();

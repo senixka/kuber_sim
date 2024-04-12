@@ -6,8 +6,8 @@ network_delays:
 
 constants:
   kubelet_self_update_period: 2
-  scheduler_self_update_period: 10
-  monitoring_self_update_period: 2
+  scheduler_self_update_period: 2
+  monitoring_self_update_period: 5
 
 nodes:
   - node_group:

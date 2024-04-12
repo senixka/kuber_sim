@@ -68,17 +68,17 @@ impl Monitoring {
         self.n_pod_in_simulation = n_pod_in_simulation;
     }
 
-    pub fn scheduler_on_pod_placed(&mut self, pod: &Pod) {
-        self.scheduler_used_cpu += pod.spec.request_cpu;
-        self.scheduler_used_memory += pod.spec.request_memory;
+    pub fn scheduler_on_node_consume(&mut self, cpu: u64, memory: u64) {
+        self.scheduler_used_cpu += cpu;
+        self.scheduler_used_memory += memory;
     }
 
-    pub fn scheduler_on_pod_unplaced(&mut self, pod: &Pod) {
-        assert!(self.scheduler_used_cpu >= pod.spec.request_cpu);
-        assert!(self.scheduler_used_memory >= pod.spec.request_memory);
+    pub fn scheduler_on_node_restore(&mut self, cpu: u64, memory: u64) {
+        assert!(self.scheduler_used_cpu >= cpu);
+        assert!(self.scheduler_used_memory >= memory);
 
-        self.scheduler_used_cpu -= pod.spec.request_cpu;
-        self.scheduler_used_memory -= pod.spec.request_memory;
+        self.scheduler_used_cpu -= cpu;
+        self.scheduler_used_memory -= memory;
     }
 
     pub fn scheduler_on_node_added(&mut self, node: &Node) {
