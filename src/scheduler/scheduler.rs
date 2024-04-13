@@ -1,4 +1,5 @@
 use std::collections::BinaryHeap;
+use crate::scheduler::filter::PluginFilter;
 use crate::scheduler::node_index::NodeRTree;
 use crate::simulation::config::ClusterState;
 use crate::simulation::monitoring::Monitoring;
@@ -7,7 +8,11 @@ use super::active_queue::*;
 use super::backoff_queue::*;
 
 
-pub struct Scheduler<ActiveQCmp, BackOffQ> {
+pub struct Scheduler<
+    ActiveQCmp,
+    BackOffQ,
+    const NFilter: usize
+> {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
     api_sim_id: dsc::Id,
@@ -25,10 +30,22 @@ pub struct Scheduler<ActiveQCmp, BackOffQ> {
     active_queue: BinaryHeap<ActiveQCmp>,
     backoff_queue: BackOffQ,
     failed_attempts: HashMap<u64, u64>,
+
+    // Pipeline
+    filters: [PluginFilter; NFilter],
 }
 
-impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp, BackOffQ> {
-    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, monitoring: Rc<RefCell<Monitoring>>) -> Scheduler<ActiveQCmp, BackOffQ> {
+impl <
+    ActiveQCmp: TraitActiveQCmp,
+    BackOffQ: TraitBackOffQ,
+    const NFilter: usize
+> Scheduler<ActiveQCmp, BackOffQ, NFilter> {
+    pub fn new(
+        ctx: dsc::SimulationContext,
+        cluster_state: Rc<RefCell<ClusterState>>,
+        monitoring: Rc<RefCell<Monitoring>>,
+        filters: [PluginFilter; NFilter]
+    ) -> Scheduler<ActiveQCmp, BackOffQ, NFilter> {
         Self {
             ctx,
             cluster_state,
@@ -42,6 +59,7 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
             active_queue: BinaryHeap::new(),
             failed_attempts: HashMap::new(),
             backoff_queue: BackOffQ::new(1.0, 10.0),
+            filters
         }
     }
 
@@ -70,15 +88,6 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
             let cpu = pod.spec.request_cpu;
             let memory = pod.spec.request_memory;
 
-            // let mut assigned_node_uid: Option<u64> = None;
-            // for (node_uid, node) in self.nodes.iter_mut() {
-            //     if !Scheduler::<ActiveQCmp, BackOffQ>::is_node_consumable(&node, cpu, memory) {
-            //         continue;
-            //     }
-            //     assigned_node_uid = Some(*node_uid);
-            //     break;
-            // }
-
             // Query all suitable nodes
             self.node_rtree.find_suitable_nodes(cpu, memory, &mut result);
 
@@ -91,6 +100,11 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
                 self.backoff_queue.push(pod_uid, *attempts - 1, self.ctx.time());
 
                 continue
+            }
+
+            // Filter
+            for filter in self.filters.iter() {
+                result.retain(|node| filter.is_schedulable(&pod, &node));
             }
 
             let node_uid = result[0].metadata.uid;
@@ -202,7 +216,11 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
     }
 }
 
-impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ> {
+impl <
+    ActiveQCmp: TraitActiveQCmp,
+    BackOffQ: TraitBackOffQ,
+    const NFilter: usize
+> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, NFilter> {
     fn on(&mut self, event: dsc::Event) {
         // println!("Scheduler EventHandler ------>");
         dsc::cast!(match event.data {

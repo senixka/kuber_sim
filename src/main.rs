@@ -29,6 +29,7 @@ pub mod my_imports {
     pub use crate::kubelet::Kubelet;
     pub use crate::simulation::config::*;
     pub use crate::api_server::*;
+    pub use crate::scheduler::filter::*;
 }
 
 use std::io::stdin;

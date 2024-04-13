@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use crate::simulation::init::*;
-use crate::my_imports::{APIServer, dsc, Scheduler};
+use crate::my_imports::{APIServer, dsc, PluginFilter, Scheduler};
 use crate::scheduler::active_queue::ActiveQCmpUid;
 use crate::scheduler::backoff_queue::BackOffQExponential;
 use crate::simulation::config::{ClusterState, WorkLoad};
@@ -18,7 +18,6 @@ pub struct Experiment {
     workload: Rc<RefCell<WorkLoad>>,
 
     api: Rc<RefCell<APIServer>>,
-    scheduler: Rc<RefCell<Scheduler<ActiveQCmpUid, BackOffQExponential>>>,
     init: Rc<RefCell<Init>>,
     monitoring: Rc<RefCell<Monitoring>>,
 
@@ -51,8 +50,11 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmpUid, BackOffQExponential>::new(
-                sim.create_context("scheduler"), cluster_state.clone(), monitoring.clone()
+            Scheduler::<ActiveQCmpUid, BackOffQExponential, 2>::new(
+                sim.create_context("scheduler"),
+                cluster_state.clone(),
+                monitoring.clone(),
+                [PluginFilter::AlwaysTrue, PluginFilter::RequestedResourcesAvailable],
             )
         ));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
@@ -80,7 +82,7 @@ impl Experiment {
             workload_file_path: workload_file_path.to_string(),
             sim, seed,
             cluster_state, workload,
-            api, scheduler, init, monitoring,
+            api, init, monitoring,
             api_id, scheduler_id,
             is_done: false,
         }
