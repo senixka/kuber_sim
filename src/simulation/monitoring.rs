@@ -32,7 +32,7 @@ pub struct Monitoring {
     
     n_pod_in_simulation: u64, // const
     
-    // pending_pod_counter: u64,
+    pending_pod_counter: usize,
     // running_pod_counter: u64,
     finished_pod_counter: u64,
 
@@ -49,7 +49,7 @@ impl Monitoring {
             makespan_time: 0.0, total_installed_cpu: 0, total_installed_memory: 0,
             scheduler_used_cpu: 0, scheduler_used_memory: 0,
             kubelets_used_cpu: 0, kubelets_used_memory: 0,
-            n_pod_in_simulation: 0, finished_pod_counter: 0,
+            n_pod_in_simulation: 0, finished_pod_counter: 0, pending_pod_counter: 0,
         }
     }
 
@@ -89,6 +89,10 @@ impl Monitoring {
         self.total_installed_memory += node.spec.installed_memory;
     }
 
+    pub fn scheduler_update_pending_pod_count(&mut self, count: usize) {
+        self.pending_pod_counter = count;
+    }
+
     pub fn kubelet_on_pod_placed(&mut self, cpu: u64, memory: u64) {
         self.kubelets_used_cpu += cpu;
         self.kubelets_used_memory += memory;
@@ -113,12 +117,13 @@ impl Monitoring {
 
     pub fn print_statistics(&self) {
         print!(
-            "{:12.1} CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%\n",
+            "{:12.1}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Pod finished: {:>10} / {:?}  Pending: {:?}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.kubelets_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
             (self.scheduler_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
+            self.finished_pod_counter, self.n_pod_in_simulation, self.pending_pod_counter,
         );
         // print!("  Job submitted: %lu / %lu  Task finished: %lu / %lu", jobSubmittedCounter_, nJobInSimulation_, taskFinishedCounter_, nTaskInSimulation_);
         // print!("  Task working: %lu  Task pending: %lu  Current Job: %lu\n", currentWorkingTaskCounter_, currentPendingTaskCounter_, currentUnfinishedJobCounter_);

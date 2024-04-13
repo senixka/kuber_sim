@@ -56,7 +56,7 @@ def main():
 
                 for j in range(0, group_count):
                     task_count, duration, cpu, memory = map(int, fin.readline().split())
-                    if 50000 < i < 200000:
+                    if True or 50000 < i < 200000:
                         dump_pod_group(fout, arrival_time, task_count, duration, cpu, memory)
                 if i % 10000 == 0:
                     print(f"Done job: {i}/{n_job}")

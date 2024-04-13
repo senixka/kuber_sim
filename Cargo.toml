@@ -10,3 +10,4 @@ yaml-rust = "0.4.5"
 serde_yaml = "0.9.32"
 serde = { version = "1.0.197", features = ["derive"] }
 dslab-core = { git = "https://github.com/osukhoroslov/dslab/", branch = "main"}
+rstar = "0.12.0"

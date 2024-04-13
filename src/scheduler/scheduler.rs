@@ -1,4 +1,5 @@
 use std::collections::BinaryHeap;
+use crate::scheduler::node_index::NodeRTree;
 use crate::simulation::config::ClusterState;
 use crate::simulation::monitoring::Monitoring;
 use super::super::my_imports::*;
@@ -18,6 +19,7 @@ pub struct Scheduler<ActiveQCmp, BackOffQ> {
     running_pods: HashMap<u64, Pod>,
     pending_pods: HashMap<u64, Pod>, // TODO: remove it
     nodes: HashMap<u64, Node>,
+    node_rtree: NodeRTree,
 
     // Queues
     active_queue: BinaryHeap<ActiveQCmp>,
@@ -35,6 +37,7 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
             running_pods: HashMap::new(),
             pending_pods: HashMap::new(),
             nodes: HashMap::new(),
+            node_rtree: NodeRTree::new(),
             self_update_enabled: false,
             active_queue: BinaryHeap::new(),
             failed_attempts: HashMap::new(),
@@ -59,54 +62,62 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
 
 
     pub fn schedule(&mut self) {
+        let mut result: Vec<Node> = Vec::new();
+
         while let Some(wrapper) = self.active_queue.pop() {
             let mut pod = wrapper.inner();
             let pod_uid = pod.metadata.uid;
             let cpu = pod.spec.request_cpu;
             let memory = pod.spec.request_memory;
 
-            let mut assigned_node_uid: Option<u64> = None;
-            for (node_uid, node) in self.nodes.iter_mut() {
-                if !Scheduler::<ActiveQCmp, BackOffQ>::is_node_consumable(&node, cpu, memory) {
-                    continue;
-                }
-                assigned_node_uid = Some(*node_uid);
-                break;
+            // let mut assigned_node_uid: Option<u64> = None;
+            // for (node_uid, node) in self.nodes.iter_mut() {
+            //     if !Scheduler::<ActiveQCmp, BackOffQ>::is_node_consumable(&node, cpu, memory) {
+            //         continue;
+            //     }
+            //     assigned_node_uid = Some(*node_uid);
+            //     break;
+            // }
+
+            // Query all suitable nodes
+            self.node_rtree.find_suitable_nodes(cpu, memory, &mut result);
+
+            if result.len() == 0 {
+                // Increase failed attempts
+                let attempts = self.failed_attempts.entry(pod_uid).or_default();
+                *attempts += 1;
+
+                // Place pod to BackOffQ
+                self.backoff_queue.push(pod_uid, *attempts - 1, self.ctx.time());
+
+                continue
             }
 
-            match assigned_node_uid {
-                None => {
-                    // Increase failed attempts
-                    let attempts = self.failed_attempts.entry(pod_uid).or_default();
-                    *attempts += 1;
+            let node_uid = result[0].metadata.uid;
+            assert!(self.nodes.get(&node_uid).unwrap().is_consumable(cpu, memory));
+            // println!("{2} Assign pod_{0} to node_{1}", pod_uid, node_uid, self.ctx.time());
 
-                    // Place pod to BackOffQ
-                    self.backoff_queue.push(pod_uid, *attempts - 1, self.ctx.time());
-                }
-                Some(node_uid) => {
-                    // Move cached pod from pending to running
-                    let mut cached = self.pending_pods.remove(&pod_uid).unwrap();
-                    cached.status.phase = PodPhase::Running;
-                    cached.status.node_uid = Some(node_uid);
-                    self.running_pods.insert(pod_uid, cached);
+            // Move cached pod from pending to running
+            let mut cached = self.pending_pods.remove(&pod_uid).unwrap();
+            cached.status.phase = PodPhase::Running;
+            cached.status.node_uid = Some(node_uid);
+            self.running_pods.insert(pod_uid, cached);
 
-                    // Update pod status
-                    pod.status.node_uid = Some(node_uid);
-                    pod.status.phase = PodPhase::Running;
+            // Update pod status
+            pod.status.node_uid = Some(node_uid);
+            pod.status.phase = PodPhase::Running;
 
-                    // Consume node resources
-                    self.consume_node_resources(node_uid, cpu, memory);
+            // Consume node resources
+            self.consume_node_resources(node_uid, cpu, memory);
 
-                    let data = APIUpdatePodFromScheduler {
-                        pod,
-                        new_phase: PodPhase::Running,
-                        node_uid: node_uid,
-                    };
+            let data = APIUpdatePodFromScheduler {
+                pod,
+                new_phase: PodPhase::Running,
+                node_uid,
+            };
 
-                    // println!("{:?} Scheduler Pod_{:?} placed to Node_{:?} artime: {:?}", self.ctx.time(), pod.metadata.uid, node.metadata.uid, pod.spec.arrival_time);
-                    self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api);
-                }
-            }
+            // println!("{:?} Scheduler Pod_{:?} placed to Node_{:?} artime: {:?}", self.ctx.time(), pod.metadata.uid, node.metadata.uid, pod.spec.arrival_time);
+            self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api);
         }
 
         // TODO: Implement API event with time period
@@ -121,12 +132,22 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> Scheduler<ActiveQCmp,
     }
 
     pub fn consume_node_resources(&mut self, node_uid: u64, cpu: u64, memory: u64) {
-        self.nodes.get_mut(&node_uid).unwrap().consume(cpu, memory);
+        let node = self.nodes.get_mut(&node_uid).unwrap();
+
+        self.node_rtree.remove(&node);
+        node.consume(cpu, memory);
+        self.node_rtree.insert(node.clone());
+
         self.monitoring.borrow_mut().scheduler_on_node_consume(cpu, memory);
     }
 
     pub fn restore_node_resources(&mut self, node_uid: u64, cpu: u64, memory: u64) {
-        self.nodes.get_mut(&node_uid).unwrap().restore(cpu, memory);
+        let node = self.nodes.get_mut(&node_uid).unwrap();
+
+        self.node_rtree.remove(&node);
+        node.restore(cpu, memory);
+        self.node_rtree.insert(node.clone());
+
         self.monitoring.borrow_mut().scheduler_on_node_restore(cpu, memory);
     }
 
@@ -207,6 +228,8 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for
 
                 self.schedule();
                 self.self_update_on();
+
+                self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
             }
             APIAddPod { pod } => {
                 // println!("Scheduler <Add Pod>");
@@ -214,11 +237,14 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for
 
                 self.schedule();
                 self.self_update_on();
+
+                self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
                 // println!("Scheduler <Add Kubelet>");
                 self.monitoring.borrow_mut().scheduler_on_node_added(&node);
-                self.nodes.insert(node.metadata.uid, node);
+                self.nodes.insert(node.metadata.uid, node.clone());
+                self.node_rtree.insert(node);
             }
             APISchedulerSelfUpdate { } => {
                 // println!("Scheduler <Self Update>");
@@ -226,6 +252,8 @@ impl<ActiveQCmp: TraitActiveQCmp, BackOffQ: TraitBackOffQ> dsc::EventHandler for
 
                 if self.pending_pods.len() > 0 {
                     self.ctx.emit_self(APISchedulerSelfUpdate{}, self.cluster_state.borrow().constants.scheduler_self_update_period);
+                } else {
+                    self.self_update_enabled = false;
                 }
             }
         });
