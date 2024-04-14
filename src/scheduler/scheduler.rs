@@ -102,6 +102,11 @@ impl <
             // Query all suitable nodes
             self.node_rtree.find_suitable_nodes(cpu, memory, &mut result);
 
+            // Apply node selector
+            result.retain(|node| PluginFilter::NodeSelector.filter(
+                &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
+            ));
+
 
             // Filter
             for filter_plugin in self.filters.iter() {

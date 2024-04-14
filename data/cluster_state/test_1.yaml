@@ -11,11 +11,22 @@ constants:
 
 nodes:
   - node_group:
-    amount: 10
+    amount: 9
     node:
       metadata:
         labels:
           gpu: amd
+          product: true
+      spec:
+        installed_cpu: 100
+        installed_memory: 2048
+  - node_group:
+    amount: 1
+    node:
+      metadata:
+        labels:
+          gpu: nvidia
+          product: false
       spec:
         installed_cpu: 100
         installed_memory: 2048

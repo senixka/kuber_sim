@@ -4,8 +4,7 @@ pods:
     pod:
       metadata:
         labels:
-          gpu: amd
-          product: true
+          load: const
       spec:
         arrival_time: 1
         request_cpu: 30
@@ -17,13 +16,14 @@ pods:
           cpu: 30
           memory: 1024
           duration: 6
+        node_selector:
+          product: true
   - pod_group:
     amount: 5000
     pod:
       metadata:
         labels:
-          gpu: amd
-          product: true
+          load: busy
       spec:
         arrival_time: 4
         request_cpu: 30
@@ -38,3 +38,5 @@ pods:
           memory_up: 1500
           duration: 6
           shift_time: 2
+        node_selector:
+          product: false

@@ -16,6 +16,9 @@ pub struct PodSpec {
     pub limit_cpu: u64,
     #[serde(default)]
     pub limit_memory: u64,
+
+    #[serde(default)]
+    pub node_selector: HashMap<String, String>,
 }
 
 impl Eq for PodSpec {}
