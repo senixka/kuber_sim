@@ -98,9 +98,20 @@ impl <
             let cpu = pod.spec.request_cpu;
             let memory = pod.spec.request_memory;
 
+
             // Query all suitable nodes
             self.node_rtree.find_suitable_nodes(cpu, memory, &mut result);
 
+
+            // Filter
+            for filter_plugin in self.filters.iter() {
+                result.retain(|node| filter_plugin.filter(
+                    &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
+                ));
+            }
+
+
+            // TODO: if result is empty run PostFilter
             if result.len() == 0 {
                 // Increase failed attempts
                 let attempts = self.failed_attempts.entry(pod_uid).or_default();
@@ -112,12 +123,6 @@ impl <
                 continue
             }
 
-            // Filter
-            for filter_plugin in self.filters.iter() {
-                result.retain(|node| filter_plugin.filter(
-                    &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
-                ));
-            }
 
             // Score
             for (i, score_plugin) in self.scorers.iter().enumerate() {
@@ -128,6 +133,7 @@ impl <
                 }
             }
 
+
             // Normalize Score
             for (i, score_normalizer) in self.score_normalizers.iter().enumerate() {
                 score_normalizer.normalize_score(
@@ -136,7 +142,30 @@ impl <
             }
 
 
-            let node_uid = result[0].metadata.uid;
+            // Find best node
+            let mut best_node_index: usize = 0;
+            let mut max_score: i64 = 0;
+            for i in 0..NScore {
+                max_score += score_matrix[i][0];
+            }
+
+            let mut tmp_score: i64 =0;
+            for i in 0..result.len() {
+                tmp_score = 0;
+                for j in 0..NScore {
+                    tmp_score += score_matrix[j][i];
+                }
+                if tmp_score > max_score {
+                    max_score = tmp_score;
+                    best_node_index = i;
+                }
+            }
+
+            let node_uid = result[best_node_index].metadata.uid;
+
+
+            // Place pod to node
+
             assert!(self.nodes.get(&node_uid).unwrap().is_consumable(cpu, memory));
             // println!("{2} Assign pod_{0} to node_{1}", pod_uid, node_uid, self.ctx.time());
 
