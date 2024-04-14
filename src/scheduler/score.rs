@@ -13,15 +13,15 @@ impl PluginScore {
     pub fn score(&self,
                           running_pods: &HashMap<u64, Pod>,
                           pending_pods: &HashMap<u64, Pod>,
-                          nodes: &HashMap<u64, Node>,
+                          all_nodes: &HashMap<u64, Node>,
                           pod: &Pod,
-                          node: &Node) -> u64 {
+                          node: &Node) -> i64 {
         match self {
             PluginScore::EmptyFirst => { // higher values mean better
                 if node.status.pods.len() == 0 { 1 } else { 0 }
             }
             PluginScore::ByPodCount => { // lower values mean better
-                node.status.pods.len() as u64
+                node.status.pods.len() as i64
             }
             PluginScore::Tetris => { // higher values mean better
                 let n_cpu = node.spec.available_cpu;
@@ -30,7 +30,7 @@ impl PluginScore {
                 let p_mem = pod.spec.request_memory;
                 let scale = 10000;
 
-                if (n_cpu * p_mem >= n_mem * p_cpu) {
+                return if (n_cpu * p_mem >= n_mem * p_cpu) {
                     let y = (n_cpu * p_mem - n_mem * p_cpu) as f64;
                     let x = (n_cpu * p_cpu + n_mem * p_mem) as f64;
 
@@ -40,7 +40,7 @@ impl PluginScore {
                     let reversed: f64 = std::f64::consts::PI / 2.0 - angle;
                     assert!(reversed >= 0.0);
 
-                    return reversed as u64 * scale;
+                    reversed as i64 * scale
                 } else {
                     let y = (n_mem * p_cpu - n_cpu * p_mem) as f64;
                     let x = (n_cpu * p_cpu + n_mem * p_mem) as f64;
@@ -51,7 +51,7 @@ impl PluginScore {
                     let reversed: f64 = std::f64::consts::PI / 2.0 - angle;
                     assert!(reversed >= 0.0);
 
-                    return reversed as u64 * scale;
+                    reversed as i64 * scale
                 }
             }
         }

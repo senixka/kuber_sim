@@ -36,6 +36,7 @@ pub struct Scheduler<
     // Pipeline
     filters: [PluginFilter; NFilter],
     scorers: [PluginScore; NScore],
+    score_normalizers: [PluginNormalizeScore; NScore],
 }
 
 impl <
@@ -50,6 +51,7 @@ impl <
         monitoring: Rc<RefCell<Monitoring>>,
         filters: [PluginFilter; NFilter],
         scorers: [PluginScore; NScore],
+        score_normalizers: [PluginNormalizeScore; NScore]
     ) -> Scheduler<ActiveQCmp, BackOffQ, NFilter, NScore> {
         Self {
             ctx,
@@ -66,6 +68,7 @@ impl <
             backoff_queue: BackOffQ::new(1.0, 10.0),
             filters,
             scorers,
+            score_normalizers,
         }
     }
 
@@ -87,7 +90,7 @@ impl <
 
     pub fn schedule(&mut self) {
         let mut result: Vec<Node> = Vec::new();
-        let mut score_matrix: Vec<Vec<u64>> = vec![vec![0; NScore]; self.nodes.len()];
+        let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; NScore];
 
         while let Some(wrapper) = self.active_queue.pop() {
             let mut pod = wrapper.inner();
@@ -117,12 +120,19 @@ impl <
             }
 
             // Score
-            for (j, score_plugin) in self.scorers.iter().enumerate() {
-                for (i, node) in result.iter().enumerate() {
+            for (i, score_plugin) in self.scorers.iter().enumerate() {
+                for (j, node) in result.iter().enumerate() {
                     score_matrix[i][j] = score_plugin.score(
                         &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
                     );
                 }
+            }
+
+            // Normalize Score
+            for (i, score_normalizer) in self.score_normalizers.iter().enumerate() {
+                score_normalizer.normalize_score(
+                    &self.running_pods, &self.pending_pods, &self.nodes, &pod, &result, &mut score_matrix[i]
+                );
             }
 
 

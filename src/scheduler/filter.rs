@@ -12,7 +12,7 @@ impl PluginFilter {
     pub fn filter(&self,
                   running_pods: &HashMap<u64, Pod>,
                   pending_pods: &HashMap<u64, Pod>,
-                  nodes: &HashMap<u64, Node>,
+                  all_nodes: &HashMap<u64, Node>,
                   pod: &Pod,
                   node: &Node) -> bool {
         match self {

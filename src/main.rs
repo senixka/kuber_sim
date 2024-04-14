@@ -31,6 +31,7 @@ pub mod my_imports {
     pub use crate::api_server::*;
     pub use crate::scheduler::filter::*;
     pub use crate::scheduler::score::*;
+    pub use crate::scheduler::normalize_score::*;
 }
 
 use std::io::stdin;
