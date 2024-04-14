@@ -30,25 +30,50 @@ pub mod my_imports {
     pub use crate::simulation::config::*;
     pub use crate::api_server::*;
     pub use crate::scheduler::filter::*;
+    pub use crate::scheduler::score::*;
 }
 
 use std::io::stdin;
 use std::mem::size_of;
+use dslab_core::{Event, EventHandler};
 use my_imports::*;
 use crate::scheduler::backoff_queue::{BackOffQExponential, TraitBackOffQ};
 use crate::simulation::experiment::*;
 
 use rstar::{RTree, AABB, RTreeObject};
+use serde::{Deserialize, Serialize};
 use crate::my_imports::Node;
 use crate::objects::node::{NodeSpec, NodeStatus};
+use crate::simulation::monitoring::Monitoring;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Data {
     pub cpu: u32,
     pub memory: u32,
     pub uid: u32,
 
     pub value: u32,
+}
+
+impl Data {
+    pub fn new() -> Self {
+        Self {
+            cpu: 1,
+            memory: 1,
+            uid: 1,
+            value: 1,
+        }
+    }
+}
+
+impl dsc::EventHandler for Data {
+    fn on(&mut self, event: Event) {
+        dsc::cast!(match event.data {
+            Data { cpu, memory, uid, value } => {
+                println!("Consume");
+            }
+        });
+    }
 }
 
 impl RTreeObject for Data {
@@ -88,6 +113,25 @@ fn main() {
 
         assert_eq!(elements_in_half_unit_square.count(), 2);
         assert_eq!(elements_in_unit_square.count(), 4);
+    }
+
+    {
+        // let mut sim = dsc::Simulation::new(179);
+        //
+        // let ctx = sim.create_context("kek");
+        // let data = Rc::new(RefCell::new(Data::new()));
+        // let _ = sim.add_handler("kek", data.clone());
+        //
+        // ctx.emit_self(Data {cpu: 1, memory: 1, uid: 1, value: 1}, 10.0);
+        // println!("{0} == 1", sim.event_count());
+        //
+        // ctx.emit_self(Data {cpu: 1, memory: 1, uid: 1, value: 1}, 10.0);
+        // println!("{0} == 2", sim.event_count());
+        //
+        // // sim.step_for_duration(20.0);
+        // sim.step_until_no_events();
+        //
+        // println!("{0} == 0", sim.event_count());
     }
 
     let mut value = String::new();

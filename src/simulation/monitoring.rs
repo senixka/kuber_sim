@@ -117,7 +117,7 @@ impl Monitoring {
 
     pub fn print_statistics(&self) {
         print!(
-            "{:12.1}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Pod finished: {:>10} / {:?}  Pending: {:?}\n",
+            "{:12.1}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Pod finished: {:>9} / {:?}  Pending: {:?}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,

@@ -9,7 +9,12 @@ pub enum PluginFilter {
 
 impl PluginFilter {
     #[inline]
-    pub fn is_schedulable(&self, pod: &Pod, node: &Node) -> bool {
+    pub fn filter(&self,
+                  running_pods: &HashMap<u64, Pod>,
+                  pending_pods: &HashMap<u64, Pod>,
+                  nodes: &HashMap<u64, Node>,
+                  pod: &Pod,
+                  node: &Node) -> bool {
         match self {
             PluginFilter::AlwaysTrue => {
                 true

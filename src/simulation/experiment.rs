@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use crate::simulation::init::*;
-use crate::my_imports::{APIServer, dsc, PluginFilter, Scheduler};
+use crate::my_imports::{APIServer, dsc, PluginFilter, PluginScore, Scheduler};
 use crate::scheduler::active_queue::ActiveQCmpUid;
 use crate::scheduler::backoff_queue::BackOffQExponential;
 use crate::simulation::config::{ClusterState, WorkLoad};
@@ -50,11 +50,12 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmpUid, BackOffQExponential, 2>::new(
+            Scheduler::<ActiveQCmpUid, BackOffQExponential, 2, 2>::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
                 [PluginFilter::AlwaysTrue, PluginFilter::RequestedResourcesAvailable],
+                [PluginScore::Tetris, PluginScore::ByPodCount],
             )
         ));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());

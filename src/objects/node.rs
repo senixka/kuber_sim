@@ -1,5 +1,7 @@
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
+use crate::my_imports::Pod;
 
 use crate::ObjectMeta;
 
@@ -17,6 +19,7 @@ pub struct NodeSpec {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct NodeStatus {
+    pub pods: HashSet<u64>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
