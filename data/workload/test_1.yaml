@@ -1,6 +1,6 @@
 pods:
   - pod_group:
-    amount: 20
+    amount: 10
     pod:
       metadata:
         labels:
@@ -19,7 +19,7 @@ pods:
         node_selector:
           product: true
   - pod_group:
-    amount: 5000
+    amount: 10
     pod:
       metadata:
         labels:
@@ -33,9 +33,9 @@ pods:
         load:
           !BusyBox
           cpu_down: 5
-          memory_down: 128
+          memory_down: 100
           cpu_up: 30
-          memory_up: 1500
+          memory_up: 1000
           duration: 6
           shift_time: 2
         node_selector:

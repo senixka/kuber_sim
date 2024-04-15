@@ -5,13 +5,13 @@ network_delays:
   kubelet2api: 0
 
 constants:
-  kubelet_self_update_period: 2
-  scheduler_self_update_period: 2
-  monitoring_self_update_period: 5
+  kubelet_self_update_period: 100000
+  scheduler_self_update_period: 1
+  monitoring_self_update_period: 1
 
 nodes:
   - node_group:
-    amount: 9
+    amount: 1
     node:
       metadata:
         labels:

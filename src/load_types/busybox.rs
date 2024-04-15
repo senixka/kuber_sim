@@ -16,18 +16,31 @@ pub struct BusyBox {
 }
 
 impl BusyBox {
-    pub fn start(&mut self, current_time: f64) -> (u64, u64, bool) {
+    pub fn start(&mut self, current_time: f64) -> (u64, u64, f64, bool) {
         self.start_time = current_time;
-        return (self.cpu_down, self.memory_down, self.duration < EPSILON);
+        return (self.cpu_down,
+                self.memory_down,
+                self.shift_time,
+                self.duration < EPSILON);
     }
 
-    pub fn update(&mut self, current_time: f64) -> (u64, u64, bool) {
+    pub fn update(&mut self, current_time: f64) -> (u64, u64, f64, bool) {
         let epoch: u64 = ((current_time - self.start_time) / self.shift_time) as u64;
+        let mut next_spike = (epoch + 1) as f64 * self.shift_time - (current_time - self.start_time);
+        if next_spike < EPSILON {
+            next_spike = 4.0 * EPSILON;
+        }
 
         if epoch % 2 == 0 {
-            return (self.cpu_down, self.memory_down, current_time - self.start_time + EPSILON > self.duration);
+            return (self.cpu_down,
+                    self.memory_down,
+                    next_spike,
+                    current_time - self.start_time + EPSILON > self.duration);
         }
-        return (self.cpu_up, self.memory_up, current_time - self.start_time + EPSILON > self.duration);
+        return (self.cpu_up,
+                self.memory_up,
+                next_spike,
+                current_time - self.start_time + EPSILON > self.duration);
     }
 }
 

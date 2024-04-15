@@ -21,7 +21,7 @@ impl PluginNormalizeScore {
             }
             PluginNormalizeScore::Neg => {
                 for score in scores {
-                    score.neg();
+                    *score = score.neg();
                 }
             }
         }
