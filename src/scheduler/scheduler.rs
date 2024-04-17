@@ -1,13 +1,13 @@
 use std::collections::BinaryHeap;
 use crate::debug_print;
-use crate::scheduler::filter::PluginFilter;
+use crate::scheduler::{filter, normalize_score, score};
 use crate::scheduler::node_index::NodeRTree;
-use crate::scheduler::score::PluginScore;
 use crate::simulation::config::ClusterState;
 use crate::simulation::monitoring::Monitoring;
 use super::super::my_imports::*;
 use super::active_queue::*;
 use super::backoff_queue::*;
+
 
 
 pub struct Scheduler<
@@ -35,9 +35,9 @@ pub struct Scheduler<
     failed_attempts: HashMap<u64, u64>,
 
     // Pipeline
-    filters: [PluginFilter; NFilter],
-    scorers: [PluginScore; NScore],
-    score_normalizers: [PluginNormalizeScore; NScore],
+    filters: [filter::FilterPluginT; NFilter],
+    scorers: [score::ScorePluginT; NScore],
+    score_normalizers: [normalize_score::NormalizeScorePluginT; NScore],
 }
 
 impl <
@@ -50,9 +50,9 @@ impl <
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
         monitoring: Rc<RefCell<Monitoring>>,
-        filters: [PluginFilter; NFilter],
-        scorers: [PluginScore; NScore],
-        score_normalizers: [PluginNormalizeScore; NScore]
+        filters: [filter::FilterPluginT; NFilter],
+        scorers: [score::ScorePluginT; NScore],
+        score_normalizers: [normalize_score::NormalizeScorePluginT; NScore]
     ) -> Scheduler<ActiveQCmp, BackOffQ, NFilter, NScore> {
         Self {
             ctx,
@@ -104,14 +104,14 @@ impl <
             self.node_rtree.find_suitable_nodes(cpu, memory, &mut result);
 
             // Apply node selector
-            result.retain(|node| PluginFilter::NodeSelector.filter(
+            result.retain(|node| filter::node_selector(
                 &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
             ));
 
 
             // Filter
             for filter_plugin in self.filters.iter() {
-                result.retain(|node| filter_plugin.filter(
+                result.retain(|node| filter_plugin(
                     &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
                 ));
             }
@@ -133,7 +133,7 @@ impl <
             // Score
             for (i, score_plugin) in self.scorers.iter().enumerate() {
                 for (j, node) in result.iter().enumerate() {
-                    score_matrix[i][j] = score_plugin.score(
+                    score_matrix[i][j] = score_plugin(
                         &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
                     );
                 }
@@ -142,7 +142,7 @@ impl <
 
             // Normalize Score
             for (i, score_normalizer) in self.score_normalizers.iter().enumerate() {
-                score_normalizer.normalize_score(
+                score_normalizer(
                     &self.running_pods, &self.pending_pods, &self.nodes, &pod, &result, &mut score_matrix[i]
                 );
             }

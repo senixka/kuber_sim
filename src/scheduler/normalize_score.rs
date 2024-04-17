@@ -1,29 +1,28 @@
 use std::ops::Neg;
 use crate::my_imports::*;
 
+pub type NormalizeScorePluginT = fn (&HashMap<u64, Pod>,
+                                     &HashMap<u64, Pod>,
+                                     &HashMap<u64, Node>,
+                                     &Pod,
+                                     &Vec<Node>,
+                                     &mut Vec<i64>);
 
-pub enum PluginNormalizeScore {
-    Skip,
-    Neg,
+pub fn skip(_: &HashMap<u64, Pod>,
+            _: &HashMap<u64, Pod>,
+            _: &HashMap<u64, Node>,
+            _: &Pod,
+            _: &Vec<Node>,
+            _: &mut Vec<i64>) {
 }
 
-impl PluginNormalizeScore {
-    #[inline]
-    pub fn normalize_score(&self,
-                 running_pods: &HashMap<u64, Pod>,
-                 pending_pods: &HashMap<u64, Pod>,
-                 all_nodes: &HashMap<u64, Node>,
-                 pod: &Pod,
-                 nodes: &Vec<Node>,
-                 scores: &mut Vec<i64>) {
-        match self {
-            PluginNormalizeScore::Skip => {
-            }
-            PluginNormalizeScore::Neg => {
-                for score in scores {
-                    *score = score.neg();
-                }
-            }
-        }
+pub fn neg(_: &HashMap<u64, Pod>,
+           _: &HashMap<u64, Pod>,
+           _: &HashMap<u64, Node>,
+           _: &Pod,
+           _: &Vec<Node>,
+           scores: &mut Vec<i64>) {
+    for score in scores {
+        *score = score.neg();
     }
 }
