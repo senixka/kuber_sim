@@ -57,6 +57,6 @@ pub struct APIMonitoringSelfUpdate {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIKubeletSelfNextSpike {
+pub struct APIKubeletSelfNextchange {
     pub pod_uid: u64,
 }

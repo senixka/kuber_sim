@@ -119,14 +119,12 @@ impl <
 
             // TODO: if result is empty run PostFilter
             if result.len() == 0 {
-                // Increase failed attempts
+                // Place pod to BackOffQ and increase backoff attempts
                 let attempts = self.failed_attempts.entry(pod_uid).or_default();
+                self.backoff_queue.push(pod_uid, *attempts, self.ctx.time());
                 *attempts += 1;
 
-                // Place pod to BackOffQ
-                self.backoff_queue.push(pod_uid, *attempts - 1, self.ctx.time());
-
-                continue
+                continue;
             }
 
 

@@ -22,14 +22,14 @@ impl Constant {
     }
 
     pub fn update(&mut self, current_time: f64) -> (u64, u64, f64, bool) {
-        let mut next_spike = self.duration - (current_time - self.start_time);
-        if next_spike < EPSILON {
+        let mut next_change = self.duration - (current_time - self.start_time);
+        if next_change < EPSILON {
             return (0, 0, 0.0, true);
         }
 
         return (self.cpu,
                 self.memory,
-                next_spike,
+                next_change,
                 current_time - self.start_time + EPSILON > self.duration);
     }
 }

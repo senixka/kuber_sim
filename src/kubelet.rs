@@ -53,7 +53,7 @@ impl Kubelet {
 
         // Run pod's load
         let mut load = pod.spec.load.clone();
-        let (cpu, memory, next_spike, is_finished) = load.start(self.ctx.time());
+        let (cpu, memory, next_change, is_finished) = load.start(self.ctx.time());
         assert!(!is_finished);
 
         if !self.node.is_consumable(cpu, memory) {
@@ -64,9 +64,9 @@ impl Kubelet {
         self.running_loads.insert(pod_uid, (cpu, memory, load));
 
         if self.ctx.time() >= 65640.0 {
-            debug_print!("Start, Next spike: {0}", next_spike);
+            debug_print!("Start, Next change: {0}", next_change);
         }
-        self.ctx.emit_self(APIKubeletSelfNextSpike { pod_uid }, next_spike);
+        self.ctx.emit_self(APIKubeletSelfNextchange { pod_uid }, next_change);
 
         self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
         return true;
@@ -138,12 +138,12 @@ impl Kubelet {
         // }
     }
 
-    pub fn on_pod_next_spike(&mut self, pod_uid: u64) {
+    pub fn on_pod_next_change(&mut self, pod_uid: u64) {
         let (prev_cpu, prev_memory, load) = self.running_loads.get_mut(&pod_uid).unwrap();
-        let (new_cpu, new_memory, next_spike, is_finished) = load.update(self.ctx.time());
+        let (new_cpu, new_memory, next_change, is_finished) = load.update(self.ctx.time());
 
         if self.ctx.time() >= 65640.0 {
-            debug_print!("[{5}] Pod update: cpu {0} -> {1}, mem: {2} -> {3}, next_spike: {4}", prev_cpu, new_cpu, prev_memory, new_memory, next_spike, self.ctx.time());
+            debug_print!("[{5}] Pod update: cpu {0} -> {1}, mem: {2} -> {3}, next_change: {4}", prev_cpu, new_cpu, prev_memory, new_memory, next_change, self.ctx.time());
         }
 
         // Restore previous resources
@@ -179,8 +179,8 @@ impl Kubelet {
         self.node.consume(new_cpu, new_memory);
         self.monitoring.borrow_mut().kubelet_on_pod_placed(new_cpu, new_memory);
 
-        // Next spike self update
-        self.ctx.emit_self(APIKubeletSelfNextSpike { pod_uid }, next_spike);
+        // Next change self update
+        self.ctx.emit_self(APIKubeletSelfNextchange { pod_uid }, next_change);
     }
 }
 
@@ -231,12 +231,12 @@ impl dsc::EventHandler for Kubelet {
                 //     self.self_update_enabled = false;
                 // }
             }
-            APIKubeletSelfNextSpike { pod_uid } => {
+            APIKubeletSelfNextchange { pod_uid } => {
                 if self.ctx.time() >= 65640.0 {
-                    debug_print!("[{1}] Next spike for {0}", pod_uid, self.ctx.time());
+                    debug_print!("[{1}] Next change for {0}", pod_uid, self.ctx.time());
                 }
 
-                self.on_pod_next_spike(pod_uid);
+                self.on_pod_next_change(pod_uid);
             }
         });
         if self.ctx.time() >= 65640.0 {
