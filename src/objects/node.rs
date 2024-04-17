@@ -6,7 +6,7 @@ use crate::my_imports::Pod;
 use crate::ObjectMeta;
 
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct NodeSpec {
     pub installed_cpu: u64,    // in milli-CPU (1000 milli-CPU = 1 CPU = 1 vCPU)
     pub installed_memory: u64, // in bytes
@@ -22,7 +22,7 @@ pub struct NodeStatus {
     pub pods: HashSet<u64>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Node {
     pub spec: NodeSpec,
 

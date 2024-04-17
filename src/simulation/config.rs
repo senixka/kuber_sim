@@ -1,5 +1,6 @@
 use std::fs;
 use serde::{Deserialize, Serialize};
+use serde_yaml::from_reader;
 use crate::my_imports::*;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,8 +56,11 @@ pub struct WorkLoad {
 
 impl WorkLoad {
     pub fn from_yaml(path: &str) -> Self {
-        let s: String = fs::read_to_string(path).expect(format!("Unable to read file: {}", path).as_str());
-        let workload: WorkLoad = serde_yaml::from_str(s.as_str()).unwrap();
+        println!("Start workload read");
+        let fin = std::fs::File::open(path).unwrap();
+        // let s: String = fs::read_to_string(path).expect(format!("Unable to read file: {}", path).as_str());
+        let workload: WorkLoad = serde_yaml::from_reader(fin).unwrap();
+        println!("End workload read");
         return workload;
     }
 }

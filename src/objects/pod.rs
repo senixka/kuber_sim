@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use crate::my_imports::*;
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -5,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PodSpec {
     pub arrival_time: f64,
     pub load: LoadType,
@@ -18,7 +19,7 @@ pub struct PodSpec {
     pub limit_memory: u64,
 
     #[serde(default)]
-    pub node_selector: HashMap<String, String>,
+    pub node_selector: BTreeMap<String, String>,
 }
 
 impl Eq for PodSpec {}
@@ -45,7 +46,7 @@ pub struct PodStatus {
 }
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Pod {
     pub spec: PodSpec,
 

@@ -64,7 +64,7 @@ impl PartialOrd for ItemWrapper {
 
 impl Ord for ItemWrapper {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.exit_time.total_cmp(&other.exit_time)
+        other.exit_time.total_cmp(&self.exit_time)
     }
 }
 

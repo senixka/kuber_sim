@@ -314,7 +314,7 @@ impl <
                     }
                 }
 
-                self.schedule();
+                // self.schedule();
                 self.self_update_on();
 
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
@@ -323,7 +323,7 @@ impl <
                 // println!("Scheduler <Add Pod>");
                 self.process_new_pod(pod);
 
-                self.schedule();
+                // self.schedule();
                 self.self_update_on();
 
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());

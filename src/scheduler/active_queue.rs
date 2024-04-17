@@ -12,9 +12,9 @@ pub trait TraitActiveQCmp: Ord {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
-pub struct ActiveQCmpUid(pub Pod);
+pub struct ActiveQCmpMinUid(pub Pod);
 
-impl TraitActiveQCmp for ActiveQCmpUid {
+impl TraitActiveQCmp for ActiveQCmpMinUid {
     #[inline]
     fn wrap(pod: Pod) -> Self {
         Self { 0: pod }
@@ -26,24 +26,24 @@ impl TraitActiveQCmp for ActiveQCmpUid {
     }
 }
 
-impl PartialOrd for ActiveQCmpUid {
+impl PartialOrd for ActiveQCmpMinUid {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for ActiveQCmpUid {
+impl Ord for ActiveQCmpMinUid {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.metadata.uid.cmp(&other.0.metadata.uid)
+        other.0.metadata.uid.cmp(&self.0.metadata.uid)
     }
 }
 
-impl PartialEq for ActiveQCmpUid {
+impl PartialEq for ActiveQCmpMinUid {
     fn eq(&self, other: &Self) -> bool {
         self.0.metadata.uid == other.0.metadata.uid
     }
 }
 
-impl Eq for ActiveQCmpUid {}
+impl Eq for ActiveQCmpMinUid {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

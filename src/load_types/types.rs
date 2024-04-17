@@ -4,8 +4,10 @@ use crate::BusyBox;
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum LoadType {
+    #[default]
+    None,
     Constant(Constant),
     BusyBox(BusyBox),
 }
@@ -15,6 +17,7 @@ impl LoadType {
         return match self {
             LoadType::Constant(load) => { load.duration }
             LoadType::BusyBox(load) => { load.duration }
+            _ => { 0.0 }
         }
     }
 
@@ -22,6 +25,7 @@ impl LoadType {
         return match self {
             LoadType::Constant(load) => { load.start(current_time) }
             LoadType::BusyBox(load) => { load.start(current_time) }
+            _ => { (0, 0, 0.0, false) }
         }
     }
 
@@ -29,6 +33,7 @@ impl LoadType {
         return match self {
             LoadType::Constant(load) => { load.update(current_time) }
             LoadType::BusyBox(load) => { load.update(current_time) }
+            _ => { (0, 0, 0.0, false) }
         }
     }
 }

@@ -4,6 +4,7 @@ mod load_types;
 mod objects;
 mod api_server;
 mod simulation;
+mod test;
 
 pub mod my_imports {
     pub use std::rc::Rc;
@@ -34,6 +35,7 @@ pub mod my_imports {
     pub use crate::scheduler::normalize_score::*;
 }
 
+use std::collections::{BTreeMap, BTreeSet, HashSet, LinkedList};
 use std::io::stdin;
 use std::mem::size_of;
 use dslab_core::{Event, EventHandler};
@@ -46,6 +48,7 @@ use serde::{Deserialize, Serialize};
 use crate::my_imports::Node;
 use crate::objects::node::{NodeSpec, NodeStatus};
 use crate::simulation::monitoring::Monitoring;
+use crate::test::Test;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Data {
@@ -91,49 +94,12 @@ fn main() {
     println!("NodeStatus: {0}", size_of::<NodeStatus>());
     println!("ObjectMeta: {0}", size_of::<ObjectMeta>());
     println!("Pod: {0}", size_of::<Pod>());
+    println!("BTreeMap: {0}", size_of::<BTreeMap<String, String>>());
+    println!("HashMap: {0}", size_of::<HashMap<String, String>>());
+    println!("Vec: {0}", size_of::<Vec<(String, String)>>());
+    println!("List: {0}", size_of::<LinkedList<(String, String)>>());
 
-    {
-        let mut backoff = BackOffQExponential::new(1.0, 10.0);
-        backoff.push(1, 0, 0.0);
-        assert_eq!(backoff.try_pop(0.5), None);
-        assert_eq!(backoff.try_pop(1.1), Some(1));
-    }
-
-    {
-        let mut index = RTree::new();
-        index.insert(Data{ cpu: 0, memory: 0, uid: 0, value: 23 });
-        index.insert(Data{ cpu: 0, memory: 2, uid: 1, value: 23 });
-        index.insert(Data{ cpu: 2, memory: 0, uid: 2, value: 42 });
-        index.insert(Data{ cpu: 2, memory: 2, uid: 3, value: 42 });
-
-        let half_unit_square = AABB::from_corners((0, 0, 0), (1, 2, i64::MAX));
-        let unit_square = AABB::from_corners((0, 0, 0), (2, 2, i64::MAX));
-
-        let elements_in_half_unit_square = index.locate_in_envelope(&half_unit_square);
-        let elements_in_unit_square = index.locate_in_envelope(&unit_square);
-
-        assert_eq!(elements_in_half_unit_square.count(), 2);
-        assert_eq!(elements_in_unit_square.count(), 4);
-    }
-
-    {
-        // let mut sim = dsc::Simulation::new(179);
-        //
-        // let ctx = sim.create_context("kek");
-        // let data = Rc::new(RefCell::new(Data::new()));
-        // let _ = sim.add_handler("kek", data.clone());
-        //
-        // ctx.emit_self(Data {cpu: 1, memory: 1, uid: 1, value: 1}, 10.0);
-        // println!("{0} == 1", sim.event_count());
-        //
-        // ctx.emit_self(Data {cpu: 1, memory: 1, uid: 1, value: 1}, 10.0);
-        // println!("{0} == 2", sim.event_count());
-        //
-        // // sim.step_for_duration(20.0);
-        // sim.step_until_no_events();
-        //
-        // println!("{0} == 0", sim.event_count());
-    }
+    Test::test_all();
 
     let mut value = String::new();
     stdin().read_line(&mut value).unwrap();
