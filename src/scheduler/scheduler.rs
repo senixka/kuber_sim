@@ -37,6 +37,7 @@ pub struct Scheduler<
     // Pipeline
     filters: [filter::FilterPluginT; NFilter],
     scorers: [score::ScorePluginT; NScore],
+    scorer_weights: [i64; NScore],
     score_normalizers: [normalize_score::NormalizeScorePluginT; NScore],
 }
 
@@ -52,7 +53,8 @@ impl <
         monitoring: Rc<RefCell<Monitoring>>,
         filters: [filter::FilterPluginT; NFilter],
         scorers: [score::ScorePluginT; NScore],
-        score_normalizers: [normalize_score::NormalizeScorePluginT; NScore]
+        score_normalizers: [normalize_score::NormalizeScorePluginT; NScore],
+        scorer_weights: [i64; NScore],
     ) -> Scheduler<ActiveQCmp, BackOffQ, NFilter, NScore> {
         Self {
             ctx,
@@ -70,6 +72,7 @@ impl <
             filters,
             scorers,
             score_normalizers,
+            scorer_weights,
         }
     }
 
@@ -150,14 +153,14 @@ impl <
             let mut best_node_index: usize = 0;
             let mut max_score: i64 = 0;
             for i in 0..NScore {
-                max_score += score_matrix[i][0];
+                max_score += score_matrix[i][0] * self.scorer_weights[i];
             }
 
             let mut tmp_score: i64 =0;
             for i in 0..result.len() {
                 tmp_score = 0;
                 for j in 0..NScore {
-                    tmp_score += score_matrix[j][i];
+                    tmp_score += score_matrix[j][i]  * self.scorer_weights[i];
                 }
                 if tmp_score > max_score {
                     max_score = tmp_score;

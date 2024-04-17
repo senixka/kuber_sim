@@ -58,6 +58,7 @@ impl Experiment {
                 [filter::always_true, filter::requested_resources_available],
                 [score::tetris, score::running_pods],
                 [normalize_score::skip, normalize_score::neg],
+                [1, 1],
             )
         ));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
