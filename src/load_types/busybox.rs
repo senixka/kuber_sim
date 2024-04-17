@@ -28,7 +28,7 @@ impl BusyBox {
         let epoch: u64 = ((current_time - self.start_time) / self.shift_time) as u64;
         let mut next_spike = (epoch + 1) as f64 * self.shift_time - (current_time - self.start_time);
         if next_spike < EPSILON {
-            next_spike = 4.0 * EPSILON;
+            return (0, 0, 0.0, true);
         }
 
         if epoch % 2 == 0 {

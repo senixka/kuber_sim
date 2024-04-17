@@ -24,7 +24,7 @@ impl Constant {
     pub fn update(&mut self, current_time: f64) -> (u64, u64, f64, bool) {
         let mut next_spike = self.duration - (current_time - self.start_time);
         if next_spike < EPSILON {
-            next_spike = 4.0 * EPSILON;
+            return (0, 0, 0.0, true);
         }
 
         return (self.cpu,

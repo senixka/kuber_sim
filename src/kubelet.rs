@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use crate::debug_print;
 use crate::my_imports::*;
 use crate::simulation::monitoring::Monitoring;
 
@@ -62,7 +63,9 @@ impl Kubelet {
         self.node.consume(cpu, memory);
         self.running_loads.insert(pod_uid, (cpu, memory, load));
 
-        // println!("Start, Next spike: {0}", next_spike);
+        if self.ctx.time() >= 65640.0 {
+            debug_print!("Start, Next spike: {0}", next_spike);
+        }
         self.ctx.emit_self(APIKubeletSelfNextSpike { pod_uid }, next_spike);
 
         self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
@@ -139,12 +142,18 @@ impl Kubelet {
         let (prev_cpu, prev_memory, load) = self.running_loads.get_mut(&pod_uid).unwrap();
         let (new_cpu, new_memory, next_spike, is_finished) = load.update(self.ctx.time());
 
+        if self.ctx.time() >= 65640.0 {
+            debug_print!("[{5}] Pod update: cpu {0} -> {1}, mem: {2} -> {3}, next_spike: {4}", prev_cpu, new_cpu, prev_memory, new_memory, next_spike, self.ctx.time());
+        }
+
         // Restore previous resources
         self.node.restore(*prev_cpu, *prev_memory);
         self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
 
         if is_finished {
-            // println!("Pod finished: {0}", pod_uid);
+            if self.ctx.time() >= 65640.0 {
+                debug_print!("Pod finished: {0}", pod_uid);
+            }
 
             self.running_loads.remove(&pod_uid).unwrap();
             self.pods.remove(&pod_uid).unwrap();
@@ -177,10 +186,14 @@ impl Kubelet {
 
 impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
-        // println!("Kubelet Node_{0} EventHandler ------>", self.node.metadata.uid);
+        if self.ctx.time() >= 65640.0 {
+            debug_print!("Kubelet Node_{0} EventHandler ------>", self.node.metadata.uid);
+        }
         dsc::cast!(match event.data {
             APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
-                // println!("New pod");
+                if self.ctx.time() >= 65640.0 {
+                    debug_print!("New pod");
+                }
 
                 assert_eq!(node_uid, self.node.metadata.uid);
                 assert_eq!(new_phase, PodPhase::Running);
@@ -203,7 +216,9 @@ impl dsc::EventHandler for Kubelet {
                 }
             }
             APIKubeletSelfUpdate {} => {
-                // println!("Self update");
+                if self.ctx.time() >= 65640.0 {
+                    debug_print!("Self update");
+                }
 
                 // assert_eq!(self.running_loads.len(), self.pods.len());
                 // self.update_load();
@@ -217,10 +232,15 @@ impl dsc::EventHandler for Kubelet {
                 // }
             }
             APIKubeletSelfNextSpike { pod_uid } => {
-                // println!("Next spike for {0}", pod_uid);
+                if self.ctx.time() >= 65640.0 {
+                    debug_print!("[{1}] Next spike for {0}", pod_uid, self.ctx.time());
+                }
+
                 self.on_pod_next_spike(pod_uid);
             }
         });
-        // println!("Kubelet Node_{0} EventHandler <------", self.node.metadata.uid);
+        if self.ctx.time() >= 65640.0 {
+            debug_print!("Kubelet Node_{0} EventHandler <------", self.node.metadata.uid);
+        }
     }
 }

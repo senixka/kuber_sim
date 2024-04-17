@@ -1,4 +1,5 @@
 use std::collections::BinaryHeap;
+use crate::debug_print;
 use crate::scheduler::filter::PluginFilter;
 use crate::scheduler::node_index::NodeRTree;
 use crate::scheduler::score::PluginScore;
@@ -292,10 +293,14 @@ impl <
     const NScore: usize,
 > dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, NFilter, NScore> {
     fn on(&mut self, event: dsc::Event) {
-        // println!("Scheduler EventHandler ------>");
+        if self.ctx.time() > 65641.0 {
+            debug_print!("Scheduler EventHandler ------>");
+        }
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid } => {
-                // println!("{:?} Scheduler <Update Pod From Kubelet> pod_{:?} new_phase: {:?}", self.ctx.time(), pod_uid, new_phase);
+                if self.ctx.time() >= 65640.0 {
+                    debug_print!("{:?} Scheduler <Update Pod From Kubelet> pod_{:?} new_phase: {:?}", self.ctx.time(), pod_uid, new_phase);
+                }
 
                 match new_phase {
                     PodPhase::Pending => {
@@ -320,7 +325,9 @@ impl <
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
             }
             APIAddPod { pod } => {
-                // println!("Scheduler <Add Pod>");
+                if self.ctx.time() >= 65640.0 {
+                    debug_print!("Scheduler <Add Pod> {:?}", pod);
+                }
                 self.process_new_pod(pod);
 
                 // self.schedule();
@@ -329,13 +336,17 @@ impl <
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
-                // println!("Scheduler <Add Kubelet>");
+                if self.ctx.time() >= 65640.0 {
+                    debug_print!("Scheduler <Add Kubelet> {:?}", node);
+                }
                 self.monitoring.borrow_mut().scheduler_on_node_added(&node);
                 self.nodes.insert(node.metadata.uid, node.clone());
                 self.node_rtree.insert(node);
             }
             APISchedulerSelfUpdate { } => {
-                // println!("Scheduler <Self Update>");
+                if self.ctx.time() >= 65640.0 {
+                    debug_print!("Scheduler <Self Update>");
+                }
                 self.schedule();
 
                 if self.pending_pods.len() > 0 {
@@ -345,6 +356,8 @@ impl <
                 }
             }
         });
-        // println!("Scheduler EventHandler <------");
+        if self.ctx.time() >= 65640.0 {
+            debug_print!("Scheduler EventHandler <------");
+        }
     }
 }

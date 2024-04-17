@@ -5,6 +5,7 @@ mod objects;
 mod api_server;
 mod simulation;
 mod test;
+mod my_macro;
 
 pub mod my_imports {
     pub use std::rc::Rc;
@@ -50,54 +51,21 @@ use crate::objects::node::{NodeSpec, NodeStatus};
 use crate::simulation::monitoring::Monitoring;
 use crate::test::Test;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Data {
-    pub cpu: u32,
-    pub memory: u32,
-    pub uid: u32,
+#[macro_use] use crate::my_macro::*;
 
-    pub value: u32,
-}
-
-impl Data {
-    pub fn new() -> Self {
-        Self {
-            cpu: 1,
-            memory: 1,
-            uid: 1,
-            value: 1,
-        }
-    }
-}
-
-impl dsc::EventHandler for Data {
-    fn on(&mut self, event: Event) {
-        dsc::cast!(match event.data {
-            Data { cpu, memory, uid, value } => {
-                println!("Consume");
-            }
-        });
-    }
-}
-
-impl RTreeObject for Data {
-    type Envelope = AABB<(i64, i64, i64)>;
-
-    fn envelope(&self) -> Self::Envelope {
-        AABB::from_point((self.cpu as i64, self.memory as i64, self.uid as i64))
-    }
-}
 
 fn main() {
-    println!("Node: {0}", size_of::<Node>());
-    println!("NodeSpec: {0}", size_of::<NodeSpec>());
-    println!("NodeStatus: {0}", size_of::<NodeStatus>());
-    println!("ObjectMeta: {0}", size_of::<ObjectMeta>());
-    println!("Pod: {0}", size_of::<Pod>());
-    println!("BTreeMap: {0}", size_of::<BTreeMap<String, String>>());
-    println!("HashMap: {0}", size_of::<HashMap<String, String>>());
-    println!("Vec: {0}", size_of::<Vec<(String, String)>>());
-    println!("List: {0}", size_of::<LinkedList<(String, String)>>());
+    // println!("Node: {0}", size_of::<Node>());
+    // println!("NodeSpec: {0}", size_of::<NodeSpec>());
+    // println!("NodeStatus: {0}", size_of::<NodeStatus>());
+    // println!("ObjectMeta: {0}", size_of::<ObjectMeta>());
+    // println!("Pod: {0}", size_of::<Pod>());
+    // println!("BTreeMap: {0}", size_of::<BTreeMap<String, String>>());
+    // println!("HashMap: {0}", size_of::<HashMap<String, String>>());
+    // println!("Vec: {0}", size_of::<Vec<(String, String)>>());
+    // println!("List: {0}", size_of::<LinkedList<(String, String)>>());
+
+    debug_print!("Debug print Enabled");
 
     Test::test_all();
 
