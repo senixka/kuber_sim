@@ -55,6 +55,7 @@ impl <
         scorers: [score::ScorePluginT; NScore],
         score_normalizers: [normalize_score::NormalizeScorePluginT; NScore],
         scorer_weights: [i64; NScore],
+        backoff_queue: BackOffQ,
     ) -> Scheduler<ActiveQCmp, BackOffQ, NFilter, NScore> {
         Self {
             ctx,
@@ -68,7 +69,7 @@ impl <
             self_update_enabled: false,
             active_queue: BinaryHeap::new(),
             failed_attempts: HashMap::new(),
-            backoff_queue: BackOffQ::new(1.0, 10.0),
+            backoff_queue,
             filters,
             scorers,
             score_normalizers,

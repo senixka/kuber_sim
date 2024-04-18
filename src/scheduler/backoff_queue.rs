@@ -4,10 +4,13 @@ use std::cmp::Ordering;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub trait TraitBackOffQ {
-    fn new(initial_backoff: f64, max_backoff: f64) -> Self;
     fn push(&mut self, pod_uid: u64, backoff_attempts: u64, current_time: f64);
     fn try_pop(&mut self, current_time: f64) -> Option<u64>;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub type BackOffDefault = BackOffQExponential;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -17,9 +20,8 @@ pub struct BackOffQExponential {
     queue: BinaryHeap<ItemWrapper>,
 }
 
-impl TraitBackOffQ for BackOffQExponential {
-    #[inline]
-    fn new(initial_backoff: f64, max_backoff: f64) -> Self {
+impl BackOffQExponential {
+    pub fn new(initial_backoff: f64, max_backoff: f64) -> Self {
         Self {
             initial_backoff,
             max_backoff,
@@ -27,7 +29,12 @@ impl TraitBackOffQ for BackOffQExponential {
         }
     }
 
-    #[inline]
+    pub fn default() -> Self {
+        BackOffQExponential::new(1.0, 10.0)
+    }
+}
+
+impl TraitBackOffQ for BackOffQExponential {
     fn push(&mut self, pod_uid: u64, backoff_attempts: u64, current_time: f64) {
         let unlimited_timeout = self.initial_backoff * 2.0f64.powf(backoff_attempts as f64);
         let backoff_timeout = self.max_backoff.min(unlimited_timeout);
@@ -37,7 +44,6 @@ impl TraitBackOffQ for BackOffQExponential {
         });
     }
 
-    #[inline]
     fn try_pop(&mut self, current_time: f64) -> Option<u64> {
         let top = self.queue.peek();
         if top.is_none() || top.unwrap().exit_time > current_time {

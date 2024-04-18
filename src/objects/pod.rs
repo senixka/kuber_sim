@@ -20,6 +20,9 @@ pub struct PodSpec {
 
     #[serde(default)]
     pub node_selector: BTreeMap<String, String>,
+
+    #[serde(default)]
+    pub priority: i64,
 }
 
 impl Eq for PodSpec {}
@@ -35,6 +38,15 @@ pub enum PodPhase {
     Unknown = 4,
 }
 
+// https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/#quality-of-service-classes
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub enum QoSClass {
+    #[default]
+    BestEffort = 0,
+    Burstable = 1,
+    Guaranteed = 2,
+}
+
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podstatus-v1-core
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PodStatus {
@@ -42,7 +54,10 @@ pub struct PodStatus {
     pub phase: PodPhase,
 
     #[serde(default)]
-    pub node_uid: Option<u64>
+    pub node_uid: Option<u64>,
+
+    #[serde(default)]
+    pub qos_class: QoSClass,
 }
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
@@ -71,6 +86,15 @@ impl Pod {
         }
         if self.spec.limit_memory == 0 {
             self.spec.limit_memory = u64::MAX;
+        }
+
+        if self.spec.request_cpu == self.spec.limit_cpu
+            && self.spec.request_memory == self.spec.limit_memory {
+            self.status.qos_class = QoSClass::Guaranteed;
+        } else if self.spec.limit_cpu < u64::MAX && self.spec.limit_memory < u64::MAX {
+            self.status.qos_class = QoSClass::Burstable;
+        } else {
+            self.status.qos_class = QoSClass::BestEffort;
         }
 
         assert!(self.spec.limit_cpu >= self.spec.request_cpu);

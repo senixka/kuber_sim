@@ -1,7 +1,7 @@
 use crate::my_imports::*;
 use std::collections::BinaryHeap;
 use rstar::{AABB, RTree};
-use crate::scheduler::active_queue::{ActiveQCmpMinUid, TraitActiveQCmp};
+use crate::scheduler::active_queue::{ActiveQCmpMinUid, ActiveQCmpPriority, TraitActiveQCmp};
 use crate::scheduler::backoff_queue::{BackOffQExponential, TraitBackOffQ};
 use crate::scheduler::node_index::NodeRTree;
 
@@ -12,6 +12,7 @@ impl Test {
         Test::test_backoff_queue();
         Test::test_active_queue_cmp_min_uid();
         Test::test_node_rtree();
+        Test::test_active_queue_cmp_priority();
     }
 
     pub fn test_backoff_queue() {
@@ -42,6 +43,31 @@ impl Test {
         assert_eq!(q.try_pop(9.05), Some(3));
         assert_eq!(q.try_pop(9.05), Some(1));
         assert_eq!(q.try_pop(9.05), None);
+    }
+
+    pub fn test_active_queue_cmp_priority() {
+        let mut q = BinaryHeap::<ActiveQCmpPriority>::new();
+
+        let mut p1 = Pod::default();
+        let mut p2 = Pod::default();
+        let mut p22 = Pod::default();
+        let mut p3 = Pod::default();
+
+        p1.spec.priority = 1;
+        p2.spec.priority = 2;
+        p22.spec.priority = 2;
+        p3.spec.priority = 3;
+
+        q.push(ActiveQCmpPriority::wrap(p2.clone()));
+        q.push(ActiveQCmpPriority::wrap(p3.clone()));
+        q.push(ActiveQCmpPriority::wrap(p1.clone()));
+        q.push(ActiveQCmpPriority::wrap(p22.clone()));
+
+        assert_eq!(q.pop().unwrap().0, p3);
+        assert_eq!(q.pop().unwrap().0, p2);
+        assert_eq!(q.pop().unwrap().0, p22);
+        assert_eq!(q.pop().unwrap().0, p1);
+        assert_eq!(q.pop(), None);
     }
 
     pub fn test_active_queue_cmp_min_uid() {

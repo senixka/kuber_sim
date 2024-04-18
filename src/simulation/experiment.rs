@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use crate::simulation::init::*;
 use crate::my_imports::{APIServer, dsc, Scheduler};
-use crate::scheduler::active_queue::ActiveQCmpMinUid;
-use crate::scheduler::backoff_queue::BackOffQExponential;
+use crate::scheduler::active_queue::{ActiveQCmpDefault, ActiveQCmpMinUid};
+use crate::scheduler::backoff_queue::{BackOffDefault, BackOffQExponential};
 use crate::scheduler::{filter, normalize_score, score};
 use crate::simulation::config::{ClusterState, WorkLoad};
 use crate::simulation::monitoring::Monitoring;
@@ -51,7 +51,7 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmpMinUid, BackOffQExponential, 2, 2>::new(
+            Scheduler::<ActiveQCmpDefault, BackOffDefault, 2, 2>::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
@@ -59,6 +59,7 @@ impl Experiment {
                 [score::tetris, score::running_pods],
                 [normalize_score::skip, normalize_score::neg],
                 [1, 1],
+                BackOffDefault::default(),
             )
         ));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
