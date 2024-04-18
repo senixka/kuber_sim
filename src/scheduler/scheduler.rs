@@ -4,8 +4,9 @@ use crate::my_imports::*;
 pub struct Scheduler<
     ActiveQCmp,
     BackOffQ,
-    const NFILTER: usize,
-    const NSCORE: usize,
+    const N_FILTER: usize,
+    const N_POST_FILTER: usize,
+    const N_SCORE: usize,
 > {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
@@ -26,28 +27,31 @@ pub struct Scheduler<
     failed_attempts: HashMap<u64, u64>,
 
     // Pipeline
-    filters: [FilterPluginT; NFILTER],
-    scorers: [ScorePluginT; NSCORE],
-    scorer_weights: [i64; NSCORE],
-    score_normalizers: [NormalizeScorePluginT; NSCORE],
+    filters: [FilterPluginT; N_FILTER],
+    post_filters: [FilterPluginT; N_POST_FILTER],
+    scorers: [ScorePluginT; N_SCORE],
+    scorer_weights: [i64; N_SCORE],
+    score_normalizers: [NormalizeScorePluginT; N_SCORE],
 }
 
 impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
-    const NFILTER: usize,
-    const NSCORE: usize,
-> Scheduler<ActiveQCmp, BackOffQ, NFILTER, NSCORE> {
+    const N_FILTER: usize,
+    const N_POST_FILTER: usize,
+    const N_SCORE: usize,
+> Scheduler<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE> {
     pub fn new(
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
         monitoring: Rc<RefCell<Monitoring>>,
-        filters: [FilterPluginT; NFILTER],
-        scorers: [ScorePluginT; NSCORE],
-        score_normalizers: [NormalizeScorePluginT; NSCORE],
-        scorer_weights: [i64; NSCORE],
+        filters: [FilterPluginT; N_FILTER],
+        post_filters: [FilterPluginT; N_POST_FILTER],
+        scorers: [ScorePluginT; N_SCORE],
+        score_normalizers: [NormalizeScorePluginT; N_SCORE],
+        scorer_weights: [i64; N_SCORE],
         backoff_queue: BackOffQ,
-    ) -> Scheduler<ActiveQCmp, BackOffQ, NFILTER, NSCORE> {
+    ) -> Scheduler<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE> {
         Self {
             ctx,
             cluster_state,
@@ -62,6 +66,7 @@ impl <
             failed_attempts: HashMap::new(),
             backoff_queue,
             filters,
+            post_filters,
             scorers,
             score_normalizers,
             scorer_weights,
@@ -85,8 +90,10 @@ impl <
 
 
     pub fn schedule(&mut self) {
-        let mut result: Vec<Node> = Vec::new();
-        let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; NSCORE];
+        let mut possible_nodes: Vec<Node> = Vec::new();
+        let mut resulted_nodes: Vec<Node> = Vec::new();
+        let mut is_schedulable: Vec<bool> = Vec::new();
+        let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; N_SCORE];
 
         while let Some(wrapper) = self.active_queue.pop() {
             let mut pod = wrapper.inner();
@@ -96,24 +103,53 @@ impl <
 
 
             // Query all suitable nodes
-            self.node_rtree.find_suitable_nodes(cpu, memory, &mut result);
+            self.node_rtree.find_suitable_nodes(cpu, memory, &mut possible_nodes);
 
-            // Apply node selector
-            result.retain(|node| node_selector(
-                &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
-            ));
+            // Prepare node description
+            is_schedulable.clear();
+            is_schedulable.resize(possible_nodes.len(), true);
 
 
             // Filter
-            for filter_plugin in self.filters.iter() {
-                result.retain(|node| filter_plugin(
-                    &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
-                ));
+            let mut suitable_count: usize = 0;
+            for (i, node) in possible_nodes.iter().enumerate() {
+                for filter_plugin in self.filters.iter() {
+                    // If node marked as infeasible, the remaining plugins will not be called
+                    if !is_schedulable[i] {
+                        break;
+                    }
+
+                    is_schedulable[i] = filter_plugin(
+                        &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
+                    );
+                }
+
+                if is_schedulable[i] {
+                    suitable_count += 1;
+                }
             }
 
+            // Apply PostFilter if necessary
+            if suitable_count == 0 {
+                for (i, node) in possible_nodes.iter().enumerate() {
+                    for post_filter_plugin in self.post_filters.iter() {
+                        is_schedulable[i] = post_filter_plugin(
+                            &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
+                        );
 
-            // TODO: if result is empty run PostFilter
-            if result.len() == 0 {
+                        //  If any marks the node as Schedulable, the remaining will not be called
+                        if is_schedulable[i] {
+                            break;
+                        }
+                    }
+
+                    if is_schedulable[i] {
+                        suitable_count += 1;
+                    }
+                }
+            }
+
+            if suitable_count == 0 {
                 // Place pod to BackOffQ and increase backoff attempts
                 let attempts = self.failed_attempts.entry(pod_uid).or_default();
                 self.backoff_queue.push(pod_uid, *attempts, self.ctx.time());
@@ -122,10 +158,20 @@ impl <
                 continue;
             }
 
+            // Prepare schedulable nodes
+            resulted_nodes.clear();
+            resulted_nodes.reserve(suitable_count);
+            for i in 0..possible_nodes.len() {
+                if is_schedulable[i] {
+                    resulted_nodes.push(possible_nodes[i].clone());
+                }
+            }
+            assert_eq!(resulted_nodes.len(), suitable_count);
+
 
             // Score
             for (i, score_plugin) in self.scorers.iter().enumerate() {
-                for (j, node) in result.iter().enumerate() {
+                for (j, node) in resulted_nodes.iter().enumerate() {
                     score_matrix[i][j] = score_plugin(
                         &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
                     );
@@ -136,7 +182,7 @@ impl <
             // Normalize Score
             for (i, score_normalizer) in self.score_normalizers.iter().enumerate() {
                 score_normalizer(
-                    &self.running_pods, &self.pending_pods, &self.nodes, &pod, &result, &mut score_matrix[i]
+                    &self.running_pods, &self.pending_pods, &self.nodes, &pod, &resulted_nodes, &mut score_matrix[i]
                 );
             }
 
@@ -144,14 +190,14 @@ impl <
             // Find best node
             let mut best_node_index: usize = 0;
             let mut max_score: i64 = 0;
-            for i in 0..NSCORE {
+            for i in 0..N_SCORE {
                 max_score += score_matrix[i][0] * self.scorer_weights[i];
             }
 
             let mut tmp_score: i64;
-            for i in 0..result.len() {
+            for i in 0..resulted_nodes.len() {
                 tmp_score = 0;
-                for j in 0..NSCORE {
+                for j in 0..N_SCORE {
                     tmp_score += score_matrix[j][i] * self.scorer_weights[j];
                 }
                 if tmp_score > max_score {
@@ -160,7 +206,7 @@ impl <
                 }
             }
 
-            let node_uid = result[best_node_index].metadata.uid;
+            let node_uid = resulted_nodes[best_node_index].metadata.uid;
 
 
             // Place pod to node
@@ -282,9 +328,10 @@ impl <
 impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
-    const NFILTER: usize,
-    const NSCORE: usize,
-> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, NFILTER, NSCORE> {
+    const N_FILTER: usize,
+    const N_POST_FILTER: usize,
+    const N_SCORE: usize,
+> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE> {
     fn on(&mut self, event: dsc::Event) {
         if self.ctx.time() > 65641.0 {
             debug_print!("Scheduler EventHandler ------>");

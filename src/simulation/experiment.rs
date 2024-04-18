@@ -46,11 +46,12 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmpDefault, BackOffDefault, 2, 2>::new(
+            Scheduler::<ActiveQCmpDefault, BackOffDefault, 2, 1, 2>::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
-                [always_true, requested_resources_available],
+                [node_selector, requested_resources_available],
+                [requested_resources_available],
                 [tetris, running_pods],
                 [skip, neg],
                 [1, 1],
