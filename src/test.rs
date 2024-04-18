@@ -1,11 +1,8 @@
 use crate::my_imports::*;
-use std::collections::BinaryHeap;
-use rstar::{AABB, RTree};
-use crate::scheduler::active_queue::{ActiveQCmpMinUid, ActiveQCmpPriority, TraitActiveQCmp};
-use crate::scheduler::backoff_queue::{BackOffQExponential, TraitBackOffQ};
-use crate::scheduler::node_index::NodeRTree;
+
 
 pub struct Test ();
+
 
 impl Test {
     pub fn test_all() {
@@ -13,6 +10,7 @@ impl Test {
         Test::test_active_queue_cmp_min_uid();
         Test::test_node_rtree();
         Test::test_active_queue_cmp_priority();
+        Test::test_pod_qos_class();
     }
 
     pub fn test_backoff_queue() {
@@ -43,6 +41,22 @@ impl Test {
         assert_eq!(q.try_pop(9.05), Some(3));
         assert_eq!(q.try_pop(9.05), Some(1));
         assert_eq!(q.try_pop(9.05), None);
+    }
+
+    pub fn test_pod_qos_class() {
+        let mut q: BTreeSet<(QoSClass, i64, u64)> = BTreeSet::new();
+        q.insert((QoSClass::Guaranteed, 2, 2));
+        q.insert((QoSClass::BestEffort, 0, 1));
+        q.insert((QoSClass::Guaranteed, 1, 0));
+        q.insert((QoSClass::BestEffort, 0, 0));
+        q.insert((QoSClass::Burstable, 0, 0));
+
+        assert_eq!(q.pop_first(), Some((QoSClass::BestEffort, 0, 0)));
+        assert_eq!(q.pop_first(), Some((QoSClass::BestEffort, 0, 1)));
+        assert_eq!(q.pop_first(), Some((QoSClass::Burstable, 0, 0)));
+        assert_eq!(q.pop_first(), Some((QoSClass::Guaranteed, 1, 0)));
+        assert_eq!(q.pop_first(), Some((QoSClass::Guaranteed, 2, 2)));
+        assert_eq!(q.pop_first(), None);
     }
 
     pub fn test_active_queue_cmp_priority() {

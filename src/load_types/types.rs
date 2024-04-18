@@ -1,7 +1,4 @@
-use crate::Constant;
-use crate::BusyBox;
-
-use serde::{Deserialize, Serialize};
+use crate::my_imports::*;
 
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -12,12 +9,13 @@ pub enum LoadType {
     BusyBox(BusyBox),
 }
 
+
 impl LoadType {
     pub fn get_duration(&self) -> f64 {
         return match self {
             LoadType::Constant(load) => { load.duration }
             LoadType::BusyBox(load) => { load.duration }
-            _ => { 0.0 }
+            LoadType::None => { 0.0 }
         }
     }
 
@@ -25,7 +23,7 @@ impl LoadType {
         return match self {
             LoadType::Constant(load) => { load.start(current_time) }
             LoadType::BusyBox(load) => { load.start(current_time) }
-            _ => { (0, 0, 0.0, false) }
+            LoadType::None => { (0, 0, 0.0, false) }
         }
     }
 
@@ -33,7 +31,7 @@ impl LoadType {
         return match self {
             LoadType::Constant(load) => { load.update(current_time) }
             LoadType::BusyBox(load) => { load.update(current_time) }
-            _ => { (0, 0, 0.0, false) }
+            LoadType::None => { (0, 0, 0.0, false) }
         }
     }
 }

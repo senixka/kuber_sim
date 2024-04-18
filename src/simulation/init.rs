@@ -1,8 +1,5 @@
-use std::process::exit;
-use crate::debug_print;
 use crate::my_imports::*;
-use crate::simulation::config::{ClusterState, WorkLoad};
-use crate::simulation::monitoring::Monitoring;
+
 
 pub struct Init {
     ctx: dsc::SimulationContext,
@@ -12,6 +9,7 @@ pub struct Init {
     cluster_state: Rc<RefCell<ClusterState>>,
     workload: Rc<RefCell<WorkLoad>>,
 }
+
 
 impl Init {
     pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, workload: Rc<RefCell<WorkLoad>>, monitoring: Rc<RefCell<Monitoring>>) -> Self {
@@ -35,12 +33,12 @@ impl Init {
     pub fn submit_pods(&self) {
         let mut pod_count: u64 = 0;
         let mut last_time: f64 = 0.0;
-        for pod_group in self.workload.borrow().pods.iter() {
+        for pod_group in &self.workload.borrow().pods {
             pod_count += pod_group.amount;
 
             for _ in 0..pod_group.amount {
                 let mut pod = pod_group.pod.clone();
-                pod.init();
+                pod.prepare(pod_group.group_uid);
 
                 assert!(last_time <= pod.spec.arrival_time);
                 self.ctx.emit_ordered(APIAddPod{ pod: pod.clone() }, self.api_sim_id, pod.spec.arrival_time);
@@ -54,7 +52,7 @@ impl Init {
         for node_group in self.cluster_state.borrow().nodes.iter() {
             for _ in 0..node_group.amount {
                 let mut node = node_group.node.clone();
-                node.init();
+                node.prepare();
 
                 let name = "kubelet_".to_owned() + &*node.metadata.uid.to_string();
                 // println!("{0}", name);
@@ -73,6 +71,7 @@ impl Init {
         }
     }
 }
+
 
 impl dsc::EventHandler for Init {
     fn on(&mut self, _: dsc::Event) {

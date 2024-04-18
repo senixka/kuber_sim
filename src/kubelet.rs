@@ -1,7 +1,5 @@
-use std::collections::BTreeMap;
-use crate::debug_print;
 use crate::my_imports::*;
-use crate::simulation::monitoring::Monitoring;
+
 
 pub struct Kubelet {
     pub ctx: dsc::SimulationContext,
@@ -11,6 +9,7 @@ pub struct Kubelet {
     monitoring: Rc<RefCell<Monitoring>>,
 
     pub pods: HashMap<u64, Pod>,
+    pub evict_order: BTreeSet<(QoSClass, i64, u64)>,
     pub running_loads: BTreeMap<u64, (u64, u64, LoadType)>,
     pub self_update_enabled: bool,
 }
@@ -24,6 +23,7 @@ impl Kubelet {
             monitoring,
             node,
             pods: HashMap::new(),
+            evict_order: BTreeSet::new(),
             running_loads: BTreeMap::new(),
             self_update_enabled: false,
         }
@@ -33,19 +33,8 @@ impl Kubelet {
         self.api_sim_id = api_sim_id;
     }
 
-    pub fn self_update_on(&mut self) {
-        // if !self.self_update_enabled {
-        //     self.self_update_enabled = true;
-        //     self.ctx.emit_self(APIKubeletSelfUpdate {}, self.cluster_state.borrow().constants.kubelet_self_update_period);
-        // }
-    }
-
     pub fn place_new_pod(&mut self, pod: Pod) -> bool {
         let pod_uid = pod.metadata.uid;
-
-        // println!("Pods: {0}", self.pods.len());
-        // println!("MEM: Available/Installed: {0}/{1}", self.node.spec.available_memory, self.node.spec.installed_memory);
-        // println!("CPU: Available/Installed: {0}/{1}", self.node.spec.available_cpu, self.node.spec.installed_cpu);
 
         // Store pod
         assert!(!self.pods.contains_key(&pod_uid));
@@ -62,80 +51,15 @@ impl Kubelet {
         }
         self.node.consume(cpu, memory);
         self.running_loads.insert(pod_uid, (cpu, memory, load));
+        self.evict_order.insert((pod.status.qos_class, pod.spec.priority, pod.metadata.uid));
 
         if self.ctx.time() >= 65640.0 {
             debug_print!("Start, Next change: {0}", next_change);
         }
-        self.ctx.emit_self(APIKubeletSelfNextchange { pod_uid }, next_change);
+        self.ctx.emit_self(APIKubeletSelfNextChange { pod_uid }, next_change);
 
         self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
         return true;
-    }
-
-    pub fn update_load(&mut self) {
-        // // Restore current resources, find finished pods
-        // let mut finished_pods: Vec<u64> = Vec::new();
-        // for (pod_uid, (prev_cpu, prev_memory, load)) in self.running_loads.iter_mut() {
-        //     self.node.restore(prev_cpu.clone(), prev_memory.clone());
-        //     self.monitoring.borrow_mut().kubelet_on_pod_unplaced(prev_cpu.clone(), prev_memory.clone());
-        //
-        //     let (_, _, is_finished) = load.update(self.ctx.time());
-        //
-        //     if is_finished {
-        //         finished_pods.push(pod_uid.clone());
-        //     }
-        // }
-        // // println!("MEM: Available/Installed: {0}/{1}", self.node.spec.available_memory, self.node.spec.installed_memory);
-        // // println!("CPU: Available/Installed: {0}/{1}", self.node.spec.available_cpu, self.node.spec.installed_cpu);
-        // assert_eq!(self.node.spec.installed_memory, self.node.spec.available_memory);
-        // assert_eq!(self.node.spec.installed_cpu, self.node.spec.available_cpu);
-        //
-        // // println!("##########################################");
-        // // let mut buffer = String::new();
-        // // io::stdin().read_line(&mut buffer).unwrap();
-        //
-        // // Delete finished pods
-        // for pod_uid in finished_pods.iter() {
-        //     self.running_loads.remove(pod_uid).unwrap();
-        //     self.pods.remove(pod_uid).unwrap();
-        //
-        //     let data = APIUpdatePodFromKubelet {
-        //         pod_uid: pod_uid.clone(),
-        //         new_phase: PodPhase::Succeeded,
-        //         node_uid: self.node.metadata.uid,
-        //     };
-        //     self.monitoring.borrow_mut().kubelet_on_pod_finished();
-        //     self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
-        // }
-        //
-        // // Consume resources. Find pods to evict
-        // let mut evicted_pods: Vec<u64> = Vec::new();
-        // for (pod_uid, (prev_cpu, prev_memory, load)) in self.running_loads.iter_mut() {
-        //     let (tmp_cpu, tmp_memory, is_finished) = load.update(self.ctx.time());
-        //     assert!(!is_finished);
-        //
-        //     if self.node.is_consumable(tmp_cpu, tmp_memory) {
-        //         self.node.consume(tmp_cpu, tmp_memory);
-        //         *prev_cpu = tmp_cpu;
-        //         *prev_memory = tmp_memory;
-        //         self.monitoring.borrow_mut().kubelet_on_pod_placed(tmp_cpu, tmp_memory);
-        //     } else {
-        //         evicted_pods.push(pod_uid.clone());
-        //     }
-        // }
-        //
-        // // Evict pods
-        // for pod_uid in evicted_pods.iter() {
-        //     self.running_loads.remove(pod_uid).unwrap();
-        //     self.pods.remove(pod_uid).unwrap();
-        //
-        //     let data = APIUpdatePodFromKubelet {
-        //         pod_uid: pod_uid.clone(),
-        //         new_phase: PodPhase::Pending,
-        //         node_uid: self.node.metadata.uid,
-        //     };
-        //     self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
-        // }
     }
 
     pub fn on_pod_next_change(&mut self, pod_uid: u64) {
@@ -151,26 +75,22 @@ impl Kubelet {
         self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
 
         if is_finished {
-            if self.ctx.time() >= 65640.0 {
-                debug_print!("Pod finished: {0}", pod_uid);
-            }
-
-            self.running_loads.remove(&pod_uid).unwrap();
-            self.pods.remove(&pod_uid).unwrap();
-            self.monitoring.borrow_mut().kubelet_on_pod_finished();
-
-            let data = APIUpdatePodFromKubelet {
-                pod_uid,
-                new_phase: PodPhase::Succeeded,
-                node_uid: self.node.metadata.uid,
-            };
-            self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
-
-            // println!("Available cpu {0} mem {1}", self.node.spec.available_cpu, self.node.spec.available_memory);
+            self.remove_pod(pod_uid, PodPhase::Succeeded);
             return;
         }
 
         // TODO: eviction with respect to QoS class
+        if !self.node.is_consumable(new_cpu, new_memory) {
+            // let pod = self.pods.get(&pod_uid).unwrap();
+            //
+            // // Evict with respect to QoS and Priority
+            // for (qos, priority, other_uid) in self.evict_order {
+            //     if *priority < pod.spec.priority {
+            //
+            //     }
+            // }
+        }
+
         assert!(self.node.is_consumable(new_cpu, new_memory));
 
         // Consume resources
@@ -180,7 +100,21 @@ impl Kubelet {
         self.monitoring.borrow_mut().kubelet_on_pod_placed(new_cpu, new_memory);
 
         // Next change self update
-        self.ctx.emit_self(APIKubeletSelfNextchange { pod_uid }, next_change);
+        self.ctx.emit_self(APIKubeletSelfNextChange { pod_uid }, next_change);
+    }
+
+    pub fn remove_pod(&mut self, pod_uid: u64, new_phase: PodPhase) {
+        self.running_loads.remove(&pod_uid).unwrap();
+        let pod = self.pods.remove(&pod_uid).unwrap();
+        let _was_present = self.evict_order.remove(&(pod.status.qos_class, pod.spec.priority, pod_uid)); assert!(_was_present);
+        self.monitoring.borrow_mut().kubelet_on_pod_finished();
+
+        let data = APIUpdatePodFromKubelet {
+            pod_uid,
+            new_phase,
+            node_uid: self.node.metadata.uid,
+        };
+        self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
     }
 }
 
@@ -200,11 +134,8 @@ impl dsc::EventHandler for Kubelet {
                 assert_eq!(self.running_loads.len(), self.pods.len());
 
                 if !self.pods.contains_key(&pod.metadata.uid) {
-                    // self.update_load();
 
-                    if self.place_new_pod(pod.clone()) {
-                        self.self_update_on();
-                    } else {
+                    if !self.place_new_pod(pod.clone()) {
                         let data = APIUpdatePodFromKubelet {
                             pod_uid: pod.metadata.uid,
                             new_phase: PodPhase::Pending,
@@ -231,7 +162,7 @@ impl dsc::EventHandler for Kubelet {
                 //     self.self_update_enabled = false;
                 // }
             }
-            APIKubeletSelfNextchange { pod_uid } => {
+            APIKubeletSelfNextChange { pod_uid } => {
                 if self.ctx.time() >= 65640.0 {
                     debug_print!("[{1}] Next change for {0}", pod_uid, self.ctx.time());
                 }

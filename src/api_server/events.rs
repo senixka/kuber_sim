@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
-use crate::my_imports::{dsc, Node, Pod, PodPhase};
+use crate::my_imports::*;
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum APIServerEvent {
@@ -9,15 +9,18 @@ pub enum APIServerEvent {
     RemoveNode = 3,
 }
 
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIAddPod {
     pub pod: Pod,
 }
 
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIRemovePod {
     pub pod_uid: u64,
 }
+
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIAddNode {
@@ -25,10 +28,12 @@ pub struct APIAddNode {
     pub node: Node,
 }
 
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIRemoveKubelet {
     pub node_uid: u64,
 }
+
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIUpdatePodFromScheduler {
@@ -37,6 +42,7 @@ pub struct APIUpdatePodFromScheduler {
     pub node_uid: u64,
 }
 
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIUpdatePodFromKubelet {
     pub pod_uid: u64,
@@ -44,19 +50,23 @@ pub struct APIUpdatePodFromKubelet {
     pub node_uid: u64,
 }
 
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIKubeletSelfUpdate {
 }
+
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APISchedulerSelfUpdate {
 }
 
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIMonitoringSelfUpdate {
 }
 
+
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIKubeletSelfNextchange {
+pub struct APIKubeletSelfNextChange {
     pub pod_uid: u64,
 }

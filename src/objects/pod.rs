@@ -1,8 +1,4 @@
-use std::collections::BTreeMap;
 use crate::my_imports::*;
-
-use std::sync::atomic::{AtomicU64, Ordering};
-use serde::{Deserialize, Serialize};
 
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
@@ -10,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct PodSpec {
     pub arrival_time: f64,
     pub load: LoadType,
+
     pub request_cpu: u64,
     pub request_memory: u64,
 
@@ -19,13 +16,14 @@ pub struct PodSpec {
     pub limit_memory: u64,
 
     #[serde(default)]
-    pub node_selector: BTreeMap<String, String>,
+    pub priority: i64,
 
     #[serde(default)]
-    pub priority: i64,
+    pub node_selector: BTreeMap<String, String>,
 }
 
 impl Eq for PodSpec {}
+
 
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -38,8 +36,9 @@ pub enum PodPhase {
     Unknown = 4,
 }
 
+
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/#quality-of-service-classes
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub enum QoSClass {
     #[default]
     BestEffort = 0,
@@ -47,18 +46,20 @@ pub enum QoSClass {
     Guaranteed = 2,
 }
 
+
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podstatus-v1-core
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PodStatus {
-    #[serde(default)]
+    #[serde(skip)]
     pub phase: PodPhase,
 
-    #[serde(default)]
+    #[serde(skip)]
     pub node_uid: Option<u64>,
 
-    #[serde(default)]
+    #[serde(skip)]
     pub qos_class: QoSClass,
 }
+
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -67,16 +68,19 @@ pub struct Pod {
 
     #[serde(default)]
     pub metadata: ObjectMeta,
-    #[serde(default)]
+    #[serde(skip)]
     pub status: PodStatus,
 }
 
 impl Pod {
-    pub fn init(&mut self) {
+    pub fn prepare(&mut self, group_uid: u64) {
         static UID_COUNTER: AtomicU64 = AtomicU64::new(1);
 
         self.metadata.uid = UID_COUNTER.load(Ordering::Relaxed);
         UID_COUNTER.fetch_add(1, Ordering::Relaxed);
+
+        self.metadata.group_uid = group_uid;
+        assert_ne!(group_uid, 0);
 
         self.status.phase = PodPhase::Pending;
         self.status.node_uid = None;

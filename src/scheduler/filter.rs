@@ -1,10 +1,12 @@
 use crate::my_imports::*;
 
+
 pub type FilterPluginT = fn(&HashMap<u64, Pod>,
                             &HashMap<u64, Pod>,
                             &HashMap<u64, Node>,
                             &Pod,
                             &Node) -> bool;
+
 
 pub fn always_true(_: &HashMap<u64, Pod>,
                    _: &HashMap<u64, Pod>,
@@ -53,9 +55,8 @@ pub fn requested_resources_available(_: &HashMap<u64, Pod>,
 pub fn node_affinity(_: &HashMap<u64, Pod>,
                      _: &HashMap<u64, Pod>,
                      _: &HashMap<u64, Node>,
-                     pod: &Pod,
-                     node: &Node) -> bool {
+                     _: &Pod,
+                     _: &Node) -> bool {
     // TODO: impl it
     panic!("Node affinity");
-    return false;
 }

@@ -1,5 +1,5 @@
 use crate::my_imports::*;
-use std::f64::consts::PI;
+
 
 pub type ScorePluginT = fn(&HashMap<u64, Pod>,
                            &HashMap<u64, Pod>,
@@ -34,7 +34,7 @@ pub fn tetris(_: &HashMap<u64, Pod>,
     let p_mem = pod.spec.request_memory;
     let scale = 10000;
 
-    return if (n_cpu * p_mem >= n_mem * p_cpu) {
+    return if n_cpu * p_mem >= n_mem * p_cpu {
         let y = (n_cpu * p_mem - n_mem * p_cpu) as f64;
         let x = (n_cpu * p_cpu + n_mem * p_mem) as f64;
 

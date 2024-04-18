@@ -1,5 +1,4 @@
-use std::collections::{BinaryHeap};
-use std::cmp::Ordering;
+use crate::my_imports::*;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -14,11 +13,41 @@ pub type BackOffDefault = BackOffQExponential;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
+struct ItemWrapper {
+    pub pod_uid: u64,
+    pub exit_time: f64,
+}
+
+
+impl PartialOrd for ItemWrapper {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ItemWrapper {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.exit_time.total_cmp(&self.exit_time)
+    }
+}
+
+impl PartialEq for ItemWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        self.exit_time == other.exit_time
+    }
+}
+
+impl Eq for ItemWrapper {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub struct BackOffQExponential {
     initial_backoff: f64,
     max_backoff: f64,
     queue: BinaryHeap<ItemWrapper>,
 }
+
 
 impl BackOffQExponential {
     pub fn new(initial_backoff: f64, max_backoff: f64) -> Self {
@@ -33,6 +62,7 @@ impl BackOffQExponential {
         BackOffQExponential::new(1.0, 10.0)
     }
 }
+
 
 impl TraitBackOffQ for BackOffQExponential {
     fn push(&mut self, pod_uid: u64, backoff_attempts: u64, current_time: f64) {
@@ -53,33 +83,5 @@ impl TraitBackOffQ for BackOffQExponential {
         return Some(self.queue.pop().unwrap().pod_uid);
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#[derive(Debug)]
-struct ItemWrapper {
-    pub pod_uid: u64,
-    pub exit_time: f64,
-}
-
-impl PartialOrd for ItemWrapper {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for ItemWrapper {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.exit_time.total_cmp(&self.exit_time)
-    }
-}
-
-impl PartialEq for ItemWrapper {
-    fn eq(&self, other: &Self) -> bool {
-        self.exit_time == other.exit_time
-    }
-}
-
-impl Eq for ItemWrapper {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

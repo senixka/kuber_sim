@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use crate::my_imports::*;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -18,6 +17,7 @@ pub type ActiveQCmpDefault = ActiveQCmpPriority;
 #[derive(Debug, Clone)]
 pub struct ActiveQCmpMinUid(pub Pod);
 
+
 impl TraitActiveQCmp for ActiveQCmpMinUid {
     #[inline]
     fn wrap(pod: Pod) -> Self {
@@ -30,14 +30,15 @@ impl TraitActiveQCmp for ActiveQCmpMinUid {
     }
 }
 
+
 impl PartialOrd for ActiveQCmpMinUid {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for ActiveQCmpMinUid {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other.0.metadata.uid.cmp(&self.0.metadata.uid)
     }
 }
@@ -55,7 +56,8 @@ impl Eq for ActiveQCmpMinUid {}
 #[derive(Debug, Clone)]
 pub struct ActiveQCmpPriority(pub Pod);
 
-impl TraitActiveQCmp for crate::scheduler::active_queue::ActiveQCmpPriority {
+
+impl TraitActiveQCmp for ActiveQCmpPriority {
     #[inline]
     fn wrap(pod: Pod) -> Self {
         Self { 0: pod }
@@ -67,24 +69,25 @@ impl TraitActiveQCmp for crate::scheduler::active_queue::ActiveQCmpPriority {
     }
 }
 
-impl PartialOrd for crate::scheduler::active_queue::ActiveQCmpPriority {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+
+impl PartialOrd for ActiveQCmpPriority {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for crate::scheduler::active_queue::ActiveQCmpPriority {
-    fn cmp(&self, other: &Self) -> Ordering {
+impl Ord for ActiveQCmpPriority {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.spec.priority.cmp(&other.0.spec.priority)
     }
 }
 
-impl PartialEq for crate::scheduler::active_queue::ActiveQCmpPriority {
+impl PartialEq for ActiveQCmpPriority {
     fn eq(&self, other: &Self) -> bool {
         self.0.spec.priority == other.0.spec.priority
     }
 }
 
-impl Eq for crate::scheduler::active_queue::ActiveQCmpPriority {}
+impl Eq for ActiveQCmpPriority {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

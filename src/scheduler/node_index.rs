@@ -1,8 +1,8 @@
-use rstar::{AABB, RTree, RTreeObject};
-use rstar::iterators::LocateInEnvelope;
 use crate::my_imports::*;
 
+
 pub struct NodeRTree (RTree<Node>);
+
 
 impl RTreeObject for Node {
     type Envelope = AABB<(i64, i64, i64)>;
@@ -13,6 +13,7 @@ impl RTreeObject for Node {
         AABB::from_point((self.spec.available_cpu as i64, self.spec.available_memory as i64, self.metadata.uid as i64))
     }
 }
+
 
 impl NodeRTree {
     pub fn new() -> Self {

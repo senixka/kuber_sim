@@ -1,20 +1,11 @@
-use std::collections::BinaryHeap;
-use crate::debug_print;
-use crate::scheduler::{filter, normalize_score, score};
-use crate::scheduler::node_index::NodeRTree;
-use crate::simulation::config::ClusterState;
-use crate::simulation::monitoring::Monitoring;
-use super::super::my_imports::*;
-use super::active_queue::*;
-use super::backoff_queue::*;
-
+use crate::my_imports::*;
 
 
 pub struct Scheduler<
     ActiveQCmp,
     BackOffQ,
-    const NFilter: usize,
-    const NScore: usize,
+    const NFILTER: usize,
+    const NSCORE: usize,
 > {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
@@ -35,28 +26,28 @@ pub struct Scheduler<
     failed_attempts: HashMap<u64, u64>,
 
     // Pipeline
-    filters: [filter::FilterPluginT; NFilter],
-    scorers: [score::ScorePluginT; NScore],
-    scorer_weights: [i64; NScore],
-    score_normalizers: [normalize_score::NormalizeScorePluginT; NScore],
+    filters: [FilterPluginT; NFILTER],
+    scorers: [ScorePluginT; NSCORE],
+    scorer_weights: [i64; NSCORE],
+    score_normalizers: [NormalizeScorePluginT; NSCORE],
 }
 
 impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
-    const NFilter: usize,
-    const NScore: usize,
-> Scheduler<ActiveQCmp, BackOffQ, NFilter, NScore> {
+    const NFILTER: usize,
+    const NSCORE: usize,
+> Scheduler<ActiveQCmp, BackOffQ, NFILTER, NSCORE> {
     pub fn new(
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
         monitoring: Rc<RefCell<Monitoring>>,
-        filters: [filter::FilterPluginT; NFilter],
-        scorers: [score::ScorePluginT; NScore],
-        score_normalizers: [normalize_score::NormalizeScorePluginT; NScore],
-        scorer_weights: [i64; NScore],
+        filters: [FilterPluginT; NFILTER],
+        scorers: [ScorePluginT; NSCORE],
+        score_normalizers: [NormalizeScorePluginT; NSCORE],
+        scorer_weights: [i64; NSCORE],
         backoff_queue: BackOffQ,
-    ) -> Scheduler<ActiveQCmp, BackOffQ, NFilter, NScore> {
+    ) -> Scheduler<ActiveQCmp, BackOffQ, NFILTER, NSCORE> {
         Self {
             ctx,
             cluster_state,
@@ -95,7 +86,7 @@ impl <
 
     pub fn schedule(&mut self) {
         let mut result: Vec<Node> = Vec::new();
-        let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; NScore];
+        let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; NSCORE];
 
         while let Some(wrapper) = self.active_queue.pop() {
             let mut pod = wrapper.inner();
@@ -108,7 +99,7 @@ impl <
             self.node_rtree.find_suitable_nodes(cpu, memory, &mut result);
 
             // Apply node selector
-            result.retain(|node| filter::node_selector(
+            result.retain(|node| node_selector(
                 &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
             ));
 
@@ -153,14 +144,14 @@ impl <
             // Find best node
             let mut best_node_index: usize = 0;
             let mut max_score: i64 = 0;
-            for i in 0..NScore {
+            for i in 0..NSCORE {
                 max_score += score_matrix[i][0] * self.scorer_weights[i];
             }
 
-            let mut tmp_score: i64 =0;
+            let mut tmp_score: i64;
             for i in 0..result.len() {
                 tmp_score = 0;
-                for j in 0..NScore {
+                for j in 0..NSCORE {
                     tmp_score += score_matrix[j][i]  * self.scorer_weights[i];
                 }
                 if tmp_score > max_score {
@@ -291,15 +282,15 @@ impl <
 impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
-    const NFilter: usize,
-    const NScore: usize,
-> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, NFilter, NScore> {
+    const NFILTER: usize,
+    const NSCORE: usize,
+> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, NFILTER, NSCORE> {
     fn on(&mut self, event: dsc::Event) {
         if self.ctx.time() > 65641.0 {
             debug_print!("Scheduler EventHandler ------>");
         }
         dsc::cast!(match event.data {
-            APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid } => {
+            APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _ } => {
                 if self.ctx.time() >= 65640.0 {
                     debug_print!("{:?} Scheduler <Update Pod From Kubelet> pod_{:?} new_phase: {:?}", self.ctx.time(), pod_uid, new_phase);
                 }

@@ -1,32 +1,26 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use crate::simulation::init::*;
-use crate::my_imports::{APIServer, dsc, Scheduler};
-use crate::scheduler::active_queue::{ActiveQCmpDefault, ActiveQCmpMinUid};
-use crate::scheduler::backoff_queue::{BackOffDefault, BackOffQExponential};
-use crate::scheduler::{filter, normalize_score, score};
-use crate::simulation::config::{ClusterState, WorkLoad};
-use crate::simulation::monitoring::Monitoring;
+use crate::my_imports::*;
+
 
 pub struct Experiment {
-    cluster_state_file_path: String,
-    workload_file_path: String,
+    // cluster_state_file_path: String,
+    // workload_file_path: String,
 
     sim: dsc::Simulation,
-    seed: u64,
+    // seed: u64,
 
-    cluster_state: Rc<RefCell<ClusterState>>,
-    workload: Rc<RefCell<WorkLoad>>,
+    // cluster_state: Rc<RefCell<ClusterState>>,
+    // workload: Rc<RefCell<WorkLoad>>,
 
-    api: Rc<RefCell<APIServer>>,
+    // api: Rc<RefCell<APIServer>>,
     init: Rc<RefCell<Init>>,
-    monitoring: Rc<RefCell<Monitoring>>,
+    // monitoring: Rc<RefCell<Monitoring>>,
 
-    api_id: dsc::Id,
-    scheduler_id: dsc::Id,
+    // api_id: dsc::Id,
+    // scheduler_id: dsc::Id,
 
     is_done: bool,
 }
+
 
 impl Experiment {
     pub fn new(cluster_state_file_path: &str, workload_file_path: &str, seed: u64) -> Self {
@@ -55,9 +49,9 @@ impl Experiment {
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
-                [filter::always_true, filter::requested_resources_available],
-                [score::tetris, score::running_pods],
-                [normalize_score::skip, normalize_score::neg],
+                [always_true, requested_resources_available],
+                [tetris, running_pods],
+                [skip, neg],
                 [1, 1],
                 BackOffDefault::default(),
             )
@@ -83,12 +77,12 @@ impl Experiment {
         monitoring.borrow_mut().presimulation_check();
 
         Self {
-            cluster_state_file_path: cluster_state_file_path.to_string(),
-            workload_file_path: workload_file_path.to_string(),
-            sim, seed,
-            cluster_state, workload,
-            api, init, monitoring,
-            api_id, scheduler_id,
+            // cluster_state_file_path: cluster_state_file_path.to_string(),
+            // workload_file_path: workload_file_path.to_string(),
+            sim,// seed,
+            // cluster_state, workload,
+            init,// api, monitoring,
+            // api_id, scheduler_id,
             is_done: false,
         }
     }

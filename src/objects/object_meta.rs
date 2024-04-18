@@ -1,5 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
-use serde::{Deserialize, Serialize};
+use crate::my_imports::*;
 
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#objectmeta-v1-meta
@@ -7,6 +6,8 @@ use serde::{Deserialize, Serialize};
 pub struct ObjectMeta {
     pub labels: BTreeMap<String, String>,
 
-    #[serde(skip_deserializing)]
+    #[serde(skip)]
     pub uid: u64,
+    #[serde(skip)]
+    pub group_uid: u64,
 }
