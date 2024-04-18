@@ -94,4 +94,12 @@ fn main() {
         );
         test.run();
     }
+    if value == "3" {
+        let mut test = Experiment::new(
+            "./data/cluster_state/state.yaml",
+            "./data/workload/pods.csv",
+            179
+        );
+        test.run();
+    }
 }

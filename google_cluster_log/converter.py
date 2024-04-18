@@ -1,4 +1,4 @@
-def dump_pod_group(fout, arrival_time, pod_count, duration, cpu, memory):
+def dump_yaml_pod_group(fout, arrival_time, pod_count, duration, cpu, memory):
     s = f"""
   - pod_group:
     amount: {pod_count}
@@ -15,18 +15,23 @@ def dump_pod_group(fout, arrival_time, pod_count, duration, cpu, memory):
     fout.write(s)
 
 
+def dump_csv_pod_group(fout, arrival_time, pod_count, duration, cpu, memory):
+    s = f"{pod_count},{arrival_time},{cpu},{memory},,,,,,constant;{cpu};{memory};{duration}\n"
+    fout.write(s)
+
+
 def dump_state_prolog(fout):
     s = f"""
 network_delays:
   api2scheduler: 0
   scheduler2api: 0
-  api2kubelet: 0
-  kubelet2api: 0
+  api2kubelet: 1
+  kubelet2api: 1
 
 constants:
-  kubelet_self_update_period: 2
-  scheduler_self_update_period: 10
-  monitoring_self_update_period: 2
+  kubelet_self_update_period: 200
+  scheduler_self_update_period: 0.5
+  monitoring_self_update_period: 10
 
 """
     fout.write(s)
@@ -44,8 +49,13 @@ def dump_machine_group(fout, machine_count, cpu, memory):
 
 
 def main():
-    with open("../data/workload/pods.yaml", 'w') as fout:
-        fout.write("pods:")
+    s_ext = str(input("Enter format (csv/yaml): ").strip())
+    if s_ext not in ["yaml", "csv"]:
+        exit(1)
+
+    with open(f"../data/workload/pods.{s_ext}", 'w') as fout:
+        if s_ext == "yaml":
+            fout.write("pods:")
 
         with open("job_and_task.txt", 'r') as fin:
             n_job, n_task = map(int, fin.readline().split())
@@ -56,8 +66,10 @@ def main():
 
                 for j in range(0, group_count):
                     task_count, duration, cpu, memory = map(int, fin.readline().split())
-                    if True or 50000 < i < 200000:
-                        dump_pod_group(fout, arrival_time, task_count, duration, cpu, memory)
+                    if s_ext == "yaml":
+                        dump_yaml_pod_group(fout, arrival_time, task_count, duration, cpu, memory)
+                    elif s_ext == "csv":
+                        dump_csv_pod_group(fout, arrival_time, task_count, duration, cpu, memory)
                 if i % 10000 == 0:
                     print(f"Done job: {i}/{n_job}")
 

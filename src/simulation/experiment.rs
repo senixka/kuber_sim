@@ -26,7 +26,8 @@ impl Experiment {
     pub fn new(cluster_state_file_path: &str, workload_file_path: &str, seed: u64) -> Self {
         // Create components
         let cluster_state = Rc::new(RefCell::new(ClusterState::from_yaml(cluster_state_file_path)));
-        let workload = Rc::new(RefCell::new(WorkLoad::from_yaml(workload_file_path)));
+
+        let workload = Rc::new(RefCell::new(WorkLoad::from_file(workload_file_path)));
 
         let mut sim = dsc::Simulation::new(seed);
 

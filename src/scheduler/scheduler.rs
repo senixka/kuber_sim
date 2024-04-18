@@ -152,7 +152,7 @@ impl <
             for i in 0..result.len() {
                 tmp_score = 0;
                 for j in 0..NSCORE {
-                    tmp_score += score_matrix[j][i]  * self.scorer_weights[i];
+                    tmp_score += score_matrix[j][i] * self.scorer_weights[j];
                 }
                 if tmp_score > max_score {
                     max_score = tmp_score;

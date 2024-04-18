@@ -8,6 +8,16 @@ pub struct WorkLoad {
 
 
 impl WorkLoad {
+    pub fn from_file(path: &str) -> Self {
+        if path.ends_with(".yaml") {
+            return WorkLoad::from_yaml(path);
+        } else if path.ends_with(".csv") {
+            return WorkLoad::from_csv(path);
+        } else {
+            panic!("Unknown workload file format")
+        }
+    }
+
     pub fn from_yaml(path: &str) -> Self {
         let fin = std::fs::File::open(path).unwrap();
         let mut workload: WorkLoad = serde_yaml::from_reader(fin).unwrap();
