@@ -13,8 +13,10 @@ pub struct NetworkDelays {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Constants {
     pub kubelet_self_update_period: f64,
-    pub scheduler_self_update_period: f64,
     pub monitoring_self_update_period: f64,
+    pub scheduler_self_update_period: f64,
+    pub scheduler_cycle_max_scheduled: u64,
+    pub scheduler_cycle_max_to_try: u64,
 }
 
 
@@ -33,6 +35,13 @@ impl ClusterState {
 
         for node_group in &mut cluster_state.nodes {
             node_group.prepare();
+        }
+
+        if cluster_state.constants.scheduler_cycle_max_scheduled == 0 {
+            cluster_state.constants.scheduler_cycle_max_scheduled = u64::MAX;
+        }
+        if cluster_state.constants.scheduler_cycle_max_to_try == 0 {
+            cluster_state.constants.scheduler_cycle_max_to_try = u64::MAX;
         }
 
         return cluster_state;

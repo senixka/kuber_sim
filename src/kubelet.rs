@@ -120,21 +120,15 @@ impl Kubelet {
 
 impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
-        if self.ctx.time() >= 65640.0 {
-            debug_print!("Kubelet Node_{0} EventHandler ------>", self.node.metadata.uid);
-        }
         dsc::cast!(match event.data {
             APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
-                if self.ctx.time() >= 65640.0 {
-                    debug_print!("New pod");
-                }
+                debug_print!("{:.12} node:{:?} APIUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod.metadata.uid, new_phase);
 
                 assert_eq!(node_uid, self.node.metadata.uid);
                 assert_eq!(new_phase, PodPhase::Running);
                 assert_eq!(self.running_loads.len(), self.pods.len());
 
                 if !self.pods.contains_key(&pod.metadata.uid) {
-
                     if !self.place_new_pod(pod.clone()) {
                         let data = APIUpdatePodFromKubelet {
                             pod_uid: pod.metadata.uid,
@@ -147,31 +141,13 @@ impl dsc::EventHandler for Kubelet {
                 }
             }
             APIKubeletSelfUpdate {} => {
-                if self.ctx.time() >= 65640.0 {
-                    debug_print!("Self update");
-                }
-
-                // assert_eq!(self.running_loads.len(), self.pods.len());
-                // self.update_load();
-                // assert_eq!(self.running_loads.len(), self.pods.len());
-                //
-                // if !self.pods.is_empty() {
-                //     self.self_update_enabled = true;
-                //     self.ctx.emit_self(APIKubeletSelfUpdate{}, self.cluster_state.borrow().constants.kubelet_self_update_period);
-                // } else {
-                //     self.self_update_enabled = false;
-                // }
+                debug_print!("{:.12} node:{:?} APIKubeletSelfUpdate", self.ctx.time(), self.node.metadata.uid);
             }
             APIKubeletSelfNextChange { pod_uid } => {
-                if self.ctx.time() >= 65640.0 {
-                    debug_print!("[{1}] Next change for {0}", pod_uid, self.ctx.time());
-                }
+                debug_print!("{:.12} node:{:?} APIKubeletSelfNextChange pod_uid:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid);
 
                 self.on_pod_next_change(pod_uid);
             }
         });
-        if self.ctx.time() >= 65640.0 {
-            debug_print!("Kubelet Node_{0} EventHandler <------", self.node.metadata.uid);
-        }
     }
 }

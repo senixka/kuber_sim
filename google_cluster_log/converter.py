@@ -32,6 +32,8 @@ constants:
   kubelet_self_update_period: 200
   scheduler_self_update_period: 0.5
   monitoring_self_update_period: 10
+  scheduler_cycle_max_scheduled: 0
+  scheduler_cycle_max_to_try: 0
 
 """
     fout.write(s)

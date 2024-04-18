@@ -90,12 +90,28 @@ impl <
 
 
     pub fn schedule(&mut self) {
+        // From backoffQ to activeQ
+        while let Some(pod_uid) = self.backoff_queue.try_pop(self.ctx.time()) {
+            self.active_queue.push(ActiveQCmp::wrap(self.pending_pods.get(&pod_uid).unwrap().clone()));
+        }
+
         let mut possible_nodes: Vec<Node> = Vec::new();
         let mut resulted_nodes: Vec<Node> = Vec::new();
         let mut is_schedulable: Vec<bool> = Vec::new();
         let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; N_SCORE];
 
+        let (mut scheduled_left, mut try_schedule_left): (u64, u64) = (
+            self.cluster_state.borrow().constants.scheduler_cycle_max_scheduled,
+            self.cluster_state.borrow().constants.scheduler_cycle_max_to_try,
+        );
+
+        // Main scheduling cycle
         while let Some(wrapper) = self.active_queue.pop() {
+            if scheduled_left == 0 || try_schedule_left == 0 {
+                break;
+            }
+            try_schedule_left -= 1;
+
             let mut pod = wrapper.inner();
             let pod_uid = pod.metadata.uid;
             let cpu = pod.spec.request_cpu;
@@ -210,9 +226,7 @@ impl <
 
 
             // Place pod to node
-
             assert!(self.nodes.get(&node_uid).unwrap().is_consumable(cpu, memory));
-            // println!("{2} Assign pod_{0} to node_{1}", pod_uid, node_uid, self.ctx.time());
 
             // Move cached pod from pending to running
             let mut cached = self.pending_pods.remove(&pod_uid).unwrap();
@@ -233,13 +247,8 @@ impl <
                 node_uid,
             };
 
-            // println!("{:?} Scheduler Pod_{:?} placed to Node_{:?} artime: {:?}", self.ctx.time(), pod.metadata.uid, node.metadata.uid, pod.spec.arrival_time);
             self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api);
-        }
-
-        // TODO: Implement API event with time period
-        while let Some(pod_uid) = self.backoff_queue.try_pop(self.ctx.time()) {
-            self.active_queue.push(ActiveQCmp::wrap(self.pending_pods.get(&pod_uid).unwrap().clone()));
+            scheduled_left -= 1;
         }
     }
 
@@ -304,9 +313,6 @@ impl <
 
         // Place pod to ActiveQ
         self.active_queue.push(ActiveQCmp::wrap(pod));
-
-        // Place pod to BackOffQ
-        // self.backoff_queue.push(pod_uid, *attempts - 1, self.ctx.time());
     }
 
     pub fn process_finished_pod(&mut self, pod_uid: u64) {
@@ -333,14 +339,9 @@ impl <
     const N_SCORE: usize,
 > dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE> {
     fn on(&mut self, event: dsc::Event) {
-        if self.ctx.time() > 65641.0 {
-            debug_print!("Scheduler EventHandler ------>");
-        }
         dsc::cast!(match event.data {
-            APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _ } => {
-                if self.ctx.time() >= 65640.0 {
-                    debug_print!("{:?} Scheduler <Update Pod From Kubelet> pod_{:?} new_phase: {:?}", self.ctx.time(), pod_uid, new_phase);
-                }
+            APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
+                debug_print!("{:.12} scheduler APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, _node_uid, new_phase);
 
                 match new_phase {
                     PodPhase::Pending => {
@@ -359,34 +360,26 @@ impl <
                     }
                 }
 
-                // self.schedule();
                 self.self_update_on();
-
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
             }
             APIAddPod { pod } => {
-                if self.ctx.time() >= 65640.0 {
-                    debug_print!("Scheduler <Add Pod> {:?}", pod);
-                }
+                debug_print!("{:.12} scheduler APIAddPod pod_uid:{:?}", self.ctx.time(), pod.metadata.uid);
+
                 self.process_new_pod(pod);
-
-                // self.schedule();
                 self.self_update_on();
-
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
-                if self.ctx.time() >= 65640.0 {
-                    debug_print!("Scheduler <Add Kubelet> {:?}", node);
-                }
+                debug_print!("{:.12} scheduler APIAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);
+
                 self.monitoring.borrow_mut().scheduler_on_node_added(&node);
                 self.nodes.insert(node.metadata.uid, node.clone());
                 self.node_rtree.insert(node);
             }
             APISchedulerSelfUpdate { } => {
-                if self.ctx.time() >= 65640.0 {
-                    debug_print!("Scheduler <Self Update>");
-                }
+                debug_print!("{:.12} scheduler APISchedulerSelfUpdate", self.ctx.time());
+
                 self.schedule();
 
                 if self.pending_pods.len() > 0 {
@@ -396,8 +389,5 @@ impl <
                 }
             }
         });
-        if self.ctx.time() >= 65640.0 {
-            debug_print!("Scheduler EventHandler <------");
-        }
     }
 }
