@@ -17,6 +17,7 @@ pub struct Constants {
     pub scheduler_self_update_period: f64,
     pub scheduler_cycle_max_scheduled: u64,
     pub scheduler_cycle_max_to_try: u64,
+    pub unschedulable_queue_period: f64,
 }
 
 

@@ -34,6 +34,7 @@ constants:
   monitoring_self_update_period: 10
   scheduler_cycle_max_scheduled: 0
   scheduler_cycle_max_to_try: 0
+  unschedulable_queue_period: 60
 
 """
     fout.write(s)

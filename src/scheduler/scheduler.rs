@@ -17,7 +17,7 @@ pub struct Scheduler<
 
     // Cache
     running_pods: HashMap<u64, Pod>,
-    pending_pods: HashMap<u64, Pod>, // TODO: remove it
+    pending_pods: HashMap<u64, Pod>,
     nodes: HashMap<u64, Node>,
     node_rtree: NodeRTree,
 
@@ -166,9 +166,16 @@ impl <
             }
 
             if suitable_count == 0 {
-                // Place pod to BackOffQ and increase backoff attempts
                 let attempts = self.failed_attempts.entry(pod_uid).or_default();
-                self.backoff_queue.push(pod_uid, *attempts, self.ctx.time());
+
+                if *attempts == 0 {
+                    // Simulate UnschedulableQ
+                    self.ctx.emit_self(APISchedulerSecondChance { pod_uid }, self.cluster_state.borrow().constants.unschedulable_queue_period);
+                } else {
+                    // Place pod to BackoffQ
+                    self.backoff_queue.push(pod_uid, *attempts, self.ctx.time());
+                }
+
                 *attempts += 1;
 
                 continue;
@@ -387,6 +394,11 @@ impl <
                 } else {
                     self.self_update_enabled = false;
                 }
+            }
+            APISchedulerSecondChance { pod_uid } => {
+                debug_print!("{:.12} scheduler APISchedulerSecondChance pod_uid:{:?}", self.ctx.time(), pod_uid);
+
+                self.active_queue.push(ActiveQCmp::wrap(self.pending_pods.get(&pod_uid).unwrap().clone()));
             }
         });
     }
