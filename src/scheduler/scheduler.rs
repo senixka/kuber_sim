@@ -348,7 +348,7 @@ impl <
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
-                debug_print!("{:.12} scheduler APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, _node_uid, new_phase);
+                dp_scheduler!("{:.12} scheduler APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, _node_uid, new_phase);
 
                 match new_phase {
                     PodPhase::Pending => {
@@ -371,21 +371,21 @@ impl <
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
             }
             APIAddPod { pod } => {
-                debug_print!("{:.12} scheduler APIAddPod pod_uid:{:?}", self.ctx.time(), pod.metadata.uid);
+                dp_scheduler!("{:.12} scheduler APIAddPod pod_uid:{:?}", self.ctx.time(), pod.metadata.uid);
 
                 self.process_new_pod(pod);
                 self.self_update_on();
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
-                debug_print!("{:.12} scheduler APIAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);
+                dp_scheduler!("{:.12} scheduler APIAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);
 
                 self.monitoring.borrow_mut().scheduler_on_node_added(&node);
                 self.nodes.insert(node.metadata.uid, node.clone());
                 self.node_rtree.insert(node);
             }
             APISchedulerSelfUpdate { } => {
-                debug_print!("{:.12} scheduler APISchedulerSelfUpdate", self.ctx.time());
+                dp_scheduler!("{:.12} scheduler APISchedulerSelfUpdate", self.ctx.time());
 
                 self.schedule();
 
@@ -396,7 +396,7 @@ impl <
                 }
             }
             APISchedulerSecondChance { pod_uid } => {
-                debug_print!("{:.12} scheduler APISchedulerSecondChance pod_uid:{:?}", self.ctx.time(), pod_uid);
+                dp_scheduler!("{:.12} scheduler APISchedulerSecondChance pod_uid:{:?}", self.ctx.time(), pod_uid);
 
                 self.active_queue.push(ActiveQCmp::wrap(self.pending_pods.get(&pod_uid).unwrap().clone()));
             }

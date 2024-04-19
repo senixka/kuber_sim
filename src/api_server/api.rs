@@ -44,25 +44,25 @@ impl dsc::EventHandler for APIServer {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
-                debug_print!("{:.12} api_server APIUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod.metadata.uid, node_uid, new_phase);
+                dp_api_server!("{:.12} api_server APIUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod.metadata.uid, node_uid, new_phase);
 
                 self.pods.get_mut(&pod.metadata.uid).unwrap().status.phase = new_phase.clone();
                 self.ctx.emit(APIUpdatePodFromScheduler { pod, new_phase, node_uid }, self.kubelets[&node_uid], self.cluster_state.borrow().network_delays.api2kubelet);
             }
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid} => {
-                debug_print!("{:.12} api_server APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, node_uid, new_phase);
+                dp_api_server!("{:.12} api_server APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, node_uid, new_phase);
 
                 self.pods.get_mut(&pod_uid).unwrap().status.phase = new_phase.clone();
                 self.ctx.emit(APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
             APIAddPod { pod } => {
-                debug_print!("{:.12} api_server APIAddPod pod:{:?}", self.ctx.time(), pod);
+                dp_api_server!("{:.12} api_server APIAddPod pod:{:?}", self.ctx.time(), pod);
 
                 self.pods.insert(pod.metadata.uid, pod.clone());
                 self.ctx.emit(APIAddPod { pod }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
             APIAddNode { kubelet_sim_id, node } => {
-                debug_print!("{:.12} api_server APIAddNode node:{:?}", self.ctx.time(), node);
+                dp_api_server!("{:.12} api_server APIAddNode node:{:?}", self.ctx.time(), node);
 
                 self.kubelets.insert(node.metadata.uid, kubelet_sim_id);
                 self.ctx.emit(APIAddNode { kubelet_sim_id, node }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);

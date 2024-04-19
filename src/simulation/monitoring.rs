@@ -135,7 +135,7 @@ impl Monitoring {
         self.pending_pod.push(self.pending_pod_counter);
 
         print!(
-            "{:.3}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Pod finished: {:>9} / {:?}  Pending: {:?}\n",
+            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Pod finished: {:>9} / {:?}  Pending: {:?}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,

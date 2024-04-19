@@ -54,7 +54,7 @@ impl Kubelet {
         self.evict_order.insert((pod.status.qos_class, pod.spec.priority, pod.metadata.uid));
 
         if self.ctx.time() >= 65640.0 {
-            debug_print!("Start, Next change: {0}", next_change);
+            dp_kubelet!("Start, Next change: {0}", next_change);
         }
         self.ctx.emit_self(APIKubeletSelfNextChange { pod_uid }, next_change);
 
@@ -67,7 +67,7 @@ impl Kubelet {
         let (new_cpu, new_memory, next_change, is_finished) = load.update(self.ctx.time());
 
         if self.ctx.time() >= 65640.0 {
-            debug_print!("[{5}] Pod update: cpu {0} -> {1}, mem: {2} -> {3}, next_change: {4}", prev_cpu, new_cpu, prev_memory, new_memory, next_change, self.ctx.time());
+            dp_kubelet!("[{5}] Pod update: cpu {0} -> {1}, mem: {2} -> {3}, next_change: {4}", prev_cpu, new_cpu, prev_memory, new_memory, next_change, self.ctx.time());
         }
 
         // Restore previous resources
@@ -122,7 +122,7 @@ impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
-                debug_print!("{:.12} node:{:?} APIUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod.metadata.uid, new_phase);
+                dp_kubelet!("{:.12} node:{:?} APIUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod.metadata.uid, new_phase);
 
                 assert_eq!(node_uid, self.node.metadata.uid);
                 assert_eq!(new_phase, PodPhase::Running);
@@ -141,10 +141,10 @@ impl dsc::EventHandler for Kubelet {
                 }
             }
             APIKubeletSelfUpdate {} => {
-                debug_print!("{:.12} node:{:?} APIKubeletSelfUpdate", self.ctx.time(), self.node.metadata.uid);
+                dp_kubelet!("{:.12} node:{:?} APIKubeletSelfUpdate", self.ctx.time(), self.node.metadata.uid);
             }
             APIKubeletSelfNextChange { pod_uid } => {
-                debug_print!("{:.12} node:{:?} APIKubeletSelfNextChange pod_uid:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid);
+                dp_kubelet!("{:.12} node:{:?} APIKubeletSelfNextChange pod_uid:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid);
 
                 self.on_pod_next_change(pod_uid);
             }

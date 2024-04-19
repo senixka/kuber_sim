@@ -53,7 +53,7 @@ pub mod my_imports {
 
     pub use crate::kubelet::*;
     pub use crate::test::*;
-    pub use crate::debug_print;
+    pub use crate::*;
 }
 use my_imports::*;
 
@@ -71,7 +71,10 @@ fn main() {
 
     // WorkLoad::from_csv("./data/cluster_state/state.csv");
 
-    debug_print!("Debug print Enabled");
+    debug_print!("Enabled debug print all");
+    dp_api_server!("Enabled debug print api_server");
+    dp_scheduler!("Enabled debug print scheduler");
+    dp_kubelet!("Enabled debug print kubelet");
 
     Test::test_all();
 
