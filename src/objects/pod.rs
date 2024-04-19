@@ -20,6 +20,8 @@ pub struct PodSpec {
 
     #[serde(default)]
     pub node_selector: BTreeMap<String, String>,
+    #[serde(default)]
+    pub tolerations: BTreeMap<String, TolerationValue>,
 }
 
 impl Eq for PodSpec {}

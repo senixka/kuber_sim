@@ -14,7 +14,7 @@ constants:
 
 nodes:
   - node_group:
-    amount: 1
+    amount: 0
     node:
       metadata:
         labels:
@@ -33,3 +33,7 @@ nodes:
       spec:
         installed_cpu: 100
         installed_memory: 2048
+        taints:
+          bad_node:
+            value: test_1
+            effect: NoSchedule

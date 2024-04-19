@@ -10,6 +10,9 @@ pub struct NodeSpec {
     pub available_cpu: u64,
     #[serde(skip)]
     pub available_memory: u64,
+
+    #[serde(default)]
+    pub taints: BTreeMap<String, TaintValue>
 }
 
 

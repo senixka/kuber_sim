@@ -7,27 +7,27 @@ pub type ScorePluginT = fn(&HashMap<u64, Pod>,
                            &Pod,
                            &Node) -> i64;
 
-pub fn is_empty(_: &HashMap<u64, Pod>,
-                _: &HashMap<u64, Pod>,
-                _: &HashMap<u64, Node>,
-                _: &Pod,
-                node: &Node) -> i64 {
+pub fn score_is_empty(_: &HashMap<u64, Pod>,
+                      _: &HashMap<u64, Pod>,
+                      _: &HashMap<u64, Node>,
+                      _: &Pod,
+                      node: &Node) -> i64 {
     return (node.status.pods.len() == 0) as i64;
 }
 
-pub fn running_pods(_: &HashMap<u64, Pod>,
-                    _: &HashMap<u64, Pod>,
-                    _: &HashMap<u64, Node>,
-                    _: &Pod,
-                    node: &Node) -> i64 {
+pub fn score_running_pods(_: &HashMap<u64, Pod>,
+                          _: &HashMap<u64, Pod>,
+                          _: &HashMap<u64, Node>,
+                          _: &Pod,
+                          node: &Node) -> i64 {
     return node.status.pods.len() as i64;
 }
 
-pub fn tetris(_: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Node>,
-              pod: &Pod,
-              node: &Node) -> i64 {
+pub fn score_tetris(_: &HashMap<u64, Pod>,
+                    _: &HashMap<u64, Pod>,
+                    _: &HashMap<u64, Node>,
+                    pod: &Pod,
+                    node: &Node) -> i64 {
     let n_cpu = node.spec.available_cpu;
     let n_mem = node.spec.available_memory;
     let p_cpu = pod.spec.request_cpu;

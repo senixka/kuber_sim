@@ -1,6 +1,6 @@
 pods:
   - pod_group:
-    amount: 10
+    amount: 0
     pod:
       metadata:
         labels:
@@ -40,3 +40,8 @@ pods:
           shift_time: 2
         node_selector:
           product: false
+        tolerations:
+          bad_node:
+            value: test_1
+            operator: Equal
+            effect: Empty

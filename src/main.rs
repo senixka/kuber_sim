@@ -44,6 +44,7 @@ pub mod my_imports {
     pub use crate::scheduler::normalize_score::*;
     pub use crate::scheduler::scheduler::*;
     pub use crate::scheduler::score::*;
+    pub use crate::scheduler::taints_tolerations::*;
 
     pub use crate::simulation::workload::*;
     pub use crate::simulation::cluster_state::*;
