@@ -12,7 +12,7 @@ pub struct NodeSpec {
     pub available_memory: u64,
 
     #[serde(default)]
-    pub taints: BTreeMap<String, TaintValue>
+    pub taints: Vec<Taint>
 }
 
 

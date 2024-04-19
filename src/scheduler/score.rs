@@ -58,3 +58,36 @@ pub fn score_tetris(_: &HashMap<u64, Pod>,
         reversed as i64 * scale
     }
 }
+
+pub fn score_taints_and_tolerations(_: &HashMap<u64, Pod>,
+                                    _: &HashMap<u64, Pod>,
+                                    _: &HashMap<u64, Node>,
+                                    pod: &Pod,
+                                    node: &Node) -> i64 {
+    let (mut no_schedule, mut prefer_no_schedule) = (false, false);
+    for taint in &node.spec.taints {
+        let mut matches = false;
+        for tol in &pod.spec.tolerations {
+            matches |= taint.matches(tol);
+        }
+
+        if !matches {
+            match taint.effect {
+                TaintTolerationEffect::NoSchedule => {
+                    no_schedule = true;
+                }
+                TaintTolerationEffect::PreferNoSchedule => {
+                    prefer_no_schedule = true;
+                }
+            }
+        }
+    }
+
+    if no_schedule {
+        return -1;
+    }
+    if prefer_no_schedule {
+        return 0;
+    }
+    return 1;
+}

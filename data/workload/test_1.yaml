@@ -41,7 +41,7 @@ pods:
         node_selector:
           product: false
         tolerations:
-          bad_node:
-            value: test_1
+          - key: a
+            value: c
             operator: Equal
-            effect: Empty
+            effect: NoSchedule

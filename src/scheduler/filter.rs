@@ -66,29 +66,20 @@ pub fn filter_taints_tolerations(_: &HashMap<u64, Pod>,
                                  _: &HashMap<u64, Node>,
                                  pod: &Pod,
                                  node: &Node) -> bool {
-    let special = pod.spec.tolerations.get("all");
-    if special.is_some() && (special.unwrap().operator == TaintTolerationOperator::Exists) {
-        return true;
-    }
+    for taint in &node.spec.taints {
+        if taint.effect != TaintTolerationEffect::NoSchedule {
+            continue;
+        }
 
-    for (taint_key, taint_value) in &node.spec.taints {
-        let toleration = pod.spec.tolerations.get(taint_key);
-        match toleration {
-            Some(TolerationValue { value, operator, effect} ) => {
-                if taint_value.effect != TaintTolerationEffect::Empty
-                    && *effect != TaintTolerationEffect::Empty
-                    && taint_value.effect != *effect {
-                    return false;
-                }
-                if *operator == TaintTolerationOperator::Equal && taint_value.value != *value {
-                    return false;
-                }
-            }
-            None => {
-                return false;
-            }
+        // Hear only taints with NoSchedule
+        let mut matches = false;
+        for tol in &pod.spec.tolerations {
+            matches |= taint.matches(tol);
+        }
+
+        if !matches {
+            return false;
         }
     }
-
     return true;
 }
