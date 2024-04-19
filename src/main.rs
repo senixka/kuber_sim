@@ -13,7 +13,8 @@ pub mod my_imports {
 
     pub use std::ops::Neg;
     pub use std::fs;
-    pub use std::io::{stdin, BufRead, BufReader};
+    pub use std::fs::{File};
+    pub use std::io::{stdin, BufRead, BufReader, BufWriter};
     pub use serde::{Deserialize, Serialize};
     pub use rstar::{AABB, RTree, RTreeObject};
     pub use std::sync::atomic::{AtomicU64, Ordering};
@@ -82,6 +83,7 @@ fn main() {
         let mut test = Experiment::new(
             "./data/cluster_state/test_1.yaml",
             "./data/workload/test_1.yaml",
+            "./data/out/test_1.txt",
             179
         );
         test.run();
@@ -90,6 +92,7 @@ fn main() {
         let mut test = Experiment::new(
             "./data/cluster_state/state.yaml",
             "./data/workload/pods.yaml",
+            "./data/out/test_2.txt",
             179
         );
         test.run();
@@ -98,6 +101,7 @@ fn main() {
         let mut test = Experiment::new(
             "./data/cluster_state/state.yaml",
             "./data/workload/pods.csv",
+            "./data/out/test_3.txt",
             179
         );
         test.run();

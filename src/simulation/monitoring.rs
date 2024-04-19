@@ -1,3 +1,4 @@
+use std::io::Write;
 use super::super::my_imports::*;
 
 
@@ -17,8 +18,10 @@ pub struct Monitoring {
     kubelets_used_cpu: u64,
     kubelets_used_memory: u64,
 
-    // utilization_cpu_numerator: Vec<u64>,
-    // utilization_memory_numerator: Vec<u64>,
+    scheduler_utilization_cpu_numerator: Vec<u64>,
+    scheduler_utilization_memory_numerator: Vec<u64>,
+    kubelet_utilization_cpu_numerator: Vec<u64>,
+    kubelet_utilization_memory_numerator: Vec<u64>,
     // utilization_measurements_time: Vec<f64>,
 
     // pod_start_time: HashMap<u64, f64>,
@@ -27,7 +30,7 @@ pub struct Monitoring {
     // pod_unfinished_task_count: HashMap<u64, u64>,
     // pod_ideal_estimate_time: HashMap<u64, u64>,
 
-    // pending_pod: Vec<u64>,
+    pending_pod: Vec<usize>,
     // working_pod: Vec<u64>,
     
     n_pod_in_simulation: u64, // const
@@ -38,10 +41,12 @@ pub struct Monitoring {
 
     // max_pending_pod: u64,
     // max_running_pod: u64,
+
+    out_path: String,
 }
 
 impl Monitoring {
-    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, out_path: String) -> Self {
         Self {
             ctx,
             self_update_enabled: false,
@@ -50,6 +55,12 @@ impl Monitoring {
             scheduler_used_cpu: 0, scheduler_used_memory: 0,
             kubelets_used_cpu: 0, kubelets_used_memory: 0,
             n_pod_in_simulation: 0, finished_pod_counter: 0, pending_pod_counter: 0,
+            kubelet_utilization_cpu_numerator: Vec::new(),
+            kubelet_utilization_memory_numerator: Vec::new(),
+            scheduler_utilization_cpu_numerator: Vec::new(),
+            scheduler_utilization_memory_numerator: Vec::new(),
+            pending_pod: Vec::new(),
+            out_path,
         }
     }
 
@@ -111,13 +122,20 @@ impl Monitoring {
         if self.finished_pod_counter == self.n_pod_in_simulation {
             self.self_update_enabled = false;
             self.makespan_time = self.ctx.time();
+            self.dump_statistics();
         }
-        // println!("{:?} Finished pod", self.ctx.time());
     }
 
-    pub fn print_statistics(&self) {
+    pub fn print_statistics(&mut self) {
+        self.kubelet_utilization_cpu_numerator.push(self.kubelets_used_cpu);
+        self.kubelet_utilization_memory_numerator.push(self.kubelets_used_memory);
+        self.scheduler_utilization_cpu_numerator.push(self.scheduler_used_cpu);
+        self.scheduler_utilization_memory_numerator.push(self.scheduler_used_memory);
+
+        self.pending_pod.push(self.pending_pod_counter);
+
         print!(
-            "{:12.1}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Pod finished: {:>9} / {:?}  Pending: {:?}\n",
+            "{:.3}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Pod finished: {:>9} / {:?}  Pending: {:?}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
@@ -125,8 +143,21 @@ impl Monitoring {
             (self.scheduler_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
             self.finished_pod_counter, self.n_pod_in_simulation, self.pending_pod_counter,
         );
-        // print!("  Job submitted: %lu / %lu  Task finished: %lu / %lu", jobSubmittedCounter_, nJobInSimulation_, taskFinishedCounter_, nTaskInSimulation_);
-        // print!("  Task working: %lu  Task pending: %lu  Current Job: %lu\n", currentWorkingTaskCounter_, currentPendingTaskCounter_, currentUnfinishedJobCounter_);
+    }
+
+    pub fn dump_statistics(&self) {
+        let file = File::create(self.out_path.clone()).unwrap();
+        file.set_len(0).unwrap();
+        let mut fout = BufWriter::new(file);
+
+        for i in 0..self.kubelet_utilization_cpu_numerator.len() {
+            write!(fout, "{:?} {:?} {:?} {:?} {:?}\n",
+                   self.kubelet_utilization_cpu_numerator[i],
+                   self.kubelet_utilization_memory_numerator[i],
+                   self.scheduler_utilization_cpu_numerator[i],
+                   self.scheduler_utilization_memory_numerator[i],
+                   self.pending_pod[i]).unwrap();
+        }
     }
 }
 

@@ -23,7 +23,7 @@ pub struct Experiment {
 
 
 impl Experiment {
-    pub fn new(cluster_state_file_path: &str, workload_file_path: &str, seed: u64) -> Self {
+    pub fn new(cluster_state_file_path: &str, workload_file_path: &str, out_path: &str, seed: u64) -> Self {
         // Create components
         let cluster_state = Rc::new(RefCell::new(ClusterState::from_yaml(cluster_state_file_path)));
 
@@ -33,7 +33,7 @@ impl Experiment {
 
         let monitoring = Rc::new(RefCell::new(
             Monitoring::new(
-                sim.create_context("monitoring"), cluster_state.clone()
+                sim.create_context("monitoring"), cluster_state.clone(), out_path.to_string(),
             )
         ));
         let _ = sim.add_handler("monitoring", monitoring.clone());
