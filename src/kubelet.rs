@@ -126,6 +126,8 @@ impl Kubelet {
         self.ctx.cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
 
         self.is_turned_on = false;
+
+        self.ctx.emit(APICommitCANodeRemove { node_uid: self.node.metadata.uid }, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
     }
 
     pub fn turn_on(&mut self) {

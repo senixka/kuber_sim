@@ -172,7 +172,11 @@ impl Monitoring {
             self.makespan_time = self.ctx.time();
             self.dump_statistics();
 
-            self.ctx.emit_now(APICATurnOff {}, self.ca_sim_id);
+            // TODO: add config after sim delay
+            self.ctx.emit(APICATurnOff {}, self.ca_sim_id, 100.0);
+            for i in 1..11 {
+                self.ctx.emit_self(APIMonitoringSelfUpdate {}, i as f64 * 10.0);
+            }
         }
     }
 

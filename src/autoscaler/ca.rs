@@ -5,7 +5,7 @@ pub struct CA {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
     api_sim_id: dsc::Id,
-    monitoring: Rc<RefCell<Monitoring>>,
+    // monitoring: Rc<RefCell<Monitoring>>,
 
     is_turned_on: bool,
 
@@ -25,7 +25,7 @@ impl CA {
             ctx,
             cluster_state: cluster_state.clone(),
             api_sim_id,
-            monitoring: monitoring.clone(),
+            // monitoring: monitoring.clone(),
             is_turned_on: false,
             kubelet_pool: Vec::new(),
             free_nodes: BTreeMap::new(),
@@ -71,7 +71,19 @@ impl CA {
         }
     }
 
-    pub fn process_metrics(&mut self, insufficient_resources_pending: u64, requests: &Vec<(u64, u64)>) {
+    pub fn process_metrics(&mut self, insufficient_resources_pending: u64, requests: &Vec<(u64, u64)>, node_info: &Vec<(u64, f64, f64)>) {
+        // TODO: config used limit
+        // Clear not loaded nodes
+        for (node_uid, ref cpu, ref memory) in node_info {
+            // TODO: count how long this is true
+            if *cpu <= 20.0 && *memory <= 20.0 {
+                if self.used_nodes.contains_key(&node_uid) {
+                    dp_ca!("{:.12} ca Issues APIRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
+                    self.ctx.emit(APIRemoveNode { node_uid: *node_uid }, self.api_sim_id, self.cluster_state.borrow().network_delays.ca2api);
+                }
+            }
+        }
+
         // TODO: config consts
         if insufficient_resources_pending == 0 {
             return;
@@ -123,7 +135,8 @@ impl CA {
                 self.ctx.emit(
                     APIAddNode { kubelet_sim_id, node },
                     self.api_sim_id,
-                    self.cluster_state.borrow().network_delays.ca2api + self.cluster_state.borrow().constants.ca_add_node_delay);
+                    self.cluster_state.borrow().network_delays.ca2api + self.cluster_state.borrow().constants.ca_add_node_delay
+                );
             }
             None => {}
         }
@@ -150,13 +163,20 @@ impl dsc::EventHandler for CA {
                     panic!("Bad logic. Self update should be canceled.");
                 }
 
-                self.ctx.emit(APIGetCAMetrics {}, self.api_sim_id, self.cluster_state.borrow().network_delays.ca2api);
+                self.ctx.emit(APIGetCAMetrics { node_list: self.used_nodes.keys().map(|x| *x).collect() }, self.api_sim_id, self.cluster_state.borrow().network_delays.ca2api);
                 self.ctx.emit_self(APICASelfUpdate {}, self.cluster_state.borrow().constants.ca_self_update_period);
             }
-            APIPostCAMetrics { insufficient_resources_pending, requests } => {
-                dp_ca!("{:.12} ca APIPostCAMetrics insufficient_resources_pending:{:?} requests:{:?}", self.ctx.time(), insufficient_resources_pending, requests);
+            APIPostCAMetrics { insufficient_resources_pending, requests, node_info } => {
+                dp_ca!("{:.12} ca APIPostCAMetrics insufficient_resources_pending:{:?} requests:{:?} node_info:{:?}", self.ctx.time(), insufficient_resources_pending, requests, node_info);
 
-                self.process_metrics(insufficient_resources_pending, &requests);
+                self.process_metrics(insufficient_resources_pending, &requests, &node_info);
+            }
+            APICommitCANodeRemove { node_uid } => {
+                dp_ca!("{:.12} ca APICommitCANodeRemove node_uid:{:?}", self.ctx.time(), node_uid);
+
+                let (kubelet_sim_id, kubelet, group_uid) = self.used_nodes.remove(&node_uid).unwrap();
+                self.kubelet_pool.push((kubelet_sim_id, kubelet));
+                self.free_nodes.get_mut(&group_uid).unwrap().amount += 1;
             }
         });
     }

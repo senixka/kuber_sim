@@ -72,6 +72,7 @@ fn main() {
     // println!("HashMap: {0}", size_of::<HashMap<String, String>>());
     // println!("Vec: {0}", size_of::<Vec<(String, String)>>());
     // println!("List: {0}", size_of::<LinkedList<(String, String)>>());
+    // println!("Some: {0}", std::mem::size_of::<u64>());
 
     // WorkLoad::from_csv("./data/cluster_state/state.csv");
 

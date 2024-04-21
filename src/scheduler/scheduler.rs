@@ -347,10 +347,9 @@ impl <
         self.failed_attempts.remove(&pod_uid);
     }
 
-    pub fn send_ca_metrics(&mut self) {
+    pub fn send_ca_metrics(&mut self, node_list: &Vec<u64>) {
         let mut pending = 0;
         let mut requests: Vec<(u64, u64)> = Vec::new();
-
         for (_, pod) in &self.pending_pods {
             if pod.status.cluster_resource_starvation {
                 pending += 1;
@@ -358,10 +357,23 @@ impl <
             }
         }
 
+        let mut node_info: Vec<(u64, f64, f64)> = Vec::new();
+        for node_uid in node_list {
+            let node = self.nodes.get(node_uid);
+            if node.is_some() {
+                let spec = node.unwrap().spec.clone();
+                let cpu: f64 = ((spec.installed_cpu - spec.available_cpu) as f64 * 100.0) / (spec.installed_cpu as f64);
+                let memory: f64 = ((spec.installed_memory - spec.available_memory) as f64 * 100.0) / (spec.installed_memory as f64);
+
+                node_info.push((*node_uid, cpu, memory));
+            }
+        }
+
         self.ctx.emit(
             APIPostCAMetrics {
                 insufficient_resources_pending: pending,
-                requests: requests,
+                requests,
+                node_info,
             }, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api
         );
     }
@@ -444,10 +456,10 @@ impl <
 
                 self.active_queue.push(ActiveQCmp::wrap(self.pending_pods.get(&pod_uid).unwrap().clone()));
             }
-            APIGetCAMetrics {} => {
+            APIGetCAMetrics { node_list } => {
                 dp_scheduler!("{:.12} scheduler APIGetCAMetrics", self.ctx.time());
 
-                self.send_ca_metrics();
+                self.send_ca_metrics(&node_list);
             }
         });
     }

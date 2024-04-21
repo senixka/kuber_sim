@@ -85,11 +85,14 @@ pub struct APISchedulerSecondChance {
 pub struct APIPostCAMetrics {
     pub insufficient_resources_pending: u64,
     pub requests: Vec<(u64, u64)>,
+    pub node_info: Vec<(u64, f64, f64)>,
 }
 
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIGetCAMetrics {}
+pub struct APIGetCAMetrics {
+    pub node_list: Vec<u64>,
+}
 
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -102,5 +105,11 @@ pub struct APICATurnOn {}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APICATurnOff {}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APICommitCANodeRemove {
+    pub node_uid: u64,
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

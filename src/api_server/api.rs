@@ -56,6 +56,7 @@ impl dsc::EventHandler for APIServer {
                     }
                     None => {
                         self.ctx.emit(APIUpdatePodFromKubelet { pod_uid: pod.metadata.uid, new_phase: PodPhase::Pending, node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+                        dp_api_server!("{:.12} api_server INNER APIUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?} NOT IN ROUTE", self.ctx.time(), pod.metadata.uid, node_uid, new_phase);
                     }
                 }
             }
@@ -78,21 +79,27 @@ impl dsc::EventHandler for APIServer {
             APIRemoveNode { node_uid } => {
                 dp_api_server!("{:.12} api_server APIRemoveNode node:{:?}", self.ctx.time(), node_uid);
 
-                let kubelet_sim_id = self.kubelets.remove(&node_uid).unwrap();
-                self.ctx.emit(APIRemoveNode { node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
-                self.ctx.emit(APIRemoveNode { node_uid }, kubelet_sim_id, self.cluster_state.borrow().network_delays.api2kubelet);
+                match self.kubelets.remove(&node_uid) {
+                    Some(kubelet_sim_id) => {
+                        self.ctx.emit(APIRemoveNode { node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+                        self.ctx.emit(APIRemoveNode { node_uid }, kubelet_sim_id, self.cluster_state.borrow().network_delays.api2kubelet);
+                    }
+                    None => {
+                        dp_api_server!("{:.12} api_server INNER APIRemoveNode node:{:?} NOT IN ROUTE", self.ctx.time(), node_uid);
+                    }
+                }
             }
-            APIPostCAMetrics { insufficient_resources_pending, requests } => {
+            APIPostCAMetrics { insufficient_resources_pending, requests, node_info } => {
                 dp_api_server!("{:.12} api_server APIPostCAMetrics insufficient_resources_pending:{:?} requests:{:?}", self.ctx.time(), insufficient_resources_pending, requests);
 
                 self.ctx.emit(
-                    APIPostCAMetrics { insufficient_resources_pending, requests },
+                    APIPostCAMetrics { insufficient_resources_pending, requests, node_info },
                     self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca
                 );
             }
-            APIGetCAMetrics {} => {
+            APIGetCAMetrics { node_list } => {
                 dp_api_server!("{:.12} api_server APIGetCAMetrics", self.ctx.time());
-                self.ctx.emit(APIGetCAMetrics {}, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+                self.ctx.emit(APIGetCAMetrics { node_list }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
         });
     }

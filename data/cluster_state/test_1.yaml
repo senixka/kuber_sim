@@ -12,7 +12,7 @@ constants:
   monitoring_self_update_period: 1
   scheduler_cycle_max_scheduled: 0
   scheduler_cycle_max_to_try: 0
-  unschedulable_queue_period: 30
+  unschedulable_queue_period: 5
   ca_self_update_period: 5
   ca_add_node_delay: 1
 
@@ -44,7 +44,7 @@ nodes:
         installed_cpu: 100
         installed_memory: 2048
   - node_group:
-    amount: 1
+    amount: 0
     node:
       metadata:
         labels:
