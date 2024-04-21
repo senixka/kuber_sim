@@ -5,8 +5,9 @@ pub struct APIServer {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
     scheduler_sim_id: dsc::Id,
+    ca_sim_id: dsc::Id,
 
-    subscriptions: HashMap<APIServerEvent, Vec<dsc::Id>>,
+    // subscriptions: HashMap<APIServerEvent, Vec<dsc::Id>>,
 
     // ############## ETCD ##############
     // pods: HashMap<u64, Pod>, // Pod uid -> Pod
@@ -20,23 +21,25 @@ impl APIServer {
             ctx,
             cluster_state,
             scheduler_sim_id: dsc::Id::MAX,
-            subscriptions: HashMap::new(),
+            ca_sim_id: dsc::Id::MAX,
+            // subscriptions: HashMap::new(),
             // pods: HashMap::new(),
             kubelets: HashMap::new(),
         }
     }
 
-    pub fn presimulation_init(&mut self, scheduler_sim_id: dsc::Id) {
+    pub fn presimulation_init(&mut self, scheduler_sim_id: dsc::Id, ca_sim_id: dsc::Id) {
         self.scheduler_sim_id = scheduler_sim_id;
+        self.ca_sim_id = ca_sim_id;
     }
 
     pub fn presimulation_check(&self) {
         assert_ne!(self.scheduler_sim_id, dsc::Id::MAX);
     }
 
-    pub fn subscribe(&mut self, event: APIServerEvent, sim_id: dsc::Id) {
-        self.subscriptions.entry(event).or_default().push(sim_id);
-    }
+    // pub fn subscribe(&mut self, event: APIServerEvent, sim_id: dsc::Id) {
+    //     self.subscriptions.entry(event).or_default().push(sim_id);
+    // }
 }
 
 
@@ -78,6 +81,18 @@ impl dsc::EventHandler for APIServer {
                 let kubelet_sim_id = self.kubelets.remove(&node_uid).unwrap();
                 self.ctx.emit(APIRemoveNode { node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
                 self.ctx.emit(APIRemoveNode { node_uid }, kubelet_sim_id, self.cluster_state.borrow().network_delays.api2kubelet);
+            }
+            APIPostCAMetrics { insufficient_resources_pending, max_insufficient_resources_request } => {
+                dp_api_server!("{:.12} api_server APIPostCAMetrics insufficient_resources_pending:{:?} max_insufficient_resources_request:{:?}", self.ctx.time(), insufficient_resources_pending, max_insufficient_resources_request);
+
+                self.ctx.emit(
+                    APIPostCAMetrics { insufficient_resources_pending, max_insufficient_resources_request },
+                    self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca
+                );
+            }
+            APIGetCAMetrics {} => {
+                dp_api_server!("{:.12} api_server APIGetCAMetrics", self.ctx.time());
+                self.ctx.emit(APIGetCAMetrics {}, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
         });
     }

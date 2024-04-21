@@ -120,6 +120,8 @@ impl <
 
             // Query all suitable nodes
             self.node_rtree.find_suitable_nodes(cpu, memory, &mut possible_nodes);
+            pod.status.cluster_resource_starvation = possible_nodes.is_empty();
+            self.pending_pods.get_mut(&pod_uid).unwrap().status.cluster_resource_starvation = possible_nodes.is_empty();
 
             // Prepare node description
             is_schedulable.clear();
@@ -165,6 +167,7 @@ impl <
                 }
             }
 
+            // If PostFilter does not help
             if suitable_count == 0 {
                 let attempts = self.failed_attempts.entry(pod_uid).or_default();
 
@@ -301,6 +304,7 @@ impl <
         assert_eq!(self.running_pods.contains_key(&pod_uid), false);
         assert_eq!(self.pending_pods.contains_key(&pod_uid), false);
         assert_eq!(pod.status.phase, PodPhase::Pending);
+        assert_eq!(pod.status.cluster_resource_starvation, false);
 
         self.pending_pods.insert(pod_uid, pod.clone());
         self.active_queue.push(ActiveQCmp::wrap(pod));
@@ -339,6 +343,26 @@ impl <
 
         // Remove pod's failed attempts
         self.failed_attempts.remove(&pod_uid);
+    }
+
+    pub fn send_ca_metrics(&mut self) {
+        let mut pending = 0;
+        let mut max_request = (0, 0);
+
+        for (_, pod) in &self.pending_pods {
+            if pod.status.cluster_resource_starvation{
+                pending += 1;
+                max_request.0 = max_request.0.max(pod.spec.request_cpu);
+                max_request.1 = max_request.1.max(pod.spec.request_memory);
+            }
+        }
+
+        self.ctx.emit(
+            APIPostCAMetrics {
+                insufficient_resources_pending: pending,
+                max_insufficient_resources_request: max_request,
+            }, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api
+        );
     }
 }
 
@@ -418,6 +442,11 @@ impl <
                 dp_scheduler!("{:.12} scheduler APISchedulerSecondChance pod_uid:{:?}", self.ctx.time(), pod_uid);
 
                 self.active_queue.push(ActiveQCmp::wrap(self.pending_pods.get(&pod_uid).unwrap().clone()));
+            }
+            APIGetCAMetrics {} => {
+                dp_scheduler!("{:.12} scheduler APIGetCAMetrics", self.ctx.time());
+
+                self.send_ca_metrics();
             }
         });
     }

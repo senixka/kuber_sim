@@ -66,17 +66,30 @@ impl Experiment {
             )
         ));
 
+        let ca = Rc::new(RefCell::new(
+            CA::new(
+                sim.create_context("ca"),
+                cluster_state.clone(),
+                monitoring.clone(),
+                api_id,
+            )
+        ));
+        let ca_id = sim.add_handler("ca", ca.clone());
+
         // Init components
-        api.borrow_mut().presimulation_init(scheduler_id);
+        api.borrow_mut().presimulation_init(scheduler_id, ca_id);
         scheduler.borrow_mut().presimulation_init(api_id);
         init.borrow_mut().presimulation_init(api_id);
-        monitoring.borrow_mut().presimulation_init();
+        monitoring.borrow_mut().presimulation_init(ca_id);
 
         // Final check
         api.borrow().presimulation_check();
         scheduler.borrow().presimulation_check();
         init.borrow().presimulation_check();
         monitoring.borrow_mut().presimulation_check();
+
+        // Start CA
+        ca.borrow_mut().turn_on();
 
         Self {
             // cluster_state_file_path: cluster_state_file_path.to_string(),

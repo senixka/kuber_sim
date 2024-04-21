@@ -6,6 +6,7 @@ pub struct Monitoring {
     pub ctx: dsc::SimulationContext,
     pub self_update_enabled: bool,
     pub cluster_state: Rc<RefCell<ClusterState>>,
+    pub ca_sim_id: dsc::Id,
 
     makespan_time: f64,
 
@@ -64,10 +65,13 @@ impl Monitoring {
             scheduler_utilization_memory_numerator: Vec::new(),
             pending_pod: Vec::new(),
             out_path,
+            ca_sim_id: dsc::Id::MAX,
         }
     }
 
-    pub fn presimulation_init(&mut self) {
+    pub fn presimulation_init(&mut self, ca_sim_id: dsc::Id) {
+        self.ca_sim_id = ca_sim_id;
+
         if !self.self_update_enabled {
             self.self_update_enabled = true;
             self.ctx.emit_self(APIMonitoringSelfUpdate {}, self.cluster_state.borrow().constants.monitoring_self_update_period);
@@ -160,6 +164,8 @@ impl Monitoring {
             self.self_update_enabled = false;
             self.makespan_time = self.ctx.time();
             self.dump_statistics();
+
+            self.ctx.emit_now(APICATurnOff {}, self.ca_sim_id);
         }
     }
 

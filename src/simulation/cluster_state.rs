@@ -7,6 +7,8 @@ pub struct NetworkDelays {
     pub scheduler2api: f64,
     pub api2kubelet: f64,
     pub kubelet2api: f64,
+    pub api2ca: f64,
+    pub ca2api: f64,
 }
 
 
@@ -18,6 +20,8 @@ pub struct Constants {
     pub scheduler_cycle_max_scheduled: u64,
     pub scheduler_cycle_max_to_try: u64,
     pub unschedulable_queue_period: f64,
+    pub ca_self_update_period: f64,
+    pub ca_add_node_delay: f64,
 }
 
 

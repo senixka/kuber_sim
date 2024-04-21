@@ -3,6 +3,8 @@ network_delays:
   scheduler2api: 0
   api2kubelet: 0
   kubelet2api: 0
+  api2ca: 0
+  ca2api: 0
 
 constants:
   kubelet_self_update_period: 100000
@@ -11,6 +13,8 @@ constants:
   scheduler_cycle_max_scheduled: 0
   scheduler_cycle_max_to_try: 0
   unschedulable_queue_period: 60
+  ca_self_update_period: 5
+  ca_add_node_delay: 1
 
 nodes:
   - node_group:

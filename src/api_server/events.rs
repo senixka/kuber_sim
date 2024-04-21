@@ -77,3 +77,30 @@ pub struct APIKubeletSelfNextChange {
 pub struct APISchedulerSecondChance {
     pub pod_uid: u64,
 }
+
+
+///////////////////////////////////////// CA ///////////////////////////////////////////////////////
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIPostCAMetrics {
+    pub insufficient_resources_pending: u64,
+    pub max_insufficient_resources_request: (u64, u64),
+}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIGetCAMetrics {}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APICASelfUpdate {}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APICATurnOn {}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APICATurnOff {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////

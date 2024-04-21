@@ -60,6 +60,9 @@ pub struct PodStatus {
 
     #[serde(skip)]
     pub qos_class: QoSClass,
+
+    #[serde(skip)]
+    pub cluster_resource_starvation: bool,
 }
 
 
