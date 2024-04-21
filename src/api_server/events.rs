@@ -84,7 +84,7 @@ pub struct APISchedulerSecondChance {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct APIPostCAMetrics {
     pub insufficient_resources_pending: u64,
-    pub max_insufficient_resources_request: (u64, u64),
+    pub requests: Vec<(u64, u64)>,
 }
 
 

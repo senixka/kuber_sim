@@ -63,6 +63,7 @@ impl Init {
                     self.monitoring.clone(),
                 )));
                 kubelet.borrow_mut().presimulation_init(self.api_sim_id);
+                kubelet.borrow_mut().turn_on();
 
                 let kubelet_id = sim.add_handler(name, kubelet.clone());
                 self.ctx.emit_now(APIAddNode{ kubelet_sim_id: kubelet_id, node: node.clone(), }, self.api_sim_id);

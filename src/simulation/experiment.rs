@@ -72,7 +72,7 @@ impl Experiment {
                 cluster_state.clone(),
                 monitoring.clone(),
                 api_id,
-            )
+                &mut sim)
         ));
         let ca_id = sim.add_handler("ca", ca.clone());
 

@@ -12,7 +12,7 @@ pub struct Kubelet {
     pub evict_order: BTreeSet<(QoSClass, i64, u64)>, // TODO: use it correctly
     pub running_loads: BTreeMap<u64, (u64, u64, LoadType)>,
 
-    pub is_turned_off: bool,
+    pub is_turned_on: bool,
 }
 
 impl Kubelet {
@@ -26,7 +26,7 @@ impl Kubelet {
             pods: HashMap::new(),
             evict_order: BTreeSet::new(),
             running_loads: BTreeMap::new(),
-            is_turned_off: false,
+            is_turned_on: false,
         }
     }
 
@@ -125,7 +125,20 @@ impl Kubelet {
         self.running_loads.clear();
         self.ctx.cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
 
-        self.is_turned_off = true;
+        self.is_turned_on = false;
+    }
+
+    pub fn turn_on(&mut self) {
+        self.is_turned_on = true;
+    }
+
+    pub fn set_node(&mut self, node: &Node) {
+        assert_eq!(self.is_turned_on, false);
+        assert!(self.pods.is_empty());
+        assert!(self.running_loads.is_empty());
+        assert!(self.evict_order.is_empty());
+
+        self.node = node.clone();
     }
 }
 
@@ -135,7 +148,7 @@ impl dsc::EventHandler for Kubelet {
             APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
                 dp_kubelet!("{:.12} node:{:?} APIUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod.metadata.uid, new_phase);
 
-                if self.is_turned_off {
+                if !self.is_turned_on {
                     panic!("Logic error. API-Server should stop routing if kubelet turned off.");
                 }
 
@@ -158,7 +171,7 @@ impl dsc::EventHandler for Kubelet {
             APIKubeletSelfNextChange { pod_uid } => {
                 dp_kubelet!("{:.12} node:{:?} APIKubeletSelfNextChange pod_uid:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid);
 
-                if self.is_turned_off {
+                if !self.is_turned_on {
                     panic!("Logic error. All self-events should be canceled.");
                 }
 

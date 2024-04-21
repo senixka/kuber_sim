@@ -82,11 +82,11 @@ impl dsc::EventHandler for APIServer {
                 self.ctx.emit(APIRemoveNode { node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
                 self.ctx.emit(APIRemoveNode { node_uid }, kubelet_sim_id, self.cluster_state.borrow().network_delays.api2kubelet);
             }
-            APIPostCAMetrics { insufficient_resources_pending, max_insufficient_resources_request } => {
-                dp_api_server!("{:.12} api_server APIPostCAMetrics insufficient_resources_pending:{:?} max_insufficient_resources_request:{:?}", self.ctx.time(), insufficient_resources_pending, max_insufficient_resources_request);
+            APIPostCAMetrics { insufficient_resources_pending, requests } => {
+                dp_api_server!("{:.12} api_server APIPostCAMetrics insufficient_resources_pending:{:?} requests:{:?}", self.ctx.time(), insufficient_resources_pending, requests);
 
                 self.ctx.emit(
-                    APIPostCAMetrics { insufficient_resources_pending, max_insufficient_resources_request },
+                    APIPostCAMetrics { insufficient_resources_pending, requests },
                     self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca
                 );
             }

@@ -29,6 +29,7 @@ pub struct Constants {
 pub struct ClusterState {
     pub network_delays: NetworkDelays,
     pub nodes: Vec<NodeGroup>,
+    pub ca_nodes: Vec<NodeGroup>,
     pub constants: Constants,
 }
 
@@ -39,6 +40,10 @@ impl ClusterState {
         let mut cluster_state: ClusterState = serde_yaml::from_str(s.as_str()).unwrap();
 
         for node_group in &mut cluster_state.nodes {
+            node_group.prepare();
+        }
+
+        for node_group in &mut cluster_state.ca_nodes {
             node_group.prepare();
         }
 

@@ -105,6 +105,8 @@ impl <
             self.cluster_state.borrow().constants.scheduler_cycle_max_to_try,
         );
 
+        dp_scheduler!("{:.12} scheduler cycle activeQ:{:?}", self.ctx.time(), self.active_queue.len());
+
         // Main scheduling cycle
         while let Some(wrapper) = self.active_queue.pop() {
             if scheduled_left == 0 || try_schedule_left == 0 {
@@ -347,20 +349,19 @@ impl <
 
     pub fn send_ca_metrics(&mut self) {
         let mut pending = 0;
-        let mut max_request = (0, 0);
+        let mut requests: Vec<(u64, u64)> = Vec::new();
 
         for (_, pod) in &self.pending_pods {
-            if pod.status.cluster_resource_starvation{
+            if pod.status.cluster_resource_starvation {
                 pending += 1;
-                max_request.0 = max_request.0.max(pod.spec.request_cpu);
-                max_request.1 = max_request.1.max(pod.spec.request_memory);
+                requests.push((pod.spec.request_cpu, pod.spec.request_memory));
             }
         }
 
         self.ctx.emit(
             APIPostCAMetrics {
                 insufficient_resources_pending: pending,
-                max_insufficient_resources_request: max_request,
+                requests: requests,
             }, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api
         );
     }
