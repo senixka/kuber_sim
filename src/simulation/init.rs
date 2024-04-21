@@ -55,7 +55,6 @@ impl Init {
                 node.prepare();
 
                 let name = "kubelet_".to_owned() + &*node.metadata.uid.to_string();
-                // println!("{0}", name);
 
                 let kubelet = Rc::new(RefCell::new(Kubelet::new(
                     sim.create_context(name.clone()),

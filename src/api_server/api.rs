@@ -9,7 +9,7 @@ pub struct APIServer {
     subscriptions: HashMap<APIServerEvent, Vec<dsc::Id>>,
 
     // ############## ETCD ##############
-    pods: HashMap<u64, Pod>, // Pod uid -> Pod
+    // pods: HashMap<u64, Pod>, // Pod uid -> Pod
     kubelets: HashMap<u64, dsc::Id>, // Node uid -> Kubelet uid
 }
 
@@ -21,7 +21,7 @@ impl APIServer {
             cluster_state,
             scheduler_sim_id: dsc::Id::MAX,
             subscriptions: HashMap::new(),
-            pods: HashMap::new(),
+            // pods: HashMap::new(),
             kubelets: HashMap::new(),
         }
     }
@@ -46,19 +46,24 @@ impl dsc::EventHandler for APIServer {
             APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
                 dp_api_server!("{:.12} api_server APIUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod.metadata.uid, node_uid, new_phase);
 
-                self.pods.get_mut(&pod.metadata.uid).unwrap().status.phase = new_phase.clone();
-                self.ctx.emit(APIUpdatePodFromScheduler { pod, new_phase, node_uid }, self.kubelets[&node_uid], self.cluster_state.borrow().network_delays.api2kubelet);
+                let to = self.kubelets.get(&node_uid);
+                match to {
+                    Some(kubelet_id) => {
+                        self.ctx.emit(APIUpdatePodFromScheduler { pod, new_phase, node_uid }, *kubelet_id, self.cluster_state.borrow().network_delays.api2kubelet);
+                    }
+                    None => {
+                        self.ctx.emit(APIUpdatePodFromKubelet { pod_uid: pod.metadata.uid, new_phase: PodPhase::Pending, node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+                    }
+                }
             }
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid} => {
                 dp_api_server!("{:.12} api_server APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, node_uid, new_phase);
 
-                self.pods.get_mut(&pod_uid).unwrap().status.phase = new_phase.clone();
                 self.ctx.emit(APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
             APIAddPod { pod } => {
                 dp_api_server!("{:.12} api_server APIAddPod pod:{:?}", self.ctx.time(), pod);
 
-                self.pods.insert(pod.metadata.uid, pod.clone());
                 self.ctx.emit(APIAddPod { pod }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
             APIAddNode { kubelet_sim_id, node } => {
@@ -66,6 +71,13 @@ impl dsc::EventHandler for APIServer {
 
                 self.kubelets.insert(node.metadata.uid, kubelet_sim_id);
                 self.ctx.emit(APIAddNode { kubelet_sim_id, node }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+            }
+            APIRemoveNode { node_uid } => {
+                dp_api_server!("{:.12} api_server APIRemoveNode node:{:?}", self.ctx.time(), node_uid);
+
+                let kubelet_sim_id = self.kubelets.remove(&node_uid).unwrap();
+                self.ctx.emit(APIRemoveNode { node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+                self.ctx.emit(APIRemoveNode { node_uid }, kubelet_sim_id, self.cluster_state.borrow().network_delays.api2kubelet);
             }
         });
     }

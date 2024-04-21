@@ -6,6 +6,7 @@ mod api_server;
 mod simulation;
 mod test;
 mod my_macro;
+mod autoscaler;
 
 pub mod my_imports {
     pub use std::rc::Rc;
@@ -26,6 +27,8 @@ pub mod my_imports {
 
     pub use crate::api_server::api::*;
     pub use crate::api_server::events::*;
+
+    pub use crate::autoscaler::ca::*;
 
     pub use crate::load_types::types::*;
     pub use crate::load_types::constant::*;
@@ -82,6 +85,16 @@ fn main() {
     let mut value = String::new();
     stdin().read_line(&mut value).unwrap();
     value = value.trim().to_string();
+
+    if value == "evict" {
+        let mut test = Experiment::new(
+            "./data/cluster_state/test_evict.yaml",
+            "./data/workload/test_evict.yaml",
+            "./data/out/test_evict.txt",
+            179
+        );
+        test.run();
+    }
 
     if value == "1" {
         let mut test = Experiment::new(

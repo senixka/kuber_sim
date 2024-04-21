@@ -52,15 +52,6 @@ pub fn filter_requested_resources_available(_: &HashMap<u64, Pod>,
     return node.is_consumable(pod.spec.request_cpu, pod.spec.request_memory);
 }
 
-pub fn filter_node_affinity(_: &HashMap<u64, Pod>,
-                            _: &HashMap<u64, Pod>,
-                            _: &HashMap<u64, Node>,
-                            _: &Pod,
-                            _: &Node) -> bool {
-    // TODO: impl it
-    panic!("Node affinity");
-}
-
 pub fn filter_taints_tolerations(_: &HashMap<u64, Pod>,
                                  _: &HashMap<u64, Pod>,
                                  _: &HashMap<u64, Node>,

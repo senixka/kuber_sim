@@ -9,9 +9,10 @@ pub struct Kubelet {
     monitoring: Rc<RefCell<Monitoring>>,
 
     pub pods: HashMap<u64, Pod>,
-    pub evict_order: BTreeSet<(QoSClass, i64, u64)>,
+    pub evict_order: BTreeSet<(QoSClass, i64, u64)>, // TODO: use it correctly
     pub running_loads: BTreeMap<u64, (u64, u64, LoadType)>,
-    pub self_update_enabled: bool,
+
+    pub is_turned_off: bool,
 }
 
 impl Kubelet {
@@ -25,7 +26,7 @@ impl Kubelet {
             pods: HashMap::new(),
             evict_order: BTreeSet::new(),
             running_loads: BTreeMap::new(),
-            self_update_enabled: false,
+            is_turned_off: false,
         }
     }
 
@@ -53,22 +54,14 @@ impl Kubelet {
         self.running_loads.insert(pod_uid, (cpu, memory, load));
         self.evict_order.insert((pod.status.qos_class, pod.spec.priority, pod.metadata.uid));
 
-        if self.ctx.time() >= 65640.0 {
-            dp_kubelet!("Start, Next change: {0}", next_change);
-        }
-        self.ctx.emit_self(APIKubeletSelfNextChange { pod_uid }, next_change);
-
         self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
+        self.ctx.emit_self(APIKubeletSelfNextChange { pod_uid }, next_change);
         return true;
     }
 
     pub fn on_pod_next_change(&mut self, pod_uid: u64) {
         let (prev_cpu, prev_memory, load) = self.running_loads.get_mut(&pod_uid).unwrap();
         let (new_cpu, new_memory, next_change, is_finished) = load.update(self.ctx.time());
-
-        if self.ctx.time() >= 65640.0 {
-            dp_kubelet!("[{5}] Pod update: cpu {0} -> {1}, mem: {2} -> {3}, next_change: {4}", prev_cpu, new_cpu, prev_memory, new_memory, next_change, self.ctx.time());
-        }
 
         // Restore previous resources
         self.node.restore(*prev_cpu, *prev_memory);
@@ -79,18 +72,11 @@ impl Kubelet {
             return;
         }
 
-        // TODO: eviction with respect to QoS class
+        // TODO: eviction with respect to Priority & QoS
         if !self.node.is_consumable(new_cpu, new_memory) {
-            // let pod = self.pods.get(&pod_uid).unwrap();
-            //
-            // // Evict with respect to QoS and Priority
-            // for (qos, priority, other_uid) in self.evict_order {
-            //     if *priority < pod.spec.priority {
-            //
-            //     }
-            // }
+            self.remove_pod(pod_uid, PodPhase::Pending);
+            return;
         }
-
         assert!(self.node.is_consumable(new_cpu, new_memory));
 
         // Consume resources
@@ -107,7 +93,6 @@ impl Kubelet {
         self.running_loads.remove(&pod_uid).unwrap();
         let pod = self.pods.remove(&pod_uid).unwrap();
         let _was_present = self.evict_order.remove(&(pod.status.qos_class, pod.spec.priority, pod_uid)); assert!(_was_present);
-        self.monitoring.borrow_mut().kubelet_on_pod_finished();
 
         let data = APIUpdatePodFromKubelet {
             pod_uid,
@@ -116,6 +101,32 @@ impl Kubelet {
         };
         self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
     }
+
+    pub fn kubelet_turn_off(&mut self) {
+        for &pod_uid in self.pods.keys() {
+            let data = APIUpdatePodFromKubelet {
+                pod_uid,
+                new_phase: PodPhase::Pending,
+                node_uid: self.node.metadata.uid,
+            };
+            self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
+
+            // Restore previous resources
+            let (prev_cpu, prev_memory, _) = self.running_loads.get_mut(&pod_uid).unwrap();
+            self.node.restore(*prev_cpu, *prev_memory);
+            self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
+        }
+
+        assert_eq!(self.node.spec.installed_cpu, self.node.spec.available_cpu);
+        assert_eq!(self.node.spec.installed_memory, self.node.spec.available_memory);
+
+        self.pods.clear();
+        self.evict_order.clear();
+        self.running_loads.clear();
+        self.ctx.cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
+
+        self.is_turned_off = true;
+    }
 }
 
 impl dsc::EventHandler for Kubelet {
@@ -123,6 +134,10 @@ impl dsc::EventHandler for Kubelet {
         dsc::cast!(match event.data {
             APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
                 dp_kubelet!("{:.12} node:{:?} APIUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod.metadata.uid, new_phase);
+
+                if self.is_turned_off {
+                    panic!("Logic error. API-Server should stop routing if kubelet turned off.");
+                }
 
                 assert_eq!(node_uid, self.node.metadata.uid);
                 assert_eq!(new_phase, PodPhase::Running);
@@ -140,13 +155,20 @@ impl dsc::EventHandler for Kubelet {
                     assert_eq!(self.running_loads.len(), self.pods.len());
                 }
             }
-            APIKubeletSelfUpdate {} => {
-                dp_kubelet!("{:.12} node:{:?} APIKubeletSelfUpdate", self.ctx.time(), self.node.metadata.uid);
-            }
             APIKubeletSelfNextChange { pod_uid } => {
                 dp_kubelet!("{:.12} node:{:?} APIKubeletSelfNextChange pod_uid:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid);
 
+                if self.is_turned_off {
+                    panic!("Logic error. All self-events should be canceled.");
+                }
+
                 self.on_pod_next_change(pod_uid);
+            }
+            APIRemoveNode { node_uid } => {
+                dp_kubelet!("{:.12} node:{:?} APITurnOffNode", self.ctx.time(), self.node.metadata.uid);
+
+                assert_eq!(node_uid, self.node.metadata.uid);
+                self.kubelet_turn_off();
             }
         });
     }

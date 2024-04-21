@@ -248,12 +248,16 @@ impl <
             // Consume node resources
             self.place_pod_to_node(pod_uid, node_uid, cpu, memory);
 
+            // Clear failed attempts
+            self.failed_attempts.remove(&pod_uid);
+
             let data = APIUpdatePodFromScheduler {
                 pod,
                 new_phase: PodPhase::Running,
                 node_uid,
             };
 
+            dp_scheduler!("{:.12} scheduler pod_uid:{:?} placed -> node_uid:{:?}", self.ctx.time(), pod_uid, node_uid);
             self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api);
             scheduled_left -= 1;
         }
@@ -333,7 +337,7 @@ impl <
         let node_uid = pod.status.node_uid.unwrap();
         self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
 
-        // Remove pod's filed attempts
+        // Remove pod's failed attempts
         self.failed_attempts.remove(&pod_uid);
     }
 }
@@ -353,11 +357,15 @@ impl <
                 match new_phase {
                     PodPhase::Pending => {
                         self.process_evicted_pod(pod_uid);
+                        self.monitoring.borrow_mut().scheduler_on_pod_evicted();
                     }
                     PodPhase::Succeeded => {
                         self.process_finished_pod(pod_uid);
+                        self.monitoring.borrow_mut().scheduler_on_pod_succeed();
                     }
                     PodPhase::Running => {
+                        self.monitoring.borrow_mut().scheduler_on_pod_failed();
+                        panic!("Bad Logic PodPhase Running");
                     }
                     PodPhase::Failed => {
                         panic!("Bad PodPhase Failed");
@@ -369,6 +377,7 @@ impl <
 
                 self.self_update_on();
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
+                self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
             }
             APIAddPod { pod } => {
                 dp_scheduler!("{:.12} scheduler APIAddPod pod_uid:{:?}", self.ctx.time(), pod.metadata.uid);
@@ -376,6 +385,7 @@ impl <
                 self.process_new_pod(pod);
                 self.self_update_on();
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
+                self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
                 dp_scheduler!("{:.12} scheduler APIAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);
@@ -384,10 +394,19 @@ impl <
                 self.nodes.insert(node.metadata.uid, node.clone());
                 self.node_rtree.insert(node);
             }
+            APIRemoveNode { node_uid } => {
+                dp_scheduler!("{:.12} scheduler APIRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
+
+                let node = self.nodes.remove(&node_uid).unwrap();
+                self.node_rtree.remove(&node);
+                self.monitoring.borrow_mut().scheduler_on_node_removed(&node);
+            }
             APISchedulerSelfUpdate { } => {
                 dp_scheduler!("{:.12} scheduler APISchedulerSelfUpdate", self.ctx.time());
 
                 self.schedule();
+                self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
+                self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
 
                 if self.pending_pods.len() > 0 {
                     self.ctx.emit_self(APISchedulerSelfUpdate{}, self.cluster_state.borrow().constants.scheduler_self_update_period);

@@ -30,6 +30,12 @@ pub struct APIAddNode {
 
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct APIRemoveNode {
+    pub node_uid: u64,
+}
+
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct APIRemoveKubelet {
     pub node_uid: u64,
 }
@@ -48,11 +54,6 @@ pub struct APIUpdatePodFromKubelet {
     pub pod_uid: u64,
     pub new_phase: PodPhase,
     pub node_uid: u64,
-}
-
-
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APIKubeletSelfUpdate {
 }
 
 
