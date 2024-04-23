@@ -114,8 +114,10 @@ impl Monitoring {
     }
 
     pub fn scheduler_on_node_removed(&mut self, node: &Node) {
-        assert_eq!(node.spec.available_cpu, node.spec.installed_cpu);
-        assert_eq!(node.spec.available_memory, node.spec.installed_memory);
+        self.scheduler_on_node_restore(
+            node.spec.installed_cpu - node.spec.available_cpu,
+            node.spec.installed_memory - node.spec.available_memory
+        );
 
         assert!(self.total_installed_cpu >= node.spec.installed_cpu);
         assert!(self.total_installed_memory >= node.spec.installed_memory);

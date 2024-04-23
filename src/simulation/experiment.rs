@@ -111,6 +111,7 @@ impl Experiment {
         self.init.borrow().submit_nodes(&mut self.sim);
         self.init.borrow().submit_pods();
 
+        // self.sim.step_for_duration(80.0);
         self.sim.step_until_no_events();
     }
 }

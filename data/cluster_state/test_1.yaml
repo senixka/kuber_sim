@@ -1,10 +1,10 @@
 network_delays:
-  api2scheduler: 0
-  scheduler2api: 0
-  api2kubelet: 0
-  kubelet2api: 0
-  api2ca: 0
-  ca2api: 0
+  api2scheduler: 1
+  scheduler2api: 1
+  api2kubelet: 1
+  kubelet2api: 1
+  api2ca: 1
+  ca2api: 1
 
 constants:
   kubelet_self_update_period: 100000
@@ -14,7 +14,11 @@ constants:
   scheduler_cycle_max_to_try: 0
   unschedulable_queue_period: 5
   ca_self_update_period: 5
-  ca_add_node_delay: 1
+  ca_add_node_delay_time: 1
+  ca_add_node_min_pending: 0
+  ca_remove_node_cpu_percent: 50
+  ca_remove_node_memory_percent: 50
+  ca_remove_node_delay_cycle: 3
 
 ca_nodes:
   - node_group:
@@ -26,7 +30,7 @@ ca_nodes:
           product: false
       spec:
         installed_cpu: 100
-        installed_memory: 2048
+        installed_memory: 100
         taints:
           - key: a
             value: b

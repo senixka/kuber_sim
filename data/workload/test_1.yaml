@@ -26,17 +26,17 @@ pods:
           load: busy
       spec:
         arrival_time: 4
-        request_cpu: 30
-        request_memory: 2000
-        limit_cpu: 60
-        limit_memory: 2048
+        request_cpu: 40
+        request_memory: 40
+        limit_cpu: 40
+        limit_memory: 40
         load:
           !BusyBox
-          cpu_down: 5
-          memory_down: 100
-          cpu_up: 30
-          memory_up: 1000
-          duration: 6
+          cpu_down: 10
+          memory_down: 10
+          cpu_up: 40
+          memory_up: 40
+          duration: 10
           shift_time: 2
         node_selector:
           product: false

@@ -101,6 +101,10 @@ impl dsc::EventHandler for APIServer {
                 dp_api_server!("{:.12} api_server APIGetCAMetrics", self.ctx.time());
                 self.ctx.emit(APIGetCAMetrics { node_list }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
+            APICommitCANodeRemove { node_uid } => {
+                dp_api_server!("{:.12} ca APICommitCANodeRemove node_uid:{:?}", self.ctx.time(), node_uid);
+                self.ctx.emit(APICommitCANodeRemove { node_uid }, self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca);
+            }
         });
     }
 }

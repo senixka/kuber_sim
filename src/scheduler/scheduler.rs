@@ -321,8 +321,10 @@ impl <
 
         // Restore node resources
         let node_uid = pod.status.node_uid.unwrap();
-        self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
-        pod.status.node_uid = None;
+        if self.nodes.contains_key(&node_uid) {
+            self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
+            pod.status.node_uid = None;
+        }
 
         // Place pod to pending set
         pod.status.phase = PodPhase::Pending;
@@ -341,7 +343,9 @@ impl <
 
         // Restore node resources
         let node_uid = pod.status.node_uid.unwrap();
-        self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
+        if self.nodes.contains_key(&node_uid) {
+                self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
+        }
 
         // Remove pod's failed attempts
         self.failed_attempts.remove(&pod_uid);

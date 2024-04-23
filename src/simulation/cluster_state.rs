@@ -21,7 +21,11 @@ pub struct Constants {
     pub scheduler_cycle_max_to_try: u64,
     pub unschedulable_queue_period: f64,
     pub ca_self_update_period: f64,
-    pub ca_add_node_delay: f64,
+    pub ca_add_node_delay_time: f64,
+    pub ca_add_node_min_pending: u64,
+    pub ca_remove_node_cpu_percent: f64,
+    pub ca_remove_node_memory_percent: f64,
+    pub ca_remove_node_delay_cycle: u64,
 }
 
 
