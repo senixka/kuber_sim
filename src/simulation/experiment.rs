@@ -102,16 +102,29 @@ impl Experiment {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn prepare_cluster(&mut self) {
         if self.is_done {
-            panic!("Experiment already done!");
+            panic!("prepare_cluster already done!");
         }
         self.is_done = true;
 
         self.init.borrow().submit_nodes(&mut self.sim);
         self.init.borrow().submit_pods();
+    }
 
-        // self.sim.step_for_duration(80.0);
+    pub fn step_until_no_events(&mut self) {
         self.sim.step_until_no_events();
+    }
+
+    pub fn run_for_duration(&mut self, duration: f64) {
+        self.sim.step_for_duration(duration);
+    }
+
+    pub fn steps(&mut self, steps: u64) {
+        self.sim.steps(steps);
+    }
+
+    pub fn step_until_time(&mut self, time: f64) {
+        self.sim.step_until_time(time);
     }
 }

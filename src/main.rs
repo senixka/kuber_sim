@@ -78,16 +78,19 @@ fn main() {
     // WorkLoad::from_csv("./data/cluster_state/state.csv");
 
     debug_print!("Enabled debug print all");
-    dp_api_server!("Enabled debug print api_server");
-    dp_scheduler!("Enabled debug print scheduler");
-    dp_kubelet!("Enabled debug print kubelet");
+    dp_api_server!("Enabled debug print Api-Server");
+    dp_scheduler!("Enabled debug print Scheduler");
+    dp_kubelet!("Enabled debug print Kubelet");
+    dp_ca!("Enabled debug print Cluster-Autoscaler");
 
+    // Integrity tests
     Test::test_all();
 
     let mut value = String::new();
     stdin().read_line(&mut value).unwrap();
     value = value.trim().to_string();
 
+    // Test pod eviction
     if value == "evict" {
         let mut test = Experiment::new(
             "./data/cluster_state/test_evict.yaml",
@@ -95,9 +98,10 @@ fn main() {
             "./data/out/test_evict.txt",
             179
         );
-        test.run();
+        test.step_until_no_events();
     }
 
+    // test node affinity
     if value == "na" {
         let mut test = Experiment::new(
             "./data/cluster_state/test_node_affinity.yaml",
@@ -105,34 +109,39 @@ fn main() {
             "./data/out/test_node_affinity.txt",
             179
         );
-        test.run();
+        test.step_until_no_events();
     }
 
-    if value == "1" {
+    // Test playground
+    if value == "test" {
         let mut test = Experiment::new(
             "./data/cluster_state/test_1.yaml",
             "./data/workload/test_1.yaml",
             "./data/out/test_1.txt",
             179
         );
-        test.run();
+        test.step_until_no_events();
     }
-    if value == "2" {
+
+    // Test on Google cluster trace with input as yaml (DEPRECATED)
+    if value == "gyaml" {
         let mut test = Experiment::new(
             "./data/cluster_state/state.yaml",
             "./data/workload/pods.yaml",
             "./data/out/test_2.txt",
             179
         );
-        test.run();
+        test.step_until_no_events();
     }
-    if value == "3" {
+
+    // Test on Google cluster trace with input as csv
+    if value == "gcsv" {
         let mut test = Experiment::new(
             "./data/cluster_state/state.yaml",
             "./data/workload/pods.csv",
             "./data/out/test_3.txt",
             179
         );
-        test.run();
+        test.step_until_no_events();
     }
 }
