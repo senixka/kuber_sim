@@ -32,9 +32,11 @@ pub struct Constants {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClusterState {
     pub network_delays: NetworkDelays,
-    pub nodes: Vec<NodeGroup>,
-    pub ca_nodes: Vec<NodeGroup>,
     pub constants: Constants,
+    pub nodes: Vec<NodeGroup>,
+
+    #[serde(default)]
+    pub ca_nodes: Vec<NodeGroup>,
 }
 
 

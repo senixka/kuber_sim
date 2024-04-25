@@ -48,6 +48,7 @@ pub mod my_imports {
     pub use crate::scheduler::scheduler::*;
     pub use crate::scheduler::score::*;
     pub use crate::scheduler::taints_tolerations::*;
+    pub use crate::scheduler::node_affinity::*;
 
     pub use crate::simulation::workload::*;
     pub use crate::simulation::cluster_state::*;
@@ -92,6 +93,16 @@ fn main() {
             "./data/cluster_state/test_evict.yaml",
             "./data/workload/test_evict.yaml",
             "./data/out/test_evict.txt",
+            179
+        );
+        test.run();
+    }
+
+    if value == "na" {
+        let mut test = Experiment::new(
+            "./data/cluster_state/test_node_affinity.yaml",
+            "./data/workload/test_node_affinity.yaml",
+            "./data/out/test_node_affinity.txt",
             179
         );
         test.run();

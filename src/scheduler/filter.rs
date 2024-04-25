@@ -74,3 +74,18 @@ pub fn filter_taints_tolerations(_: &HashMap<u64, Pod>,
     }
     return true;
 }
+
+pub fn filter_node_affinity(_: &HashMap<u64, Pod>,
+                            _: &HashMap<u64, Pod>,
+                            _: &HashMap<u64, Node>,
+                            pod: &Pod,
+                            node: &Node) -> bool {
+    return match pod.spec.node_affinity.schedule_type {
+        NodeAffinityType::Required => {
+            pod.spec.node_affinity.matches(node) == pod.spec.node_affinity.node_selector_terms.len()
+        }
+        NodeAffinityType::Preferred => {
+            true
+        }
+    }
+}

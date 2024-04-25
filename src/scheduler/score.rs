@@ -91,3 +91,18 @@ pub fn score_taints_and_tolerations(_: &HashMap<u64, Pod>,
     }
     return 1;
 }
+
+pub fn score_node_affinity(_: &HashMap<u64, Pod>,
+                           _: &HashMap<u64, Pod>,
+                           _: &HashMap<u64, Node>,
+                           pod: &Pod,
+                           node: &Node) -> i64 {
+    return match pod.spec.node_affinity.schedule_type {
+        NodeAffinityType::Preferred => {
+            pod.spec.node_affinity.matches(node) as i64
+        }
+        NodeAffinityType::Required => {
+            0
+        }
+    }
+}

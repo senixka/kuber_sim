@@ -6,3 +6,4 @@ pub mod filter;
 pub mod score;
 pub mod normalize_score;
 pub mod taints_tolerations;
+pub mod node_affinity;
