@@ -23,7 +23,24 @@ pub struct Experiment {
 
 
 impl Experiment {
-    pub fn new(cluster_state_file_path: &str, workload_file_path: &str, out_path: &str, seed: u64) -> Self {
+    pub fn new<
+        ActiveQCmp: TraitActiveQCmp + 'static,
+        BackOffQ: TraitBackOffQ + 'static,
+        const N_FILTER: usize,
+        const N_POST_FILTER: usize,
+        const N_SCORE: usize,
+    > (
+        cluster_state_file_path: &str,
+        workload_file_path: &str,
+        out_path: &str,
+        seed: u64,
+        back_off_q_impl: BackOffQ,
+        filters: [FilterPluginT; N_FILTER],
+        post_filters: [FilterPluginT; N_POST_FILTER],
+        scorers: [ScorePluginT; N_SCORE],
+        normalizers: [NormalizeScorePluginT; N_SCORE],
+        weights: [i64; N_SCORE],
+    ) -> Self {
         // Create components
         let cluster_state = Rc::new(RefCell::new(ClusterState::from_yaml(cluster_state_file_path)));
 
@@ -46,16 +63,16 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmpDefault, BackOffDefault, 1, 1, 1>::new(
+            Scheduler::<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE>::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
-                [filter_node_affinity],
-                [filter_node_affinity],
-                [score_node_affinity],
-                [skip],
-                [1],
-                BackOffDefault::default(),
+                filters,
+                post_filters,
+                scorers,
+                normalizers,
+                weights,
+                back_off_q_impl,
             )
         ));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
@@ -113,18 +130,34 @@ impl Experiment {
     }
 
     pub fn step_until_no_events(&mut self) {
+        if !self.is_done {
+            panic!("Cluster is not prepared!");
+        }
+
         self.sim.step_until_no_events();
     }
 
     pub fn run_for_duration(&mut self, duration: f64) {
+        if !self.is_done {
+            panic!("Cluster is not prepared!");
+        }
+
         self.sim.step_for_duration(duration);
     }
 
     pub fn steps(&mut self, steps: u64) {
+        if !self.is_done {
+            panic!("Cluster is not prepared!");
+        }
+
         self.sim.steps(steps);
     }
 
     pub fn step_until_time(&mut self, time: f64) {
+        if !self.is_done {
+            panic!("Cluster is not prepared!");
+        }
+
         self.sim.step_until_time(time);
     }
 }

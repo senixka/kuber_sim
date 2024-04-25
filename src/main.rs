@@ -92,56 +92,63 @@ fn main() {
 
     // Test pod eviction
     if value == "evict" {
-        let mut test = Experiment::new(
+        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 1, 1, 1>(
             "./data/cluster_state/test_evict.yaml",
             "./data/workload/test_evict.yaml",
             "./data/out/test_evict.txt",
-            179
+            179,
+                BackOffDefault::default(),
+            [filter_node_affinity],
+            [filter_node_affinity],
+            [score_tetris],
+            [skip],
+            [1],
         );
+        test.prepare_cluster();
         test.step_until_no_events();
     }
-
-    // test node affinity
-    if value == "na" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/test_node_affinity.yaml",
-            "./data/workload/test_node_affinity.yaml",
-            "./data/out/test_node_affinity.txt",
-            179
-        );
-        test.step_until_no_events();
-    }
-
-    // Test playground
-    if value == "test" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/test_1.yaml",
-            "./data/workload/test_1.yaml",
-            "./data/out/test_1.txt",
-            179
-        );
-        test.step_until_no_events();
-    }
-
-    // Test on Google cluster trace with input as yaml (DEPRECATED)
-    if value == "gyaml" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/state.yaml",
-            "./data/workload/pods.yaml",
-            "./data/out/test_2.txt",
-            179
-        );
-        test.step_until_no_events();
-    }
-
-    // Test on Google cluster trace with input as csv
-    if value == "gcsv" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/state.yaml",
-            "./data/workload/pods.csv",
-            "./data/out/test_3.txt",
-            179
-        );
-        test.step_until_no_events();
-    }
+    //
+    // // test node affinity
+    // if value == "na" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/test_node_affinity.yaml",
+    //         "./data/workload/test_node_affinity.yaml",
+    //         "./data/out/test_node_affinity.txt",
+    //         179
+    //     );
+    //     test.step_until_no_events();
+    // }
+    //
+    // // Test playground
+    // if value == "test" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/test_1.yaml",
+    //         "./data/workload/test_1.yaml",
+    //         "./data/out/test_1.txt",
+    //         179
+    //     );
+    //     test.step_until_no_events();
+    // }
+    //
+    // // Test on Google cluster trace with input as yaml (DEPRECATED)
+    // if value == "gyaml" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/state.yaml",
+    //         "./data/workload/pods.yaml",
+    //         "./data/out/test_2.txt",
+    //         179
+    //     );
+    //     test.step_until_no_events();
+    // }
+    //
+    // // Test on Google cluster trace with input as csv
+    // if value == "gcsv" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/state.yaml",
+    //         "./data/workload/pods.csv",
+    //         "./data/out/test_3.txt",
+    //         179
+    //     );
+    //     test.step_until_no_events();
+    // }
 }

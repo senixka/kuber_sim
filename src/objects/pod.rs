@@ -24,7 +24,7 @@ pub struct PodSpec {
     #[serde(default)]
     pub tolerations: Vec<Toleration>,
 
-    // #[serde(default)]
+    #[serde(default)]
     pub node_affinity: NodeAffinity,
 }
 
