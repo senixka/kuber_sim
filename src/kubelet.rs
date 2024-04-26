@@ -34,10 +34,10 @@ impl Kubelet {
         self.api_sim_id = api_sim_id;
     }
 
-    pub fn place_new_pod(&mut self, pod: Pod) -> bool {
+    pub fn place_new_pod(&mut self, pod: Pod) {
         let pod_uid = pod.metadata.uid;
 
-        // Store pod
+        // Store original pod
         assert!(!self.pods.contains_key(&pod_uid));
         self.pods.insert(pod_uid, pod.clone());
 
@@ -46,17 +46,41 @@ impl Kubelet {
         let (cpu, memory, next_change, is_finished) = load.start(self.ctx.time());
         assert!(!is_finished);
 
+        // If pod exceeds limits
+        if !pod.request_matches_limits(cpu, memory) {
+            self.pods.remove(&pod_uid).unwrap();
+
+            let data = APIUpdatePodFromKubelet {
+                pod_uid,
+                new_phase: PodPhase::Failed,
+                node_uid: self.node.metadata.uid,
+            };
+            self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
+
+            return;
+        }
+
+        // If there are insufficient resources on the node
         if !self.node.is_consumable(cpu, memory) {
             self.pods.remove(&pod_uid).unwrap();
-            return false;
+
+            let data = APIUpdatePodFromKubelet {
+                pod_uid,
+                new_phase: PodPhase::Pending,
+                node_uid: self.node.metadata.uid,
+            };
+            self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
+
+            return;
         }
+
+        // Consume node resources and update inner state
         self.node.consume(cpu, memory);
         self.running_loads.insert(pod_uid, (cpu, memory, load));
         self.evict_order.insert((pod.status.qos_class, pod.spec.priority, pod.metadata.uid));
 
         self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
         self.ctx.emit_self(APIKubeletSelfNextChange { pod_uid }, next_change);
-        return true;
     }
 
     pub fn on_pod_next_change(&mut self, pod_uid: u64) {
@@ -67,8 +91,15 @@ impl Kubelet {
         self.node.restore(*prev_cpu, *prev_memory);
         self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
 
+        // If pod finished
         if is_finished {
             self.remove_pod(pod_uid, PodPhase::Succeeded);
+            return;
+        }
+
+        // If pod exceeds limits
+        if !self.pods.get(&pod_uid).unwrap().request_matches_limits(new_cpu, new_memory) {
+            self.remove_pod(pod_uid, PodPhase::Failed);
             return;
         }
 
@@ -159,14 +190,7 @@ impl dsc::EventHandler for Kubelet {
                 assert_eq!(self.running_loads.len(), self.pods.len());
 
                 if !self.pods.contains_key(&pod.metadata.uid) {
-                    if !self.place_new_pod(pod.clone()) {
-                        let data = APIUpdatePodFromKubelet {
-                            pod_uid: pod.metadata.uid,
-                            new_phase: PodPhase::Pending,
-                            node_uid: self.node.metadata.uid,
-                        };
-                        self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
-                    }
+                    self.place_new_pod(pod.clone());
                     assert_eq!(self.running_loads.len(), self.pods.len());
                 }
             }

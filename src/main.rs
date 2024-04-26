@@ -107,6 +107,25 @@ fn main() {
         test.prepare_cluster();
         test.step_until_no_events();
     }
+
+    // Test pod failures
+    if value == "failed" {
+        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
+            "./data/cluster_state/test_failed.yaml",
+            "./data/workload/test_failed.yaml",
+            "./data/out/test_failed.txt",
+            179,
+            BackOffDefault::default(),
+            [],
+            [],
+            [],
+            [],
+            [],
+        );
+        test.prepare_cluster();
+        test.step_until_no_events();
+    }
+
     //
     // // test node affinity
     // if value == "na" {

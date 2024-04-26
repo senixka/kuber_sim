@@ -405,11 +405,11 @@ impl <
                         self.monitoring.borrow_mut().scheduler_on_pod_succeed();
                     }
                     PodPhase::Running => {
-                        self.monitoring.borrow_mut().scheduler_on_pod_failed();
                         panic!("Bad Logic PodPhase Running");
                     }
                     PodPhase::Failed => {
-                        panic!("Bad PodPhase Failed");
+                        self.process_finished_pod(pod_uid);
+                        self.monitoring.borrow_mut().scheduler_on_pod_failed();
                     }
                     PodPhase::Unknown => {
                         panic!("Bad PodPhase Unknown");

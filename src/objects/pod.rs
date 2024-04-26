@@ -114,4 +114,8 @@ impl Pod {
         assert!(self.spec.limit_memory >= self.spec.request_memory);
         assert!(self.spec.load.get_duration() > 0.0);
     }
+
+    pub fn request_matches_limits(&self, cpu: u64, memory: u64) -> bool {
+        return cpu <= self.spec.limit_cpu && memory <= self.spec.limit_memory;
+    }
 }
