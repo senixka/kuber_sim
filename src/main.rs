@@ -29,6 +29,7 @@ pub mod my_imports {
     pub use crate::api_server::events::*;
 
     pub use crate::autoscaler::ca::*;
+    pub use crate::autoscaler::hpa::*;
 
     pub use crate::load_types::types::*;
     pub use crate::load_types::constant::*;
@@ -124,6 +125,30 @@ fn main() {
         );
         test.prepare_cluster();
         test.step_until_no_events();
+    }
+
+    // Test pod cluster autoscaler
+    if value == "ca" {
+        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
+            "./data/cluster_state/test_ca.yaml",
+            "./data/workload/test_ca.yaml",
+            "./data/out/test_ca.txt",
+            179,
+            BackOffDefault::default(),
+            [],
+            [],
+            [],
+            [],
+            [],
+        );
+        test.prepare_cluster();
+        test.run_for_duration(100.0);
+
+        test.enable_cluster_autoscaler();
+        test.run_for_duration(20.0);
+
+        test.disable_cluster_autoscaler();
+        test.run_for_duration(100.0);
     }
 
     //

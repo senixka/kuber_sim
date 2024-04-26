@@ -19,6 +19,8 @@ pub struct Experiment {
     // scheduler_id: dsc::Id,
 
     is_done: bool,
+
+    ca: Rc<RefCell<CA>>,
 }
 
 
@@ -105,9 +107,6 @@ impl Experiment {
         init.borrow().presimulation_check();
         monitoring.borrow_mut().presimulation_check();
 
-        // Start CA
-        ca.borrow_mut().turn_on();
-
         Self {
             // cluster_state_file_path: cluster_state_file_path.to_string(),
             // workload_file_path: workload_file_path.to_string(),
@@ -116,7 +115,16 @@ impl Experiment {
             init,// api, monitoring,
             // api_id, scheduler_id,
             is_done: false,
+            ca,
         }
+    }
+
+    pub fn enable_cluster_autoscaler(&self) {
+        self.ca.borrow_mut().turn_on();
+    }
+
+    pub fn disable_cluster_autoscaler(&self) {
+        self.ca.borrow_mut().turn_off();
     }
 
     pub fn prepare_cluster(&mut self) {

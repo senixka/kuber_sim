@@ -33,6 +33,8 @@ pub struct Constants {
 pub struct ClusterState {
     pub network_delays: NetworkDelays,
     pub constants: Constants,
+
+    #[serde(default)]
     pub nodes: Vec<NodeGroup>,
 
     #[serde(default)]
