@@ -40,6 +40,7 @@ pub mod my_imports {
     pub use crate::objects::node::*;
     pub use crate::objects::node_group::*;
     pub use crate::objects::object_meta::*;
+    pub use crate::objects::hpa_pod_group::*;
 
     pub use crate::scheduler::active_queue::*;
     pub use crate::scheduler::backoff_queue::*;
@@ -149,6 +150,24 @@ fn main() {
 
         test.disable_cluster_autoscaler();
         test.run_for_duration(100.0);
+    }
+
+    // Test horizontal pod autoscaler
+    if value == "hpa" {
+        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
+            "./data/cluster_state/test_hpa.yaml",
+            "./data/workload/test_hpa.yaml",
+            "./data/out/test_hpa.txt",
+            179,
+            BackOffDefault::default(),
+            [],
+            [],
+            [],
+            [],
+            [],
+        );
+        test.prepare_cluster();
+        test.step_until_no_events();
     }
 
     //

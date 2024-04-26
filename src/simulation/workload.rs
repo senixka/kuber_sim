@@ -3,7 +3,11 @@ use crate::my_imports::*;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct WorkLoad {
-    pub pods: Vec<PodGroup>
+    #[serde(default)]
+    pub hpa_pods: Vec<HPAPodGroup>,
+
+    #[serde(default)]
+    pub pods: Vec<PodGroup>,
 }
 
 
@@ -26,9 +30,14 @@ impl WorkLoad {
             pod_group.prepare();
         }
 
+        for hpa_pod_group in &mut workload.hpa_pods {
+            hpa_pod_group.pod_group.prepare();
+        }
+
         return workload;
     }
 
+    // TODO: update format, prepare for hpa, add taints and other...
     pub fn from_csv(path: &str) -> Self {
         let file = std::fs::File::open(path).unwrap();
         let reader = BufReader::new(file);
