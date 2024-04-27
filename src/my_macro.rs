@@ -61,3 +61,16 @@ macro_rules! dp_ca {
 macro_rules! dp_ca {
     ($( $args:expr ),*) => {}
 }
+
+
+#[macro_export]
+#[cfg(feature = "dp_hpa")]
+macro_rules! dp_hpa {
+    ($( $args:expr ),*) => { println!( $( $args ),* ); };
+}
+
+#[macro_export]
+#[cfg(not(feature = "dp_hpa"))]
+macro_rules! dp_hpa {
+    ($( $args:expr ),*) => {}
+}

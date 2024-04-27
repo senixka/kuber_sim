@@ -36,30 +36,32 @@ impl Init {
 
         let binding = self.workload.borrow();
         let mut pod_group_iter = binding.pods.iter().peekable();
-        let mut hpa_pod_group_iter = binding.hpa_pods.iter().peekable();
-        while pod_group_iter.peek().is_some() || hpa_pod_group_iter.peek().is_some() {
-            let pod_group: PodGroup = match (pod_group_iter.peek(), hpa_pod_group_iter.peek()) {
-                (None, Some(&&ref hpa_pod_group)) => {
-                    hpa_pod_group_iter.next();
-                    hpa_pod_group.pod_group.clone()
-                }
-                (Some(&&ref pod_group), None) => {
-                    pod_group_iter.next();
-                    pod_group.clone()
-                }
-                (Some(&&ref pod_group), Some(&&ref hpa_pod_group)) => {
-                    if pod_group.pod.spec.arrival_time <= hpa_pod_group.pod_group.pod.spec.arrival_time {
-                        pod_group_iter.next();
-                        pod_group.clone()
-                    } else {
-                        hpa_pod_group_iter.next();
-                        hpa_pod_group.pod_group.clone()
-                    }
-                }
-                (None, None) => {
-                    panic!("Bad loop");
-                }
-            };
+        // let mut hpa_pod_group_iter = binding.hpa_pods.iter().peekable();
+        while pod_group_iter.peek().is_some() /*|| hpa_pod_group_iter.peek().is_some()*/ {
+            let pod_group = pod_group_iter.peek().unwrap().clone();
+            pod_group_iter.next();
+            // let pod_group: PodGroup = match (pod_group_iter.peek(), hpa_pod_group_iter.peek()) {
+            //     (None, Some(&&ref hpa_pod_group)) => {
+            //         hpa_pod_group_iter.next();
+            //         hpa_pod_group.pod_group.clone()
+            //     }
+            //     (Some(&&ref pod_group), None) => {
+            //         pod_group_iter.next();
+            //         pod_group.clone()
+            //     }
+            //     (Some(&&ref pod_group), Some(&&ref hpa_pod_group)) => {
+            //         if pod_group.pod.spec.arrival_time <= hpa_pod_group.pod_group.pod.spec.arrival_time {
+            //             pod_group_iter.next();
+            //             pod_group.clone()
+            //         } else {
+            //             hpa_pod_group_iter.next();
+            //             hpa_pod_group.pod_group.clone()
+            //         }
+            //     }
+            //     (None, None) => {
+            //         panic!("Bad loop");
+            //     }
+            // };
 
             pod_count += pod_group.amount;
 

@@ -32,6 +32,9 @@ pub struct Scheduler<
     scorers: [ScorePluginT; N_SCORE],
     scorer_weights: [i64; N_SCORE],
     score_normalizers: [NormalizeScorePluginT; N_SCORE],
+
+    // To remove running pods
+    removed_pod: HashSet<u64>,
 }
 
 impl <
@@ -70,6 +73,7 @@ impl <
             scorers,
             score_normalizers,
             scorer_weights,
+            removed_pod: HashSet::new(),
         }
     }
 
@@ -326,6 +330,12 @@ impl <
             pod.status.node_uid = None;
         }
 
+        // If pod was removed by api-server -> drop pod
+        if self.removed_pod.contains(&pod_uid) {
+            self.removed_pod.remove(&pod_uid);
+            return;
+        }
+
         // Place pod to pending set
         pod.status.phase = PodPhase::Pending;
         self.pending_pods.insert(pod_uid, pod.clone());
@@ -350,6 +360,7 @@ impl <
         // Remove pod's failed attempts
         self.failed_attempts.remove(&pod_uid);
     }
+
 
     pub fn send_ca_metrics(&mut self, node_list: &Vec<u64>) {
         let mut pending = 0;
@@ -381,6 +392,23 @@ impl <
             }, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api
         );
     }
+
+    pub fn preempt_pod(&mut self, pod_uid: u64) {
+        // If pod in pending -> do nothing
+        if self.pending_pods.contains_key(&pod_uid) {
+            return;
+        }
+
+        // If pod in running -> preempt
+        if self.running_pods.contains_key(&pod_uid) {
+            let pod = self.running_pods.get(&pod_uid).unwrap();
+            self.ctx.emit(
+                APIUpdatePodFromScheduler { pod: pod.clone(), new_phase: PodPhase::Pending, node_uid: pod.status.node_uid.unwrap() },
+                self.api_sim_id,
+                self.cluster_state.borrow().network_delays.scheduler2api
+            );
+        }
+    }
 }
 
 impl <
@@ -411,9 +439,6 @@ impl <
                         self.process_finished_pod(pod_uid);
                         self.monitoring.borrow_mut().scheduler_on_pod_failed();
                     }
-                    PodPhase::Unknown => {
-                        panic!("Bad PodPhase Unknown");
-                    }
                 }
 
                 self.self_update_on();
@@ -427,6 +452,17 @@ impl <
                 self.self_update_on();
                 self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
                 self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
+            }
+            APIRemovePod { pod_uid } => {
+                dp_scheduler!("{:.12} scheduler APIRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
+
+                if self.running_pods.contains_key(&pod_uid) || self.pending_pods.contains_key(&pod_uid) {
+                    self.removed_pod.insert(pod_uid);
+                    self.preempt_pod(pod_uid);
+
+                    self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
+                    self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
+                }
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
                 dp_scheduler!("{:.12} scheduler APIAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);

@@ -84,6 +84,7 @@ fn main() {
     dp_scheduler!("Enabled debug print Scheduler");
     dp_kubelet!("Enabled debug print Kubelet");
     dp_ca!("Enabled debug print Cluster-Autoscaler");
+    dp_hpa!("Enabled debug print HPA");
 
     // Integrity tests
     Test::test_all();
@@ -167,7 +168,10 @@ fn main() {
             [],
         );
         test.prepare_cluster();
+
+        test.enable_hpa();
         test.step_until_no_events();
+        //test.run_for_duration(150.0);
     }
 
     //
@@ -196,22 +200,29 @@ fn main() {
     // // Test on Google cluster trace with input as yaml (DEPRECATED)
     // if value == "gyaml" {
     //     let mut test = Experiment::new(
-    //         "./data/cluster_state/state.yaml",
-    //         "./data/workload/pods.yaml",
-    //         "./data/out/test_2.txt",
+    //         "./data/cluster_state/test_gcsv.yaml",
+    //         "./data/workload/test_gyaml.yaml",
+    //         "./data/out/test_gyaml.txt",
     //         179
     //     );
     //     test.step_until_no_events();
     // }
     //
-    // // Test on Google cluster trace with input as csv
-    // if value == "gcsv" {
-    //     let mut test = Experiment::new(
-    //         "./data/cluster_state/state.yaml",
-    //         "./data/workload/pods.csv",
-    //         "./data/out/test_3.txt",
-    //         179
-    //     );
-    //     test.step_until_no_events();
-    // }
+    // Test on Google cluster trace with input as csv
+    if value == "gcsv" {
+        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 1>(
+            "./data/cluster_state/test_gcsv.yaml",
+            "./data/workload/test_gcsv.csv",
+            "./data/out/test_gcsv.txt",
+            179,
+            BackOffDefault::default(),
+            [],
+            [],
+            [score_tetris],
+            [skip],
+            [1],
+        );
+        test.prepare_cluster();
+        test.step_until_no_events();
+    }
 }

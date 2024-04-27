@@ -21,6 +21,7 @@ pub struct Experiment {
     is_done: bool,
 
     ca: Rc<RefCell<CA>>,
+    hpa: Rc<RefCell<HPA>>,
 }
 
 
@@ -95,11 +96,21 @@ impl Experiment {
         ));
         let ca_id = sim.add_handler("ca", ca.clone());
 
+        let hpa = Rc::new(RefCell::new(
+            HPA::new(
+                sim.create_context("hpa"),
+                cluster_state.clone(),
+                workload.clone(),
+                monitoring.clone(),
+                api_id)
+        ));
+        let hpa_id = sim.add_handler("hpa", hpa.clone());
+
         // Init components
-        api.borrow_mut().presimulation_init(scheduler_id, ca_id);
+        api.borrow_mut().presimulation_init(scheduler_id, ca_id, hpa_id);
         scheduler.borrow_mut().presimulation_init(api_id);
         init.borrow_mut().presimulation_init(api_id);
-        monitoring.borrow_mut().presimulation_init(ca_id);
+        monitoring.borrow_mut().presimulation_init(ca_id, hpa_id);
 
         // Final check
         api.borrow().presimulation_check();
@@ -116,6 +127,7 @@ impl Experiment {
             // api_id, scheduler_id,
             is_done: false,
             ca,
+            hpa,
         }
     }
 
@@ -125,6 +137,14 @@ impl Experiment {
 
     pub fn disable_cluster_autoscaler(&self) {
         self.ca.borrow_mut().turn_off();
+    }
+
+    pub fn enable_hpa(&self) {
+        self.hpa.borrow_mut().turn_on();
+    }
+
+    pub fn disable_hpa(&self) {
+        self.hpa.borrow_mut().turn_off();
     }
 
     pub fn prepare_cluster(&mut self) {

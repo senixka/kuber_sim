@@ -27,14 +27,23 @@ network_delays:
   scheduler2api: 0
   api2kubelet: 1
   kubelet2api: 1
+  api2ca: 0
+  ca2api: 0
 
 constants:
-  kubelet_self_update_period: 200
+  kubelet_self_update_period: 100000
   scheduler_self_update_period: 0.5
   monitoring_self_update_period: 10
   scheduler_cycle_max_scheduled: 0
   scheduler_cycle_max_to_try: 0
-  unschedulable_queue_period: 60
+  unschedulable_queue_period: 30
+  ca_self_update_period: 10
+  ca_add_node_delay_time: 10
+  ca_add_node_min_pending: 0
+  ca_remove_node_cpu_percent: 15
+  ca_remove_node_memory_percent: 15
+  ca_remove_node_delay_cycle: 3
+  hpa_self_update_period: 10
 
 """
     fout.write(s)
@@ -56,7 +65,7 @@ def main():
     if s_ext not in ["yaml", "csv"]:
         exit(1)
 
-    with open(f"../data/workload/pods.{s_ext}", 'w') as fout:
+    with open(f"../data/workload/test_g{s_ext}.{s_ext}", 'w') as fout:
         if s_ext == "yaml":
             fout.write("pods:")
 
@@ -76,7 +85,7 @@ def main():
                 if i % 10000 == 0:
                     print(f"Done job: {i}/{n_job}")
 
-    with open("../data/cluster_state/state.yaml", 'w') as fout:
+    with open("../data/cluster_state/test_gcsv.yaml", 'w') as fout:
         dump_state_prolog(fout)
         fout.write("nodes:")
 

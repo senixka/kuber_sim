@@ -9,6 +9,8 @@ pub struct NetworkDelays {
     pub kubelet2api: f64,
     pub api2ca: f64,
     pub ca2api: f64,
+    pub api2hpa: f64,
+    pub hpa2api: f64,
 }
 
 
@@ -26,6 +28,7 @@ pub struct Constants {
     pub ca_remove_node_cpu_percent: f64,
     pub ca_remove_node_memory_percent: f64,
     pub ca_remove_node_delay_cycle: u64,
+    pub hpa_self_update_period: f64,
 }
 
 

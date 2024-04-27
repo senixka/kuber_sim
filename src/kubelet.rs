@@ -78,8 +78,15 @@ impl Kubelet {
         self.node.consume(cpu, memory);
         self.running_loads.insert(pod_uid, (cpu, memory, load));
         self.evict_order.insert((pod.status.qos_class, pod.spec.priority, pod.metadata.uid));
-
         self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
+
+        // Update pod consumption in api server
+        let pod_spec = &self.pods.get(&pod_uid).unwrap().spec;
+        self.send_pod_metrics(pod_uid,
+                              (cpu as f64) / pod_spec.request_cpu as f64 * 100.0,
+                              (memory as f64) / pod_spec.request_memory as f64 * 100.0);
+
+
         self.ctx.emit_self(APIKubeletSelfNextChange { pod_uid }, next_change);
     }
 
@@ -115,6 +122,12 @@ impl Kubelet {
         *prev_memory = new_memory;
         self.node.consume(new_cpu, new_memory);
         self.monitoring.borrow_mut().kubelet_on_pod_placed(new_cpu, new_memory);
+
+        // Update pod consumption in api server
+        let pod_spec = &self.pods.get(&pod_uid).unwrap().spec;
+        self.send_pod_metrics(pod_uid,
+                              (new_cpu as f64) / pod_spec.request_cpu as f64 * 100.0,
+                              (new_memory as f64) / pod_spec.request_memory as f64 * 100.0);
 
         // Next change self update
         self.ctx.emit_self(APIKubeletSelfNextChange { pod_uid }, next_change);
@@ -173,6 +186,11 @@ impl Kubelet {
 
         self.node = node.clone();
     }
+
+    pub fn send_pod_metrics(&self, pod_uid: u64, current_cpu: f64, current_memory: f64) {
+        let data = APIUpdatePodMetricsFromKubelet { pod_uid, current_cpu, current_memory};
+        self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
+    }
 }
 
 impl dsc::EventHandler for Kubelet {
@@ -186,12 +204,25 @@ impl dsc::EventHandler for Kubelet {
                 }
 
                 assert_eq!(node_uid, self.node.metadata.uid);
-                assert_eq!(new_phase, PodPhase::Running);
+                // assert_eq!(new_phase, PodPhase::Running);
                 assert_eq!(self.running_loads.len(), self.pods.len());
 
-                if !self.pods.contains_key(&pod.metadata.uid) {
-                    self.place_new_pod(pod.clone());
-                    assert_eq!(self.running_loads.len(), self.pods.len());
+                if new_phase == PodPhase::Running {
+                    if !self.pods.contains_key(&pod.metadata.uid) {
+                        self.place_new_pod(pod.clone());
+                        assert_eq!(self.running_loads.len(), self.pods.len());
+                    }
+                }
+                if new_phase == PodPhase::Pending {
+                    if self.pods.contains_key(&pod.metadata.uid) {
+                        let (prev_cpu, prev_memory, _) = self.running_loads.get_mut(&pod.metadata.uid).unwrap();
+
+                        // Restore previous resources
+                        self.node.restore(*prev_cpu, *prev_memory);
+                        self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
+
+                        self.remove_pod(pod.metadata.uid, PodPhase::Pending);
+                    }
                 }
             }
             APIKubeletSelfNextChange { pod_uid } => {
@@ -201,7 +232,9 @@ impl dsc::EventHandler for Kubelet {
                     panic!("Logic error. All self-events should be canceled.");
                 }
 
-                self.on_pod_next_change(pod_uid);
+                if self.pods.contains_key(&pod_uid) {
+                    self.on_pod_next_change(pod_uid);
+                }
             }
             APIRemoveNode { node_uid } => {
                 dp_kubelet!("{:.12} node:{:?} APITurnOffNode", self.ctx.time(), self.node.metadata.uid);

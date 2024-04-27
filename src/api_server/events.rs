@@ -1,13 +1,13 @@
 use crate::my_imports::*;
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum APIServerEvent {
-    InsertPod = 0,
-    RemovePod = 1,
-    InsertNode = 2,
-    RemoveNode = 3,
-}
+// #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// pub enum APIServerEvent {
+//     InsertPod = 0,
+//     RemovePod = 1,
+//     InsertNode = 2,
+//     RemoveNode = 3,
+// }
 
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -63,6 +63,12 @@ pub struct APISchedulerSelfUpdate {
 
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct APISchedulerSecondChance {
+    pub pod_uid: u64,
+}
+
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct APIMonitoringSelfUpdate {
 }
 
@@ -74,8 +80,43 @@ pub struct APIKubeletSelfNextChange {
 
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APISchedulerSecondChance {
+pub struct APIUpdatePodMetricsFromKubelet {
     pub pod_uid: u64,
+    pub current_cpu: f64,
+    pub current_memory: f64,
+}
+
+
+///////////////////////////////////////// HPA //////////////////////////////////////////////////////
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIHPASelfUpdate {
+}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIGetHPAMetrics {
+    pub pod_groups: Vec<u64>,
+}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIPostHPAMetrics {
+    pub pod_groups: Vec<(u64, f64, f64)>,
+}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIHPATurnOn {}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIHPATurnOff {}
+
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct APIRemoveAnyPodInGroup {
+    pub group_uid: u64,
 }
 
 

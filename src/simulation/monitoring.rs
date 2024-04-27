@@ -7,6 +7,7 @@ pub struct Monitoring {
     pub self_update_enabled: bool,
     pub cluster_state: Rc<RefCell<ClusterState>>,
     pub ca_sim_id: dsc::Id,
+    pub hpa_sim_id: dsc::Id,
 
     makespan_time: f64,
 
@@ -68,11 +69,13 @@ impl Monitoring {
             pending_pod: Vec::new(),
             out_path,
             ca_sim_id: dsc::Id::MAX,
+            hpa_sim_id: dsc::Id::MAX,
         }
     }
 
-    pub fn presimulation_init(&mut self, ca_sim_id: dsc::Id) {
+    pub fn presimulation_init(&mut self, ca_sim_id: dsc::Id, hpa_sim_id: dsc::Id) {
         self.ca_sim_id = ca_sim_id;
+        self.hpa_sim_id = hpa_sim_id;
 
         if !self.self_update_enabled {
             self.self_update_enabled = true;
@@ -169,17 +172,18 @@ impl Monitoring {
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     pub fn try_end_sim(&mut self) {
-        if self.succeed_pod_counter + self.failed_pod_counter == self.n_pod_in_simulation {
-            self.self_update_enabled = false;
-            self.makespan_time = self.ctx.time();
-            self.dump_statistics();
-
-            // TODO: add config after sim delay
-            self.ctx.emit(APICATurnOff {}, self.ca_sim_id, 100.0);
-            for i in 1..11 {
-                self.ctx.emit_self(APIMonitoringSelfUpdate {}, i as f64 * 10.0);
-            }
-        }
+        // if self.succeed_pod_counter + self.failed_pod_counter == self.n_pod_in_simulation {
+        //     self.self_update_enabled = false;
+        //     self.makespan_time = self.ctx.time();
+        //     self.dump_statistics();
+        //
+        //     // TODO: add config after sim delay
+        //     self.ctx.emit(APICATurnOff {}, self.ca_sim_id, 100.0);
+        //     self.ctx.emit(APIHPATurnOff {}, self.hpa_sim_id, 100.0);
+        //     for i in 1..11 {
+        //         self.ctx.emit_self(APIMonitoringSelfUpdate {}, i as f64 * 10.0);
+        //     }
+        // }
     }
 
     pub fn print_statistics(&mut self) {

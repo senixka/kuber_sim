@@ -13,8 +13,9 @@ dslab-core = { git = "https://github.com/osukhoroslov/dslab/", branch = "main"}
 rstar = "0.12.0"
 
 [features]
-dp_all = ["dp_api_server", "dp_kubelet", "dp_scheduler", "dp_ca"]
+dp_all = ["dp_api_server", "dp_kubelet", "dp_scheduler", "dp_ca", "dp_hpa"]
 dp_api_server = []
 dp_scheduler = []
 dp_kubelet = []
 dp_ca = []
+dp_hpa = []
