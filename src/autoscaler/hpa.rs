@@ -5,7 +5,6 @@ pub struct HPA {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
     api_sim_id: dsc::Id,
-    // monitoring: Rc<RefCell<Monitoring>>,
 
     is_turned_on: bool,
     groups: Vec<HPAPodGroup>,
@@ -16,18 +15,14 @@ impl HPA {
     pub fn new(ctx: dsc::SimulationContext,
                cluster_state: Rc<RefCell<ClusterState>>,
                work_load: Rc<RefCell<WorkLoad>>,
-               monitoring: Rc<RefCell<Monitoring>>,
                api_sim_id: dsc::Id) -> Self {
-        let mut hpa = Self {
+        Self {
             ctx,
             cluster_state: cluster_state.clone(),
             api_sim_id,
-            // monitoring: monitoring.clone(),
             is_turned_on: false,
             groups: work_load.borrow().hpa_pods.clone(),
-        };
-
-        return hpa;
+        }
     }
 
     pub fn turn_on(&mut self) {

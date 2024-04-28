@@ -5,6 +5,8 @@ network_delays:
   kubelet2api: 1
   api2ca: 1
   ca2api: 1
+  api2hpa: 0
+  hpa2api: 0
 
 constants:
   kubelet_self_update_period: 100000

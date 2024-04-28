@@ -38,7 +38,7 @@ impl Init {
         let mut pod_group_iter = binding.pods.iter().peekable();
         // let mut hpa_pod_group_iter = binding.hpa_pods.iter().peekable();
         while pod_group_iter.peek().is_some() /*|| hpa_pod_group_iter.peek().is_some()*/ {
-            let pod_group = pod_group_iter.peek().unwrap().clone();
+            let pod_group = (*pod_group_iter.peek().unwrap()).clone();
             pod_group_iter.next();
             // let pod_group: PodGroup = match (pod_group_iter.peek(), hpa_pod_group_iter.peek()) {
             //     (None, Some(&&ref hpa_pod_group)) => {

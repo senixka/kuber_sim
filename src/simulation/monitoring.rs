@@ -172,18 +172,18 @@ impl Monitoring {
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     pub fn try_end_sim(&mut self) {
-        // if self.succeed_pod_counter + self.failed_pod_counter == self.n_pod_in_simulation {
-        //     self.self_update_enabled = false;
-        //     self.makespan_time = self.ctx.time();
-        //     self.dump_statistics();
-        //
-        //     // TODO: add config after sim delay
-        //     self.ctx.emit(APICATurnOff {}, self.ca_sim_id, 100.0);
-        //     self.ctx.emit(APIHPATurnOff {}, self.hpa_sim_id, 100.0);
-        //     for i in 1..11 {
-        //         self.ctx.emit_self(APIMonitoringSelfUpdate {}, i as f64 * 10.0);
-        //     }
-        // }
+        if self.succeed_pod_counter + self.failed_pod_counter == self.n_pod_in_simulation {
+            self.self_update_enabled = false;
+            self.makespan_time = self.ctx.time();
+            self.dump_statistics();
+
+            // TODO: add config after sim delay
+            self.ctx.emit(APICATurnOff {}, self.ca_sim_id, 100.0);
+            self.ctx.emit(APIHPATurnOff {}, self.hpa_sim_id, 100.0);
+            for i in 1..11 {
+                self.ctx.emit_self(APIMonitoringSelfUpdate {}, i as f64 * 10.0);
+            }
+        }
     }
 
     pub fn print_statistics(&mut self) {

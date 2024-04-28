@@ -19,3 +19,7 @@ dp_scheduler = []
 dp_kubelet = []
 dp_ca = []
 dp_hpa = []
+
+[profile.perf]
+inherits = "release"
+debug = true

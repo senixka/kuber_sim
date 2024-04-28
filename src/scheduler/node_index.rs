@@ -20,6 +20,7 @@ impl NodeRTree {
         Self { 0: RTree::new() }
     }
 
+    #[inline]
     pub fn find_suitable_nodes(&self, target_cpu: u64, target_memory: u64, result: &mut Vec<Node>) {
         let query_box = AABB::from_corners((target_cpu as i64, target_memory as i64, 0), (i64::MAX, i64::MAX, i64::MAX));
 

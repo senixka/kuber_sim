@@ -101,7 +101,6 @@ impl Experiment {
                 sim.create_context("hpa"),
                 cluster_state.clone(),
                 workload.clone(),
-                monitoring.clone(),
                 api_id)
         ));
         let hpa_id = sim.add_handler("hpa", hpa.clone());
