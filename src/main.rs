@@ -230,7 +230,7 @@ fn main() {
     // }
 
     if value == "perf" {
-        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 1>(
+        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0>(
             "./data/cluster_state/test_gcsv.yaml",
             "./data/workload/test_perf_small.csv",
             "./data/out/test_perf.txt",
@@ -238,7 +238,7 @@ fn main() {
             BackOffDefault::default(),
             vec![Box::new(FilterAlwaysTrue)],
             //[],
-            [score_tetris],
+            vec![Box::new(ScoreTetris)],
             [skip],
             [1],
         );

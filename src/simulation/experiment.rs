@@ -31,7 +31,6 @@ impl Experiment {
         BackOffQ: TraitBackOffQ + 'static,
         //const N_FILTER: usize,
         const N_POST_FILTER: usize,
-        const N_SCORE: usize,
     > (
         cluster_state_file_path: &str,
         workload_file_path: &str,
@@ -40,9 +39,9 @@ impl Experiment {
         back_off_q_impl: BackOffQ,
         filters: Vec<Box<dyn IFilterPlugin>>,
         // post_filters: [FilterPluginT; N_POST_FILTER],
-        scorers: [ScorePluginT; N_SCORE],
-        normalizers: [NormalizeScorePluginT; N_SCORE],
-        weights: [i64; N_SCORE],
+        scorers: Vec<Box<dyn IScorePlugin>>,
+        normalizers: [NormalizeScorePluginT; 1],
+        weights: [i64; 1],
     ) -> Self {
         // Create components
         let cluster_state = Rc::new(RefCell::new(ClusterState::from_yaml(cluster_state_file_path)));
@@ -66,13 +65,12 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmp, BackOffQ, N_POST_FILTER, N_SCORE>::new(
+            Scheduler::<ActiveQCmp, BackOffQ, N_POST_FILTER>::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
-                vec![Box::new(FilterAlwaysTrue)],
-                //filters,
-                //post_filters,
+                filters,
+                vec![],
                 scorers,
                 normalizers,
                 weights,

@@ -6,7 +6,6 @@ pub struct Scheduler<
     ActiveQCmp,
     BackOffQ,
     const N_POST_FILTER: usize,
-    const N_SCORE: usize,
 > {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
@@ -28,12 +27,10 @@ pub struct Scheduler<
 
     // Pipeline
     filters: Vec<Box<dyn IFilterPlugin>>,
-
-    //filters: [FilterPluginT; N_FILTER],
-    //post_filters: [FilterPlugin; N_POST_FILTER],
-    scorers: [ScorePluginT; N_SCORE],
-    scorer_weights: [i64; N_SCORE],
-    score_normalizers: [NormalizeScorePluginT; N_SCORE],
+    post_filters: Vec<Box<dyn IFilterPlugin>>,
+    scorers: Vec<Box<dyn IScorePlugin>>,
+    scorer_weights: [i64; 1],
+    score_normalizers: [NormalizeScorePluginT; 1],
 
     // To remove running pods
     removed_pod: HashSet<u64>,
@@ -43,20 +40,20 @@ impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
     const N_POST_FILTER: usize,
-    const N_SCORE: usize,
-> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER, N_SCORE> {
+> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER> {
     pub fn new(
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
         monitoring: Rc<RefCell<Monitoring>>,
         filters: Vec<Box<dyn IFilterPlugin>>,
+        post_filters: Vec<Box<dyn IFilterPlugin>>,
         //filters: [FilterPluginT; N_FILTER],
         //post_filters: [FilterPluginT; N_POST_FILTER],
-        scorers: [ScorePluginT; N_SCORE],
-        score_normalizers: [NormalizeScorePluginT; N_SCORE],
-        scorer_weights: [i64; N_SCORE],
+        scorers: Vec<Box<dyn IScorePlugin>>,
+        score_normalizers: [NormalizeScorePluginT; 1],
+        scorer_weights: [i64; 1],
         backoff_queue: BackOffQ,
-    ) -> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER, N_SCORE> {
+    ) -> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER> {
         let mut filter_names: Vec<String> = Vec::with_capacity(filters.len());
         filters[0].name();
 
@@ -78,8 +75,8 @@ impl <
             active_queue: BinaryHeap::new(),
             failed_attempts: HashMap::new(),
             backoff_queue,
-            filters: Vec::new(),
-            // post_filters,
+            filters,
+            post_filters,
             scorers,
             score_normalizers,
             scorer_weights,
@@ -112,7 +109,7 @@ impl <
         let mut possible_nodes: Vec<Node> = Vec::new();
         let mut resulted_nodes: Vec<Node> = Vec::new();
         let mut is_schedulable: Vec<bool> = Vec::new();
-        let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; N_SCORE];
+        let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; self.scorers.len()];
 
         let (mut scheduled_left, mut try_schedule_left): (u64, u64) = (
             self.cluster_state.borrow().constants.scheduler_cycle_max_scheduled,
@@ -214,7 +211,7 @@ impl <
             // Score
             for (i, score_plugin) in self.scorers.iter().enumerate() {
                 for (j, node) in resulted_nodes.iter().enumerate() {
-                    score_matrix[i][j] = score_plugin(
+                    score_matrix[i][j] = score_plugin.score(
                         &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
                     );
                 }
@@ -232,14 +229,14 @@ impl <
             // Find best node
             let mut best_node_index: usize = 0;
             let mut max_score: i64 = 0;
-            for i in 0..N_SCORE {
+            for i in 0..self.scorers.len() {
                 max_score += score_matrix[i][0] * self.scorer_weights[i];
             }
 
             let mut tmp_score: i64;
             for i in 0..resulted_nodes.len() {
                 tmp_score = 0;
-                for j in 0..N_SCORE {
+                for j in 0..self.scorers.len() {
                     tmp_score += score_matrix[j][i] * self.scorer_weights[j];
                 }
                 if tmp_score > max_score {
@@ -425,8 +422,7 @@ impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
     const N_POST_FILTER: usize,
-    const N_SCORE: usize,
-> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER, N_SCORE> {
+> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER> {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
