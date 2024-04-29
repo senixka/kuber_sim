@@ -49,17 +49,17 @@ impl APIServer {
 impl dsc::EventHandler for APIServer {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
-                dp_api_server!("{:.12} api_server APIUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod.metadata.uid, node_uid, new_phase);
+            APIUpdatePodFromScheduler { pod_uid , pod, new_phase, node_uid } => {
+                dp_api_server!("{:.12} api_server APIUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, node_uid, new_phase);
 
                 let to = self.kubelets.get(&node_uid);
                 match to {
                     Some(kubelet_id) => {
-                        self.ctx.emit(APIUpdatePodFromScheduler { pod, new_phase, node_uid }, *kubelet_id, self.cluster_state.borrow().network_delays.api2kubelet);
+                        self.ctx.emit(APIUpdatePodFromScheduler { pod_uid, pod, new_phase, node_uid }, *kubelet_id, self.cluster_state.borrow().network_delays.api2kubelet);
                     }
                     None => {
-                        self.ctx.emit(APIUpdatePodFromKubelet { pod_uid: pod.metadata.uid, new_phase: PodPhase::Pending, node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
-                        dp_api_server!("{:.12} api_server INNER APIUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?} NOT IN ROUTE", self.ctx.time(), pod.metadata.uid, node_uid, new_phase);
+                        self.ctx.emit(APIUpdatePodFromKubelet { pod_uid: pod_uid, new_phase: PodPhase::Pending, node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+                        dp_api_server!("{:.12} api_server INNER APIUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?} NOT IN ROUTE", self.ctx.time(), pod_uid, node_uid, new_phase);
                     }
                 }
             }
@@ -113,10 +113,10 @@ impl dsc::EventHandler for APIServer {
 
                 self.ctx.emit(APIGetCAMetrics { node_list }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
-            APICommitCANodeRemove { node_uid } => {
-                dp_api_server!("{:.12} api_server APICommitCANodeRemove node_uid:{:?}", self.ctx.time(), node_uid);
+            APICommitNodeRemove { node_uid } => {
+                dp_api_server!("{:.12} api_server APICommitNodeRemove node_uid:{:?}", self.ctx.time(), node_uid);
 
-                self.ctx.emit(APICommitCANodeRemove { node_uid }, self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca);
+                self.ctx.emit(APICommitNodeRemove { node_uid }, self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca);
             }
             APIUpdatePodMetricsFromKubelet { pod_uid, current_cpu, current_memory } => {
                 dp_api_server!("{:.12} api_server APIUpdatePodMetricsFromKubelet pod_uid:{:?} current_cpu:{:?} current_memory:{:?}", self.ctx.time(), pod_uid, current_cpu, current_memory);

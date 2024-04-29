@@ -184,8 +184,8 @@ impl dsc::EventHandler for CA {
 
                 self.process_metrics(insufficient_resources_pending, &requests, &node_info);
             }
-            APICommitCANodeRemove { node_uid } => {
-                dp_ca!("{:.12} ca APICommitCANodeRemove node_uid:{:?}", self.ctx.time(), node_uid);
+            APICommitNodeRemove { node_uid } => {
+                dp_ca!("{:.12} ca APICommitNodeRemove node_uid:{:?}", self.ctx.time(), node_uid);
 
                 let (kubelet_sim_id, kubelet, group_uid) = self.used_nodes.remove(&node_uid).unwrap();
                 self.kubelet_pool.push((kubelet_sim_id, kubelet));

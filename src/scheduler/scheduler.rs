@@ -244,7 +244,8 @@ impl Scheduler {
             self.failed_attempts.remove(&pod_uid);
 
             let data = APIUpdatePodFromScheduler {
-                pod,
+                pod: Some(pod),
+                pod_uid,
                 new_phase: PodPhase::Running,
                 node_uid,
             };
@@ -386,7 +387,7 @@ impl Scheduler {
         if self.running_pods.contains_key(&pod_uid) {
             let pod = self.running_pods.get(&pod_uid).unwrap();
             self.ctx.emit(
-                APIUpdatePodFromScheduler { pod: pod.clone(), new_phase: PodPhase::Pending, node_uid: pod.status.node_uid.unwrap() },
+                APIUpdatePodFromScheduler { pod: None, pod_uid, new_phase: PodPhase::Pending, node_uid: pod.status.node_uid.unwrap() },
                 self.api_sim_id,
                 self.cluster_state.borrow().network_delays.scheduler2api
             );
@@ -455,7 +456,7 @@ impl dsc::EventHandler for Scheduler {
                 self.node_rtree.remove(&node);
                 self.monitoring.borrow_mut().scheduler_on_node_removed(&node);
             }
-            APISchedulerSelfUpdate { } => {
+            APISchedulerSelfUpdate {} => {
                 dp_scheduler!("{:.12} scheduler APISchedulerSelfUpdate", self.ctx.time());
 
                 self.schedule();

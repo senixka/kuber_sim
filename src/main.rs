@@ -244,6 +244,6 @@ fn main() {
                            vec![Box::new(ScoreNormalizeSkip)],
                            vec![2]);
         test.prepare();
-        test.step_until_no_events();
+        test.step_until_time(60.0 * 60.0 * 30.0);
     }
 }

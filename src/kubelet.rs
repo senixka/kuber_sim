@@ -171,7 +171,7 @@ impl Kubelet {
 
         self.is_turned_on = false;
 
-        self.ctx.emit(APICommitCANodeRemove { node_uid: self.node.metadata.uid }, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
+        self.ctx.emit(APICommitNodeRemove { node_uid: self.node.metadata.uid }, self.api_sim_id, self.cluster_state.borrow().network_delays.kubelet2api);
     }
 
     pub fn turn_on(&mut self) {
@@ -196,8 +196,8 @@ impl Kubelet {
 impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            APIUpdatePodFromScheduler { pod, new_phase, node_uid } => {
-                dp_kubelet!("{:.12} node:{:?} APIUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod.metadata.uid, new_phase);
+            APIUpdatePodFromScheduler { pod , pod_uid, new_phase, node_uid } => {
+                dp_kubelet!("{:.12} node:{:?} APIUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid, new_phase);
 
                 if !self.is_turned_on {
                     panic!("Logic error. API-Server should stop routing if kubelet turned off.");
@@ -208,20 +208,20 @@ impl dsc::EventHandler for Kubelet {
                 assert_eq!(self.running_loads.len(), self.pods.len());
 
                 if new_phase == PodPhase::Running {
-                    if !self.pods.contains_key(&pod.metadata.uid) {
-                        self.place_new_pod(pod.clone());
+                    if !self.pods.contains_key(&pod_uid) {
+                        self.place_new_pod(pod.unwrap().clone());
                         assert_eq!(self.running_loads.len(), self.pods.len());
                     }
                 }
                 if new_phase == PodPhase::Pending {
-                    if self.pods.contains_key(&pod.metadata.uid) {
-                        let (prev_cpu, prev_memory, _) = self.running_loads.get_mut(&pod.metadata.uid).unwrap();
+                    if self.pods.contains_key(&pod_uid) {
+                        let (prev_cpu, prev_memory, _) = self.running_loads.get_mut(&pod_uid).unwrap();
 
                         // Restore previous resources
                         self.node.restore(*prev_cpu, *prev_memory);
                         self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
 
-                        self.remove_pod(pod.metadata.uid, PodPhase::Pending);
+                        self.remove_pod(pod_uid, PodPhase::Pending);
                     }
                 }
             }

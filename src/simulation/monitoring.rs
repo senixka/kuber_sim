@@ -142,12 +142,10 @@ impl Monitoring {
 
     pub fn scheduler_on_pod_succeed(&mut self) {
         self.succeed_pod_counter += 1;
-        self.try_end_sim();
     }
 
     pub fn scheduler_on_pod_failed(&mut self) {
         self.failed_pod_counter += 1;
-        self.try_end_sim();
     }
 
     pub fn scheduler_on_pod_evicted(&mut self) {
@@ -171,19 +169,10 @@ impl Monitoring {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    pub fn try_end_sim(&mut self) {
-        if self.succeed_pod_counter + self.failed_pod_counter == self.n_pod_in_simulation {
-            self.self_update_enabled = false;
-            self.makespan_time = self.ctx.time();
-            self.dump_statistics();
-
-            // TODO: add config after sim delay
-            self.ctx.emit(APICATurnOff {}, self.ca_sim_id, 100.0);
-            self.ctx.emit(APIHPATurnOff {}, self.hpa_sim_id, 100.0);
-            for i in 1..11 {
-                self.ctx.emit_self(APIMonitoringSelfUpdate {}, i as f64 * 10.0);
-            }
-        }
+    pub fn end_sim(&mut self) {
+        self.self_update_enabled = false;
+        self.makespan_time = self.ctx.time();
+        self.dump_statistics();
     }
 
     pub fn print_statistics(&mut self) {
@@ -195,14 +184,14 @@ impl Monitoring {
         self.pending_pod.push(self.pending_pod_counter);
 
         print!(
-            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9}  Finished: {:<9} / {:?}  Succeed: {:<9}  Running: {:<9}  Pending: {:<9}  Evicted: {:<9}  Failed: {:<9}\n",
+            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9}  Finished: {:<9}  Succeed: {:<9}  Running: {:<9}  Pending: {:<9}  Evicted: {:<9}  Failed: {:<9}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.kubelets_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
             (self.scheduler_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
             self.node_counter,
-            self.succeed_pod_counter + self.failed_pod_counter, self.n_pod_in_simulation,
+            self.succeed_pod_counter + self.failed_pod_counter,
             self.succeed_pod_counter,
             self.running_pod_counter,
             self.pending_pod_counter,
