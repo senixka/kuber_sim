@@ -95,85 +95,85 @@ fn main() {
     let value = "perf".to_string();
 
     // Test pod eviction
-    if value == "evict" {
-        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 1, 1, 1>(
-            "./data/cluster_state/test_evict.yaml",
-            "./data/workload/test_evict.yaml",
-            "./data/out/test_evict.txt",
-            179,
-                BackOffDefault::default(),
-            [filter_node_affinity],
-            [filter_node_affinity],
-            [score_tetris],
-            [skip],
-            [1],
-        );
-        test.prepare_cluster();
-        test.step_until_no_events();
-    }
-
-    // Test pod failures
-    if value == "failed" {
-        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
-            "./data/cluster_state/test_failed.yaml",
-            "./data/workload/test_failed.yaml",
-            "./data/out/test_failed.txt",
-            179,
-            BackOffDefault::default(),
-            [],
-            [],
-            [],
-            [],
-            [],
-        );
-        test.prepare_cluster();
-        test.step_until_no_events();
-    }
-
-    // Test pod cluster autoscaler
-    if value == "ca" {
-        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
-            "./data/cluster_state/test_ca.yaml",
-            "./data/workload/test_ca.yaml",
-            "./data/out/test_ca.txt",
-            179,
-            BackOffDefault::default(),
-            [],
-            [],
-            [],
-            [],
-            [],
-        );
-        test.prepare_cluster();
-        test.run_for_duration(100.0);
-
-        test.enable_cluster_autoscaler();
-        test.run_for_duration(20.0);
-
-        test.disable_cluster_autoscaler();
-        test.run_for_duration(100.0);
-    }
-
-    // Test horizontal pod autoscaler
-    if value == "hpa" {
-        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
-            "./data/cluster_state/test_hpa.yaml",
-            "./data/workload/test_hpa.yaml",
-            "./data/out/test_hpa.txt",
-            179,
-            BackOffDefault::default(),
-            [],
-            [],
-            [],
-            [],
-            [],
-        );
-        test.prepare_cluster();
-
-        test.enable_hpa();
-        test.step_until_no_events();
-        //test.run_for_duration(150.0);
-    }
+    // if value == "evict" {
+    //     let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 1, 1, 1>(
+    //         "./data/cluster_state/test_evict.yaml",
+    //         "./data/workload/test_evict.yaml",
+    //         "./data/out/test_evict.txt",
+    //         179,
+    //             BackOffDefault::default(),
+    //         [filter_node_affinity],
+    //         [filter_node_affinity],
+    //         [score_tetris],
+    //         [skip],
+    //         [1],
+    //     );
+    //     test.prepare_cluster();
+    //     test.step_until_no_events();
+    // }
+    //
+    // // Test pod failures
+    // if value == "failed" {
+    //     let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
+    //         "./data/cluster_state/test_failed.yaml",
+    //         "./data/workload/test_failed.yaml",
+    //         "./data/out/test_failed.txt",
+    //         179,
+    //         BackOffDefault::default(),
+    //         [],
+    //         [],
+    //         [],
+    //         [],
+    //         [],
+    //     );
+    //     test.prepare_cluster();
+    //     test.step_until_no_events();
+    // }
+    //
+    // // Test pod cluster autoscaler
+    // if value == "ca" {
+    //     let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
+    //         "./data/cluster_state/test_ca.yaml",
+    //         "./data/workload/test_ca.yaml",
+    //         "./data/out/test_ca.txt",
+    //         179,
+    //         BackOffDefault::default(),
+    //         [],
+    //         [],
+    //         [],
+    //         [],
+    //         [],
+    //     );
+    //     test.prepare_cluster();
+    //     test.run_for_duration(100.0);
+    //
+    //     test.enable_cluster_autoscaler();
+    //     test.run_for_duration(20.0);
+    //
+    //     test.disable_cluster_autoscaler();
+    //     test.run_for_duration(100.0);
+    // }
+    //
+    // // Test horizontal pod autoscaler
+    // if value == "hpa" {
+    //     let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
+    //         "./data/cluster_state/test_hpa.yaml",
+    //         "./data/workload/test_hpa.yaml",
+    //         "./data/out/test_hpa.txt",
+    //         179,
+    //         BackOffDefault::default(),
+    //         [],
+    //         [],
+    //         [],
+    //         [],
+    //         [],
+    //     );
+    //     test.prepare_cluster();
+    //
+    //     test.enable_hpa();
+    //     test.step_until_no_events();
+    //     //test.run_for_duration(150.0);
+    // }
 
     //
     // // test node affinity
@@ -210,34 +210,34 @@ fn main() {
     // }
     //
     // Test on Google cluster trace with input as csv
-    if value == "gcsv" {
-        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 1>(
-            "./data/cluster_state/test_gcsv.yaml",
-            "./data/workload/test_gcsv.csv",
-            "./data/out/test_gcsv.txt",
-            179,
-            BackOffDefault::default(),
-            [],
-            [],
-            [score_tetris],
-            [skip],
-            [1],
-        );
-        test.prepare_cluster();
-        // test.enable_cluster_autoscaler();
-        // test.step_until_no_events();
-        test.step_until_time(60.0 * 60.0 * 24.0);
-    }
+    // if value == "gcsv" {
+    //     let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 1>(
+    //         "./data/cluster_state/test_gcsv.yaml",
+    //         "./data/workload/test_gcsv.csv",
+    //         "./data/out/test_gcsv.txt",
+    //         179,
+    //         BackOffDefault::default(),
+    //         [],
+    //         [],
+    //         [score_tetris],
+    //         [skip],
+    //         [1],
+    //     );
+    //     test.prepare_cluster();
+    //     // test.enable_cluster_autoscaler();
+    //     // test.step_until_no_events();
+    //     test.step_until_time(60.0 * 60.0 * 24.0);
+    // }
 
     if value == "perf" {
-        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 1>(
+        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 1>(
             "./data/cluster_state/test_gcsv.yaml",
             "./data/workload/test_perf_small.csv",
             "./data/out/test_perf.txt",
             179,
             BackOffDefault::default(),
-            [],
-            [],
+            vec![Box::new(FilterAlwaysTrue)],
+            //[],
             [score_tetris],
             [skip],
             [1],

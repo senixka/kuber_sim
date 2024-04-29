@@ -104,6 +104,8 @@ impl NodeAffinityExpression {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MatchExpression {
     pub match_expression: Vec<NodeAffinityExpression>,
+
+    // TODO: weight
 }
 
 

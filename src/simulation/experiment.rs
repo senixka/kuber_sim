@@ -29,7 +29,7 @@ impl Experiment {
     pub fn new<
         ActiveQCmp: TraitActiveQCmp + 'static,
         BackOffQ: TraitBackOffQ + 'static,
-        const N_FILTER: usize,
+        //const N_FILTER: usize,
         const N_POST_FILTER: usize,
         const N_SCORE: usize,
     > (
@@ -38,8 +38,8 @@ impl Experiment {
         out_path: &str,
         seed: u64,
         back_off_q_impl: BackOffQ,
-        filters: [FilterPluginT; N_FILTER],
-        post_filters: [FilterPluginT; N_POST_FILTER],
+        filters: Vec<Box<dyn IFilterPlugin>>,
+        // post_filters: [FilterPluginT; N_POST_FILTER],
         scorers: [ScorePluginT; N_SCORE],
         normalizers: [NormalizeScorePluginT; N_SCORE],
         weights: [i64; N_SCORE],
@@ -66,12 +66,13 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE>::new(
+            Scheduler::<ActiveQCmp, BackOffQ, N_POST_FILTER, N_SCORE>::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
-                filters,
-                post_filters,
+                vec![Box::new(FilterAlwaysTrue)],
+                //filters,
+                //post_filters,
                 scorers,
                 normalizers,
                 weights,

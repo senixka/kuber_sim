@@ -1,10 +1,10 @@
 use crate::my_imports::*;
+use crate::scheduler::filter;
 
 
 pub struct Scheduler<
     ActiveQCmp,
     BackOffQ,
-    const N_FILTER: usize,
     const N_POST_FILTER: usize,
     const N_SCORE: usize,
 > {
@@ -27,8 +27,10 @@ pub struct Scheduler<
     failed_attempts: HashMap<u64, u64>,
 
     // Pipeline
-    filters: [FilterPluginT; N_FILTER],
-    post_filters: [FilterPluginT; N_POST_FILTER],
+    filters: Vec<Box<dyn IFilterPlugin>>,
+
+    //filters: [FilterPluginT; N_FILTER],
+    //post_filters: [FilterPlugin; N_POST_FILTER],
     scorers: [ScorePluginT; N_SCORE],
     scorer_weights: [i64; N_SCORE],
     score_normalizers: [NormalizeScorePluginT; N_SCORE],
@@ -40,21 +42,29 @@ pub struct Scheduler<
 impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
-    const N_FILTER: usize,
     const N_POST_FILTER: usize,
     const N_SCORE: usize,
-> Scheduler<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE> {
+> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER, N_SCORE> {
     pub fn new(
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
         monitoring: Rc<RefCell<Monitoring>>,
-        filters: [FilterPluginT; N_FILTER],
-        post_filters: [FilterPluginT; N_POST_FILTER],
+        filters: Vec<Box<dyn IFilterPlugin>>,
+        //filters: [FilterPluginT; N_FILTER],
+        //post_filters: [FilterPluginT; N_POST_FILTER],
         scorers: [ScorePluginT; N_SCORE],
         score_normalizers: [NormalizeScorePluginT; N_SCORE],
         scorer_weights: [i64; N_SCORE],
         backoff_queue: BackOffQ,
-    ) -> Scheduler<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE> {
+    ) -> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER, N_SCORE> {
+        let mut filter_names: Vec<String> = Vec::with_capacity(filters.len());
+        filters[0].name();
+
+        // for filter in filters {
+        //     filter.name();
+        //     filter_names.push("aboba".to_string());
+        // }
+
         Self {
             ctx,
             cluster_state,
@@ -68,8 +78,8 @@ impl <
             active_queue: BinaryHeap::new(),
             failed_attempts: HashMap::new(),
             backoff_queue,
-            filters,
-            post_filters,
+            filters: Vec::new(),
+            // post_filters,
             scorers,
             score_normalizers,
             scorer_weights,
@@ -143,7 +153,7 @@ impl <
                         break;
                     }
 
-                    is_schedulable[i] = filter_plugin(
+                    is_schedulable[i] = filter_plugin.filter(
                         &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
                     );
                 }
@@ -155,22 +165,22 @@ impl <
 
             // Apply PostFilter if necessary
             if suitable_count == 0 {
-                for (i, node) in possible_nodes.iter().enumerate() {
-                    for post_filter_plugin in self.post_filters.iter() {
-                        is_schedulable[i] = post_filter_plugin(
-                            &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
-                        );
-
-                        //  If any marks the node as Schedulable, the remaining will not be called
-                        if is_schedulable[i] {
-                            break;
-                        }
-                    }
-
-                    if is_schedulable[i] {
-                        suitable_count += 1;
-                    }
-                }
+                // for (i, node) in possible_nodes.iter().enumerate() {
+                //     for post_filter_plugin in self.post_filters.iter() {
+                //         is_schedulable[i] = post_filter_plugin(
+                //             &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
+                //         );
+                //
+                //         //  If any marks the node as Schedulable, the remaining will not be called
+                //         if is_schedulable[i] {
+                //             break;
+                //         }
+                //     }
+                //
+                //     if is_schedulable[i] {
+                //         suitable_count += 1;
+                //     }
+                // }
             }
 
             // If PostFilter does not help
@@ -414,10 +424,9 @@ impl <
 impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
-    const N_FILTER: usize,
     const N_POST_FILTER: usize,
     const N_SCORE: usize,
-> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, N_FILTER, N_POST_FILTER, N_SCORE> {
+> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER, N_SCORE> {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
