@@ -46,7 +46,7 @@ pub struct ClusterState {
 
 
 impl ClusterState {
-    pub fn from_yaml(path: &str) -> Self {
+    pub fn from_yaml(path: &String) -> Self {
         let s: String = fs::read_to_string(path).expect(format!("Unable to read file: {0}", path).as_str());
         let mut cluster_state: ClusterState = serde_yaml::from_str(s.as_str()).unwrap();
 

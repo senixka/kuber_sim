@@ -34,14 +34,10 @@ impl APIServer {
         }
     }
 
-    pub fn presimulation_init(&mut self, scheduler_sim_id: dsc::Id, ca_sim_id: dsc::Id, hpa_sim_id: dsc::Id) {
+    pub fn prepare(&mut self, scheduler_sim_id: dsc::Id, ca_sim_id: dsc::Id, hpa_sim_id: dsc::Id) {
         self.scheduler_sim_id = scheduler_sim_id;
         self.ca_sim_id = ca_sim_id;
         self.hpa_sim_id = hpa_sim_id;
-    }
-
-    pub fn presimulation_check(&self) {
-        assert_ne!(self.scheduler_sim_id, dsc::Id::MAX);
     }
 
     // pub fn subscribe(&mut self, event: APIServerEvent, sim_id: dsc::Id) {

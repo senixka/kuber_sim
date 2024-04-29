@@ -34,6 +34,7 @@ pub struct Scheduler {
 impl Scheduler {
     pub fn new(
         ctx: dsc::SimulationContext,
+        api_sim_id: dsc::Id,
         cluster_state: Rc<RefCell<ClusterState>>,
         monitoring: Rc<RefCell<Monitoring>>,
 
@@ -49,7 +50,7 @@ impl Scheduler {
         Self {
             ctx,
             cluster_state,
-            api_sim_id: dsc::Id::MAX,
+            api_sim_id,
             monitoring,
             running_pods: HashMap::new(),
             pending_pods: HashMap::new(),
@@ -66,14 +67,6 @@ impl Scheduler {
             scorer_weights,
             removed_pod: HashSet::new(),
         }
-    }
-
-    pub fn presimulation_init(&mut self, api_sim_id: dsc::Id) {
-        self.api_sim_id = api_sim_id;
-    }
-
-    pub fn presimulation_check(&self) {
-        assert_ne!(self.api_sim_id, dsc::Id::MAX);
     }
 
     pub fn self_update_on(&mut self) {

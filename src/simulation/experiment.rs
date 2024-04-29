@@ -2,187 +2,189 @@ use crate::my_imports::*;
 
 
 pub struct Experiment {
-    // cluster_state_file_path: String,
-    // workload_file_path: String,
+    cluster_state_file_path: String,
+    workload_file_path: String,
+    output_file_path: String,
 
     sim: dsc::Simulation,
-    // seed: u64,
+    seed: u64,
 
-    // cluster_state: Rc<RefCell<ClusterState>>,
-    // workload: Rc<RefCell<WorkLoad>>,
-
-    // api: Rc<RefCell<APIServer>>,
+    api: Rc<RefCell<APIServer>>,
+    cluster_state: Rc<RefCell<ClusterState>>,
+    workload: Rc<RefCell<WorkLoad>>,
     init: Rc<RefCell<Init>>,
-    // monitoring: Rc<RefCell<Monitoring>>,
+    monitoring: Rc<RefCell<Monitoring>>,
 
-    // api_id: dsc::Id,
-    // scheduler_id: dsc::Id,
+    api_id: dsc::Id,
+    monitoring_id: dsc::Id,
 
-    is_done: bool,
+    scheduler: Option<Rc<RefCell<Scheduler>>>,
+    scheduler_id: Option<dsc::Id>,
 
-    ca: Rc<RefCell<CA>>,
-    hpa: Rc<RefCell<HPA>>,
+    ca: Option<Rc<RefCell<CA>>>,
+    ca_id: Option<dsc::Id>,
+
+    hpa: Option<Rc<RefCell<HPA>>>,
+    hpa_id: Option<dsc::Id>,
+
+    is_preparation_done: bool,
 }
 
 
 impl Experiment {
-    pub fn new<
-        ActiveQCmp: TraitActiveQCmp + 'static,
-    > (
-        cluster_state_file_path: &str,
-        workload_file_path: &str,
-        out_path: &str,
-        seed: u64,
-        active_q: Box<dyn IActiveQ>,
-        back_off_q: Box<dyn IBackOffQ>,
-        filters: Vec<Box<dyn IFilterPlugin>>,
-        post_filters: Vec<Box<dyn IFilterPlugin>>,
-        scorers: Vec<Box<dyn IScorePlugin>>,
-        normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
-        weights: Vec<i64>,
-    ) -> Self {
-        // Create components
-        let cluster_state = Rc::new(RefCell::new(ClusterState::from_yaml(cluster_state_file_path)));
-
-        let workload = Rc::new(RefCell::new(WorkLoad::from_file(workload_file_path)));
-
+    pub fn new(cluster_state_file_path: String,
+               workload_file_path: String,
+               output_file_path: String,
+               seed: u64) -> Self {
+        // DSLab core
         let mut sim = dsc::Simulation::new(seed);
 
-        let monitoring = Rc::new(RefCell::new(
-            Monitoring::new(
-                sim.create_context("monitoring"), cluster_state.clone(), out_path.to_string(),
-            )
-        ));
-        let _ = sim.add_handler("monitoring", monitoring.clone());
+        // State objects
+        let cluster_state = Rc::new(RefCell::new(ClusterState::from_yaml(&cluster_state_file_path)));
+        let workload = Rc::new(RefCell::new(WorkLoad::from_file(&workload_file_path)));
 
+        // Api-server component
         let api = Rc::new(RefCell::new(
             APIServer::new(
-                sim.create_context("api"), cluster_state.clone()
+                sim.create_context("api_server"), cluster_state.clone()
             )
         ));
-        let api_id = sim.add_handler("api", api.clone());
+        let api_id = sim.add_handler("api_server", api.clone());
 
-        let scheduler = Rc::new(RefCell::new(
+        // Monitoring component
+        let monitoring = Rc::new(RefCell::new(
+            Monitoring::new(
+                sim.create_context("monitoring"), cluster_state.clone(), &output_file_path,
+            )
+        ));
+        let monitoring_id = sim.add_handler("monitoring", monitoring.clone());
+
+        // Init component
+        let init = Rc::new(RefCell::new(
+            Init::new(
+                sim.create_context("init"), cluster_state.clone(), workload.clone(), monitoring.clone(), api_id,
+            )
+        ));
+
+        Self {
+            cluster_state_file_path, workload_file_path, output_file_path,
+            sim, seed,
+            api, cluster_state, workload, init, monitoring,
+            api_id, monitoring_id,
+            scheduler: None,
+            scheduler_id: None,
+            ca: None,
+            ca_id: None,
+            hpa: None,
+            hpa_id: None,
+            is_preparation_done: false,
+        }
+    }
+
+    pub fn add_scheduler(&mut self,
+                         active_queue: Box<dyn IActiveQ>,
+                         backoff_queue: Box<dyn IBackOffQ>,
+
+                         filters: Vec<Box<dyn IFilterPlugin>>,
+                         post_filters: Vec<Box<dyn IFilterPlugin>>,
+                         scorers: Vec<Box<dyn IScorePlugin>>,
+                         score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
+                         scorer_weights: Vec<i64>) {
+        assert_eq!(scorers.len(), score_normalizers.len());
+        assert_eq!(scorers.len(), scorer_weights.len());
+
+        self.scheduler = Some(Rc::new(RefCell::new(
             Scheduler::new(
-                sim.create_context("scheduler"),
-                cluster_state.clone(),
-                monitoring.clone(),
+                self.sim.create_context("scheduler"),
+                self.api_id,
+                self.cluster_state.clone(),
+                self.monitoring.clone(),
+
                 filters,
                 post_filters,
                 scorers,
-                normalizers,
-                weights,
-                active_q,
-                back_off_q,
-            )
-        ));
-        let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
+                score_normalizers,
+                scorer_weights,
 
-        let init = Rc::new(RefCell::new(
-            Init::new(
-                sim.create_context("init"), cluster_state.clone(), workload.clone(), monitoring.clone()
+                active_queue,
+                backoff_queue,
             )
-        ));
+        )));
+        self.scheduler_id = Some(self.sim.add_handler("scheduler", self.scheduler.clone().unwrap()));
+    }
 
-        let ca = Rc::new(RefCell::new(
+    pub fn add_ca(&mut self) {
+        self.ca = Some(Rc::new(RefCell::new(
             CA::new(
-                sim.create_context("ca"),
-                cluster_state.clone(),
-                monitoring.clone(),
-                api_id,
-                &mut sim)
-        ));
-        let ca_id = sim.add_handler("ca", ca.clone());
+                self.sim.create_context("ca"),
+                self.cluster_state.clone(),
+                self.monitoring.clone(),
+                self.api_id,
+                &mut self.sim)
+        )));
+        self.ca_id = Some(self.sim.add_handler("ca", self.ca.clone().unwrap()));
+    }
 
-        let hpa = Rc::new(RefCell::new(
+    pub fn add_hpa(&mut self) {
+        self.hpa = Some(Rc::new(RefCell::new(
             HPA::new(
-                sim.create_context("hpa"),
-                cluster_state.clone(),
-                workload.clone(),
-                api_id)
-        ));
-        let hpa_id = sim.add_handler("hpa", hpa.clone());
-
-        // Init components
-        api.borrow_mut().presimulation_init(scheduler_id, ca_id, hpa_id);
-        scheduler.borrow_mut().presimulation_init(api_id);
-        init.borrow_mut().presimulation_init(api_id);
-        monitoring.borrow_mut().presimulation_init(ca_id, hpa_id);
-
-        // Final check
-        api.borrow().presimulation_check();
-        scheduler.borrow().presimulation_check();
-        init.borrow().presimulation_check();
-        monitoring.borrow_mut().presimulation_check();
-
-        Self {
-            // cluster_state_file_path: cluster_state_file_path.to_string(),
-            // workload_file_path: workload_file_path.to_string(),
-            sim,// seed,
-            // cluster_state, workload,
-            init,// api, monitoring,
-            // api_id, scheduler_id,
-            is_done: false,
-            ca,
-            hpa,
-        }
+                self.sim.create_context("hpa"),
+                self.cluster_state.clone(),
+                self.workload.clone(),
+                self.api_id)
+        )));
+        self.hpa_id = Some(self.sim.add_handler("hpa", self.hpa.clone().unwrap()));
     }
 
-    pub fn enable_cluster_autoscaler(&self) {
-        self.ca.borrow_mut().turn_on();
-    }
+    pub fn prepare(&mut self) {
+        assert_eq!(self.is_preparation_done, false);
 
-    pub fn disable_cluster_autoscaler(&self) {
-        self.ca.borrow_mut().turn_off();
-    }
+        let scheduler_id = self.scheduler_id.unwrap();
+        let ca_id = self.ca_id.unwrap_or(dsc::Id::MAX);
+        let hpa_id = self.ca_id.unwrap_or(dsc::Id::MAX);
 
-    pub fn enable_hpa(&self) {
-        self.hpa.borrow_mut().turn_on();
-    }
-
-    pub fn disable_hpa(&self) {
-        self.hpa.borrow_mut().turn_off();
-    }
-
-    pub fn prepare_cluster(&mut self) {
-        if self.is_done {
-            panic!("prepare_cluster already done!");
-        }
-        self.is_done = true;
+        self.api.borrow_mut().prepare(scheduler_id, ca_id, hpa_id);
+        self.monitoring.borrow_mut().presimulation_init(ca_id, hpa_id);
 
         self.init.borrow().submit_nodes(&mut self.sim);
         self.init.borrow().submit_pods();
+
+        self.is_preparation_done = true;
+    }
+
+    pub fn enable_cluster_autoscaler(&self) {
+        self.ca.clone().unwrap().borrow_mut().turn_on();
+    }
+
+    pub fn disable_cluster_autoscaler(&self) {
+        self.ca.clone().unwrap().borrow_mut().turn_off();
+    }
+
+    pub fn enable_hpa(&self) {
+        self.hpa.clone().unwrap().borrow_mut().turn_on();
+    }
+
+    pub fn disable_hpa(&self) {
+        self.hpa.clone().unwrap().borrow_mut().turn_off();
     }
 
     pub fn step_until_no_events(&mut self) {
-        if !self.is_done {
-            panic!("Cluster is not prepared!");
-        }
-
+        assert_eq!(self.is_preparation_done, true);
         self.sim.step_until_no_events();
     }
 
     pub fn run_for_duration(&mut self, duration: f64) {
-        if !self.is_done {
-            panic!("Cluster is not prepared!");
-        }
-
+        assert_eq!(self.is_preparation_done, true);
         self.sim.step_for_duration(duration);
     }
 
     pub fn steps(&mut self, steps: u64) {
-        if !self.is_done {
-            panic!("Cluster is not prepared!");
-        }
-
+        assert_eq!(self.is_preparation_done, true);
         self.sim.steps(steps);
     }
 
     pub fn step_until_time(&mut self, time: f64) {
-        if !self.is_done {
-            panic!("Cluster is not prepared!");
-        }
-
+        assert_eq!(self.is_preparation_done, true);
         self.sim.step_until_time(time);
     }
 }

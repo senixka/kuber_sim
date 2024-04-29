@@ -51,7 +51,7 @@ pub struct Monitoring {
 }
 
 impl Monitoring {
-    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, out_path: String) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, out_path: &String) -> Self {
         Self {
             ctx,
             self_update_enabled: false,
@@ -67,7 +67,7 @@ impl Monitoring {
             scheduler_utilization_cpu_numerator: Vec::new(),
             scheduler_utilization_memory_numerator: Vec::new(),
             pending_pod: Vec::new(),
-            out_path,
+            out_path: out_path.clone(),
             ca_sim_id: dsc::Id::MAX,
             hpa_sim_id: dsc::Id::MAX,
         }

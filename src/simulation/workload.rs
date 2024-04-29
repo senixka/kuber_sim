@@ -12,7 +12,7 @@ pub struct WorkLoad {
 
 
 impl WorkLoad {
-    pub fn from_file(path: &str) -> Self {
+    pub fn from_file(path: &String) -> Self {
         if path.ends_with(".yaml") {
             return WorkLoad::from_yaml(path);
         } else if path.ends_with(".csv") {
@@ -22,7 +22,7 @@ impl WorkLoad {
         }
     }
 
-    pub fn from_yaml(path: &str) -> Self {
+    pub fn from_yaml(path: &String) -> Self {
         let fin = std::fs::File::open(path).unwrap();
         let mut workload: WorkLoad = serde_yaml::from_reader(fin).unwrap();
 
@@ -38,7 +38,7 @@ impl WorkLoad {
     }
 
     // TODO: update format, prepare for hpa, add taints and other...
-    pub fn from_csv(path: &str) -> Self {
+    pub fn from_csv(path: &String) -> Self {
         let file = std::fs::File::open(path).unwrap();
         let reader = BufReader::new(file);
 

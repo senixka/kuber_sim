@@ -12,22 +12,18 @@ pub struct Init {
 
 
 impl Init {
-    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, workload: Rc<RefCell<WorkLoad>>, monitoring: Rc<RefCell<Monitoring>>) -> Self {
+    pub fn new(ctx: dsc::SimulationContext,
+               cluster_state: Rc<RefCell<ClusterState>>,
+               workload: Rc<RefCell<WorkLoad>>,
+               monitoring: Rc<RefCell<Monitoring>>,
+               api_sim_id: dsc::Id) -> Self {
         Self {
             ctx,
-            api_sim_id: dsc::Id::MAX,
+            api_sim_id,
             monitoring,
             cluster_state,
             workload,
         }
-    }
-
-    pub fn presimulation_init(&mut self, api_sim_id: dsc::Id) {
-        self.api_sim_id = api_sim_id;
-    }
-
-    pub fn presimulation_check(&self) {
-        assert_ne!(self.api_sim_id, dsc::Id::MAX);
     }
 
     pub fn submit_pods(&self) {

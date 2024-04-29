@@ -212,41 +212,38 @@ fn main() {
     //
     // Test on Google cluster trace with input as csv
     if value == "gcsv" {
-        let mut test = Experiment::new::<ActiveQCmpDefault>(
-            "./data/cluster_state/test_gcsv.yaml",
-            "./data/workload/test_gcsv.csv",
-            "./data/out/test_gcsv.txt",
+        let mut test = Experiment::new(
+            "./data/cluster_state/test_gcsv.yaml".to_string(),
+            "./data/workload/test_gcsv.csv".to_string(),
+            "./data/out/test_gcsv.txt".to_string(),
             179,
-            Box::new(ActiveQDefault::default()),
-            Box::new(BackOffDefault::default()),
-            vec![Box::new(FilterNodeSelector)],
-            vec![Box::new(FilterAlwaysTrue)],
-            vec![Box::new(ScoreTetris)],
-            vec![Box::new(ScoreNormalizeSkip)],
-            vec![1],
         );
-        test.prepare_cluster();
-        // test.enable_cluster_autoscaler();
-        // test.step_until_no_events();
+        test.add_scheduler(Box::new(ActiveQDefault::default()),
+                           Box::new(BackOffDefault::default()),
+                           vec![Box::new(FilterNodeSelector)],
+                           vec![Box::new(FilterAlwaysTrue)],
+                           vec![Box::new(ScoreTetris)],
+                           vec![Box::new(ScoreNormalizeSkip)],
+                           vec![1]);
+        test.prepare();
         test.step_until_time(60.0 * 60.0 * 24.0);
     }
 
     if value == "perf" {
-        let mut test = Experiment::new::<ActiveQCmpDefault>(
-            "./data/cluster_state/test_gcsv.yaml",
-            "./data/workload/test_perf_small.csv",
-            "./data/out/test_perf.txt",
+        let mut test = Experiment::new(
+            "./data/cluster_state/test_gcsv.yaml".to_string(),
+            "./data/workload/test_perf_small.csv".to_string(),
+            "./data/out/test_perf.txt".to_string(),
             179,
-            Box::new(ActiveQDefault::default()),
-            Box::new(BackOffDefault::default()),
-            vec![Box::new(FilterNodeSelector)],
-            vec![Box::new(FilterAlwaysTrue)],
-            vec![Box::new(ScoreTetris)],
-            vec![Box::new(ScoreNormalizeSkip)],
-            vec![1],
         );
-        test.prepare_cluster();
-        // test.enable_cluster_autoscaler();
+        test.add_scheduler(Box::new(ActiveQDefault::default()),
+                           Box::new(BackOffDefault::default()),
+                           vec![Box::new(FilterNodeSelector)],
+                           vec![Box::new(FilterAlwaysTrue)],
+                           vec![Box::new(ScoreTetris)],
+                           vec![Box::new(ScoreNormalizeSkip)],
+                           vec![2]);
+        test.prepare();
         test.step_until_no_events();
     }
 }
