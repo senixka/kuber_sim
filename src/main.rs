@@ -46,7 +46,7 @@ pub mod my_imports {
     pub use crate::scheduler::backoff_queue::*;
     pub use crate::scheduler::filter::*;
     pub use crate::scheduler::node_index::*;
-    pub use crate::scheduler::normalize_score::*;
+    pub use crate::scheduler::score_normalize::*;
     pub use crate::scheduler::scheduler::*;
     pub use crate::scheduler::score::*;
     pub use crate::scheduler::taints_tolerations::*;
@@ -239,8 +239,8 @@ fn main() {
             vec![Box::new(FilterAlwaysTrue)],
             //[],
             vec![Box::new(ScoreTetris)],
-            [skip],
-            [1],
+            vec![Box::new(ScoreNormalizeSkip)],
+            vec![1],
         );
         test.prepare_cluster();
         // test.enable_cluster_autoscaler();

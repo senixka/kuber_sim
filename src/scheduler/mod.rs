@@ -4,6 +4,6 @@ pub mod backoff_queue;
 pub mod node_index;
 pub mod filter;
 pub mod score;
-pub mod normalize_score;
+pub mod score_normalize;
 pub mod taints_tolerations;
 pub mod node_affinity;

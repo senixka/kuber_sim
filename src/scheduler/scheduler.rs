@@ -1,5 +1,4 @@
 use crate::my_imports::*;
-use crate::scheduler::filter;
 
 
 pub struct Scheduler<
@@ -29,8 +28,8 @@ pub struct Scheduler<
     filters: Vec<Box<dyn IFilterPlugin>>,
     post_filters: Vec<Box<dyn IFilterPlugin>>,
     scorers: Vec<Box<dyn IScorePlugin>>,
-    scorer_weights: [i64; 1],
-    score_normalizers: [NormalizeScorePluginT; 1],
+    score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
+    scorer_weights: Vec<i64>,
 
     // To remove running pods
     removed_pod: HashSet<u64>,
@@ -45,23 +44,15 @@ impl <
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
         monitoring: Rc<RefCell<Monitoring>>,
+
         filters: Vec<Box<dyn IFilterPlugin>>,
         post_filters: Vec<Box<dyn IFilterPlugin>>,
-        //filters: [FilterPluginT; N_FILTER],
-        //post_filters: [FilterPluginT; N_POST_FILTER],
         scorers: Vec<Box<dyn IScorePlugin>>,
-        score_normalizers: [NormalizeScorePluginT; 1],
-        scorer_weights: [i64; 1],
+        score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
+        scorer_weights: Vec<i64>,
+
         backoff_queue: BackOffQ,
     ) -> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER> {
-        let mut filter_names: Vec<String> = Vec::with_capacity(filters.len());
-        filters[0].name();
-
-        // for filter in filters {
-        //     filter.name();
-        //     filter_names.push("aboba".to_string());
-        // }
-
         Self {
             ctx,
             cluster_state,
@@ -220,7 +211,7 @@ impl <
 
             // Normalize Score
             for (i, score_normalizer) in self.score_normalizers.iter().enumerate() {
-                score_normalizer(
+                score_normalizer.normalize(
                     &self.running_pods, &self.pending_pods, &self.nodes, &pod, &resulted_nodes, &mut score_matrix[i]
                 );
             }

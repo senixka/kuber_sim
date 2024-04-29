@@ -40,8 +40,8 @@ impl Experiment {
         filters: Vec<Box<dyn IFilterPlugin>>,
         // post_filters: [FilterPluginT; N_POST_FILTER],
         scorers: Vec<Box<dyn IScorePlugin>>,
-        normalizers: [NormalizeScorePluginT; 1],
-        weights: [i64; 1],
+        normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
+        weights: Vec<i64>,
     ) -> Self {
         // Create components
         let cluster_state = Rc::new(RefCell::new(ClusterState::from_yaml(cluster_state_file_path)));
