@@ -38,7 +38,7 @@ impl Experiment {
         seed: u64,
         back_off_q_impl: BackOffQ,
         filters: Vec<Box<dyn IFilterPlugin>>,
-        // post_filters: [FilterPluginT; N_POST_FILTER],
+        post_filters: Vec<Box<dyn IFilterPlugin>>,
         scorers: Vec<Box<dyn IScorePlugin>>,
         normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
         weights: Vec<i64>,
@@ -65,12 +65,12 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmp, BackOffQ, N_POST_FILTER>::new(
+            Scheduler::<ActiveQCmp, BackOffQ>::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
                 filters,
-                vec![],
+                post_filters,
                 scorers,
                 normalizers,
                 weights,

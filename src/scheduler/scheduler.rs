@@ -4,7 +4,6 @@ use crate::my_imports::*;
 pub struct Scheduler<
     ActiveQCmp,
     BackOffQ,
-    const N_POST_FILTER: usize,
 > {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
@@ -38,8 +37,7 @@ pub struct Scheduler<
 impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
-    const N_POST_FILTER: usize,
-> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER> {
+> Scheduler<ActiveQCmp, BackOffQ> {
     pub fn new(
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
@@ -52,7 +50,7 @@ impl <
         scorer_weights: Vec<i64>,
 
         backoff_queue: BackOffQ,
-    ) -> Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER> {
+    ) -> Scheduler<ActiveQCmp, BackOffQ> {
         Self {
             ctx,
             cluster_state,
@@ -153,22 +151,22 @@ impl <
 
             // Apply PostFilter if necessary
             if suitable_count == 0 {
-                // for (i, node) in possible_nodes.iter().enumerate() {
-                //     for post_filter_plugin in self.post_filters.iter() {
-                //         is_schedulable[i] = post_filter_plugin(
-                //             &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
-                //         );
-                //
-                //         //  If any marks the node as Schedulable, the remaining will not be called
-                //         if is_schedulable[i] {
-                //             break;
-                //         }
-                //     }
-                //
-                //     if is_schedulable[i] {
-                //         suitable_count += 1;
-                //     }
-                // }
+                for (i, node) in possible_nodes.iter().enumerate() {
+                    for post_filter_plugin in self.post_filters.iter() {
+                        is_schedulable[i] = post_filter_plugin.filter(
+                            &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
+                        );
+
+                        //  If any marks the node as Schedulable, the remaining will not be called
+                        if is_schedulable[i] {
+                            break;
+                        }
+                    }
+
+                    if is_schedulable[i] {
+                        suitable_count += 1;
+                    }
+                }
             }
 
             // If PostFilter does not help
@@ -412,8 +410,7 @@ impl <
 impl <
     ActiveQCmp: TraitActiveQCmp,
     BackOffQ: TraitBackOffQ,
-    const N_POST_FILTER: usize,
-> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ, N_POST_FILTER> {
+> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ> {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
