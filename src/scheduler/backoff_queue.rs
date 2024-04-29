@@ -2,7 +2,7 @@ use crate::my_imports::*;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub trait TraitBackOffQ {
+pub trait IBackOffQ {
     fn push(&mut self, pod_uid: u64, backoff_attempts: u64, current_time: f64);
     fn try_pop(&mut self, current_time: f64) -> Option<u64>;
 }
@@ -64,7 +64,7 @@ impl BackOffQExponential {
 }
 
 
-impl TraitBackOffQ for BackOffQExponential {
+impl IBackOffQ for BackOffQExponential {
     fn push(&mut self, pod_uid: u64, backoff_attempts: u64, current_time: f64) {
         let unlimited_timeout = self.initial_backoff * 2.0f64.powf(backoff_attempts as f64);
         let backoff_timeout = self.max_backoff.min(unlimited_timeout);

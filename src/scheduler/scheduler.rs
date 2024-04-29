@@ -3,7 +3,6 @@ use crate::my_imports::*;
 
 pub struct Scheduler<
     ActiveQCmp,
-    BackOffQ,
 > {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
@@ -20,7 +19,7 @@ pub struct Scheduler<
 
     // Queues
     active_queue: BinaryHeap<ActiveQCmp>,
-    backoff_queue: BackOffQ,
+    backoff_queue: Box<dyn IBackOffQ>,
     failed_attempts: HashMap<u64, u64>,
 
     // Pipeline
@@ -36,8 +35,7 @@ pub struct Scheduler<
 
 impl <
     ActiveQCmp: TraitActiveQCmp,
-    BackOffQ: TraitBackOffQ,
-> Scheduler<ActiveQCmp, BackOffQ> {
+> Scheduler<ActiveQCmp> {
     pub fn new(
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
@@ -49,8 +47,8 @@ impl <
         score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
         scorer_weights: Vec<i64>,
 
-        backoff_queue: BackOffQ,
-    ) -> Scheduler<ActiveQCmp, BackOffQ> {
+        backoff_queue: Box<dyn IBackOffQ>,
+    ) -> Scheduler<ActiveQCmp> {
         Self {
             ctx,
             cluster_state,
@@ -409,8 +407,7 @@ impl <
 
 impl <
     ActiveQCmp: TraitActiveQCmp,
-    BackOffQ: TraitBackOffQ,
-> dsc::EventHandler for Scheduler<ActiveQCmp, BackOffQ> {
+> dsc::EventHandler for Scheduler<ActiveQCmp> {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {

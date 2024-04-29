@@ -89,10 +89,10 @@ fn main() {
     // Integrity tests
     Test::test_all();
 
-    // let mut value = String::new();
-    // stdin().read_line(&mut value).unwrap();
-    // value = value.trim().to_string();
-    let value = "perf".to_string();
+    let mut value = String::new();
+    stdin().read_line(&mut value).unwrap();
+    value = value.trim().to_string();
+    // let value = "perf".to_string();
 
     // Test pod eviction
     // if value == "evict" {
@@ -210,32 +210,32 @@ fn main() {
     // }
     //
     // Test on Google cluster trace with input as csv
-    // if value == "gcsv" {
-    //     let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 1>(
-    //         "./data/cluster_state/test_gcsv.yaml",
-    //         "./data/workload/test_gcsv.csv",
-    //         "./data/out/test_gcsv.txt",
-    //         179,
-    //         BackOffDefault::default(),
-    //         [],
-    //         [],
-    //         [score_tetris],
-    //         [skip],
-    //         [1],
-    //     );
-    //     test.prepare_cluster();
-    //     // test.enable_cluster_autoscaler();
-    //     // test.step_until_no_events();
-    //     test.step_until_time(60.0 * 60.0 * 24.0);
-    // }
+    if value == "gcsv" {
+        let mut test = Experiment::new::<ActiveQCmpDefault>(
+            "./data/cluster_state/test_gcsv.yaml",
+            "./data/workload/test_gcsv.csv",
+            "./data/out/test_gcsv.txt",
+            179,
+            Box::new(BackOffDefault::default()),
+            vec![Box::new(FilterNodeSelector)],
+            vec![Box::new(FilterAlwaysTrue)],
+            vec![Box::new(ScoreTetris)],
+            vec![Box::new(ScoreNormalizeSkip)],
+            vec![1],
+        );
+        test.prepare_cluster();
+        // test.enable_cluster_autoscaler();
+        // test.step_until_no_events();
+        test.step_until_time(60.0 * 60.0 * 24.0);
+    }
 
     if value == "perf" {
-        let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0>(
+        let mut test = Experiment::new::<ActiveQCmpDefault>(
             "./data/cluster_state/test_gcsv.yaml",
             "./data/workload/test_perf_small.csv",
             "./data/out/test_perf.txt",
             179,
-            BackOffDefault::default(),
+            Box::new(BackOffDefault::default()),
             vec![Box::new(FilterNodeSelector)],
             vec![Box::new(FilterAlwaysTrue)],
             vec![Box::new(ScoreTetris)],

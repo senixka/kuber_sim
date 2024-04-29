@@ -28,15 +28,12 @@ pub struct Experiment {
 impl Experiment {
     pub fn new<
         ActiveQCmp: TraitActiveQCmp + 'static,
-        BackOffQ: TraitBackOffQ + 'static,
-        //const N_FILTER: usize,
-        const N_POST_FILTER: usize,
     > (
         cluster_state_file_path: &str,
         workload_file_path: &str,
         out_path: &str,
         seed: u64,
-        back_off_q_impl: BackOffQ,
+        back_off_q_impl: Box<dyn IBackOffQ>,
         filters: Vec<Box<dyn IFilterPlugin>>,
         post_filters: Vec<Box<dyn IFilterPlugin>>,
         scorers: Vec<Box<dyn IScorePlugin>>,
@@ -65,7 +62,7 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmp, BackOffQ>::new(
+            Scheduler::<ActiveQCmp>::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
