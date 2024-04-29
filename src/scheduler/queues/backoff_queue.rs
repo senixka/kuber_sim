@@ -5,11 +5,11 @@ use crate::my_imports::*;
 pub trait IBackOffQ {
     fn push(&mut self, pod_uid: u64, backoff_attempts: u64, current_time: f64);
     fn try_pop(&mut self, current_time: f64) -> Option<u64>;
+    fn try_remove(&mut self, pod_uid: u64) -> bool;
+    fn len(&self) -> usize;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub type BackOffDefault = BackOffQExponential;
+pub type BackOffQDefault = BackOffQExponential;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -28,13 +28,13 @@ impl PartialOrd for ItemWrapper {
 
 impl Ord for ItemWrapper {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.exit_time.total_cmp(&self.exit_time)
+        self.exit_time.total_cmp(&other.exit_time).then(self.pod_uid.cmp(&other.pod_uid))
     }
 }
 
 impl PartialEq for ItemWrapper {
     fn eq(&self, other: &Self) -> bool {
-        self.exit_time == other.exit_time
+        self.pod_uid == other.pod_uid
     }
 }
 
@@ -45,7 +45,8 @@ impl Eq for ItemWrapper {}
 pub struct BackOffQExponential {
     initial_backoff: f64,
     max_backoff: f64,
-    queue: BinaryHeap<ItemWrapper>,
+    exit_time: HashMap<u64, f64>,
+    queue: BTreeSet<ItemWrapper>,
 }
 
 
@@ -54,7 +55,8 @@ impl BackOffQExponential {
         Self {
             initial_backoff,
             max_backoff,
-            queue: BinaryHeap::new(),
+            queue: BTreeSet::new(),
+            exit_time: HashMap::new(),
         }
     }
 
@@ -68,20 +70,104 @@ impl IBackOffQ for BackOffQExponential {
     fn push(&mut self, pod_uid: u64, backoff_attempts: u64, current_time: f64) {
         let unlimited_timeout = self.initial_backoff * 2.0f64.powf(backoff_attempts as f64);
         let backoff_timeout = self.max_backoff.min(unlimited_timeout);
-        self.queue.push(ItemWrapper {
+
+        self.queue.insert(ItemWrapper {
             pod_uid,
             exit_time: current_time + backoff_timeout
         });
+        self.exit_time.insert(pod_uid, current_time + backoff_timeout);
     }
 
     fn try_pop(&mut self, current_time: f64) -> Option<u64> {
-        let top = self.queue.peek();
+        let top = self.queue.first();
         if top.is_none() || top.unwrap().exit_time > current_time {
             return None;
         }
 
-        return Some(self.queue.pop().unwrap().pod_uid);
+        let pod_uid = self.queue.pop_first().unwrap().pod_uid;
+        self.exit_time.remove(&pod_uid);
+        return Some(pod_uid);
+    }
+
+    fn try_remove(&mut self, pod_uid: u64) -> bool {
+        return match self.exit_time.get(&pod_uid) {
+            Some(&exit_time) => {
+                self.exit_time.remove(&pod_uid);
+
+                let _was_present = self.queue.remove(&ItemWrapper { pod_uid, exit_time });
+                assert_eq!(_was_present, true);
+
+                true
+            }
+            None => { false }
+        }
+    }
+
+    fn len(&self) -> usize {
+        return self.queue.len();
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub struct BackOffQConstant {
+    backoff_delay: f64,
+    exit_time: HashMap<u64, f64>,
+    queue: BTreeSet<ItemWrapper>,
+}
+
+
+impl BackOffQConstant {
+    pub fn new(backoff_delay: f64) -> Self {
+        Self {
+            backoff_delay,
+            queue: BTreeSet::new(),
+            exit_time: HashMap::new(),
+        }
+    }
+
+    pub fn default() -> Self {
+        BackOffQConstant::new(30.0)
+    }
+}
+
+
+impl IBackOffQ for BackOffQConstant {
+    fn push(&mut self, pod_uid: u64, _: u64, current_time: f64) {
+        self.queue.insert(ItemWrapper {
+            pod_uid,
+            exit_time: current_time + self.backoff_delay,
+        });
+        self.exit_time.insert(pod_uid, current_time + self.backoff_delay);
+    }
+
+    fn try_pop(&mut self, current_time: f64) -> Option<u64> {
+        let top = self.queue.first();
+        if top.is_none() || top.unwrap().exit_time > current_time {
+            return None;
+        }
+
+        let pod_uid = self.queue.pop_first().unwrap().pod_uid;
+        self.exit_time.remove(&pod_uid);
+        return Some(pod_uid);
+    }
+
+    fn try_remove(&mut self, pod_uid: u64) -> bool {
+        return match self.exit_time.get(&pod_uid) {
+            Some(&exit_time) => {
+                self.exit_time.remove(&pod_uid);
+
+                let _was_present = self.queue.remove(&ItemWrapper { pod_uid, exit_time });
+                assert_eq!(_was_present, true);
+
+                true
+            }
+            None => { false }
+        }
+    }
+
+    fn len(&self) -> usize {
+        return self.queue.len();
+    }
+}

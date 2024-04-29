@@ -219,7 +219,7 @@ fn main() {
             179,
         );
         test.add_scheduler(Box::new(ActiveQDefault::default()),
-                           Box::new(BackOffDefault::default()),
+                           Box::new(BackOffQDefault::default()),
                            vec![Box::new(FilterNodeSelector)],
                            vec![Box::new(FilterAlwaysTrue)],
                            vec![Box::new(ScoreTetris)],
@@ -237,7 +237,7 @@ fn main() {
             179,
         );
         test.add_scheduler(Box::new(ActiveQDefault::default()),
-                           Box::new(BackOffDefault::default()),
+                           Box::new(BackOffQDefault::default()),
                            vec![Box::new(FilterNodeSelector)],
                            vec![Box::new(FilterAlwaysTrue)],
                            vec![Box::new(ScoreTetris)],

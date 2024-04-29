@@ -6,14 +6,66 @@ pub struct Test ();
 
 impl Test {
     pub fn test_all() {
-        Test::test_backoff_queue();
+        Test::test_backoff_queue_exponential();
+        Test::test_backoff_queue_constant();
         Test::test_active_queue_cmp_uid();
         Test::test_node_rtree();
         Test::test_active_queue_cmp_priority();
         Test::test_pod_qos_class();
     }
 
-    pub fn test_backoff_queue() {
+    pub fn test_backoff_queue_constant() {
+        let mut q = BackOffQConstant::new(30.0);
+        q.push(1, 0, 0.0);
+
+        assert_eq!(q.try_pop(29.95), None);
+        assert_eq!(q.try_pop(30.05), Some(1));
+        assert_eq!(q.try_pop(30.05), None);
+
+        q.push(1, 1000, 1.0);
+
+        assert_eq!(q.try_pop(30.95), None);
+        assert_eq!(q.try_pop(31.05), Some(1));
+        assert_eq!(q.try_pop(31.05), None);
+
+        q.push(1, 123, 5.0);
+
+        assert_eq!(q.try_pop(34.95), None);
+        assert_eq!(q.try_pop(35.05), Some(1));
+        assert_eq!(q.try_pop(35.05), None);
+
+        q.push(1, 3, 1.0);
+        q.push(2, 1, 1.0);
+        q.push(2, 2, 2.0);
+        q.push(3, 2, 1.0);
+
+        assert_eq!(q.try_pop(31.05), Some(1));
+        assert_eq!(q.try_pop(31.05), Some(2));
+        assert_eq!(q.try_pop(31.05), Some(3));
+        assert_eq!(q.try_pop(31.05), None);
+
+        q.push(3, 1, 1.0);
+        q.push(1, 1, 1.0);
+        q.push(2, 1, 1.0);
+
+        assert_eq!(q.try_pop(31.05), Some(1));
+        assert_eq!(q.try_pop(31.05), Some(2));
+        assert_eq!(q.try_pop(31.05), Some(3));
+        assert_eq!(q.try_pop(31.05), None);
+
+        q.push(3, 1, 1.0);
+        q.push(1, 1, 1.0);
+        q.push(2, 1, 1.0);
+
+        assert_eq!(q.try_remove(1), true);
+        assert_eq!(q.try_remove(1), false);
+        assert_eq!(q.try_pop(31.05), Some(2));
+        assert_eq!(q.try_remove(2), false);
+        assert_eq!(q.try_remove(3), true);
+        assert_eq!(q.try_pop(31.05), None);
+    }
+
+    pub fn test_backoff_queue_exponential() {
         let mut q = BackOffQExponential::new(1.0, 10.0);
         q.push(1, 0, 0.0);
 
@@ -41,6 +93,26 @@ impl Test {
         assert_eq!(q.try_pop(9.05), Some(3));
         assert_eq!(q.try_pop(9.05), Some(1));
         assert_eq!(q.try_pop(9.05), None);
+
+        q.push(3, 1, 1.0);
+        q.push(1, 1, 1.0);
+        q.push(2, 1, 1.0);
+
+        assert_eq!(q.try_pop(9.05), Some(1));
+        assert_eq!(q.try_pop(9.05), Some(2));
+        assert_eq!(q.try_pop(9.05), Some(3));
+        assert_eq!(q.try_pop(9.05), None);
+
+        q.push(3, 1, 1.0);
+        q.push(1, 1, 1.0);
+        q.push(2, 1, 1.0);
+
+        assert_eq!(q.try_remove(1), true);
+        assert_eq!(q.try_remove(1), false);
+        assert_eq!(q.try_pop(9.05), Some(2));
+        assert_eq!(q.try_remove(2), false);
+        assert_eq!(q.try_remove(3), true);
+        assert_eq!(q.try_pop(9.05), None);
     }
 
     pub fn test_pod_qos_class() {
@@ -60,28 +132,40 @@ impl Test {
     }
 
     pub fn test_active_queue_cmp_priority() {
-        let mut q = BinaryHeap::<ActiveQCmpPriority>::new();
+        let mut q = ActiveMaxQ::<ActiveQCmpPriority>::new();
 
         let mut p1 = Pod::default();
         let mut p2 = Pod::default();
         let mut p22 = Pod::default();
         let mut p3 = Pod::default();
 
-        p1.spec.priority = 1;
-        p2.spec.priority = 2;
-        p22.spec.priority = 2;
-        p3.spec.priority = 3;
+        p1.spec.priority = 1;   p1.metadata.uid = 1;
+        p2.spec.priority = 2;   p1.metadata.uid = 1;
+        p22.spec.priority = 2;  p22.metadata.uid = 22;
+        p3.spec.priority = 3;   p3.metadata.uid = 3;
 
-        q.push(ActiveQCmpPriority::wrap(p2.clone()));
-        q.push(ActiveQCmpPriority::wrap(p3.clone()));
-        q.push(ActiveQCmpPriority::wrap(p1.clone()));
-        q.push(ActiveQCmpPriority::wrap(p22.clone()));
+        q.push(p2.clone());
+        q.push(p3.clone());
+        q.push(p1.clone());
+        q.push(p22.clone());
 
-        assert_eq!(q.pop().unwrap().0, p3);
-        assert_eq!(q.pop().unwrap().0, p2);
-        assert_eq!(q.pop().unwrap().0, p22);
-        assert_eq!(q.pop().unwrap().0, p1);
-        assert_eq!(q.pop(), None);
+        assert_eq!(q.try_pop().unwrap(), p3);
+        assert_eq!(q.try_pop().unwrap(), p22);
+        assert_eq!(q.try_pop().unwrap(), p2);
+        assert_eq!(q.try_pop().unwrap(), p1);
+        assert_eq!(q.try_pop(), None);
+
+        q.push(p2.clone());
+        q.push(p3.clone());
+        q.push(p1.clone());
+        q.push(p22.clone());
+
+        assert_eq!(q.try_remove(p2.clone()), true);
+        assert_eq!(q.try_remove(p2.clone()), false);
+        assert_eq!(q.try_pop().unwrap(), p3);
+        assert_eq!(q.try_pop().unwrap(), p22);
+        assert_eq!(q.try_pop().unwrap(), p1);
+        assert_eq!(q.try_pop(), None);
     }
 
     pub fn test_active_queue_cmp_uid() {
@@ -104,6 +188,17 @@ impl Test {
 
         assert_eq!(q.try_pop().unwrap(), p1);
         assert_eq!(q.try_pop().unwrap(), p2);
+        assert_eq!(q.try_pop().unwrap(), p3);
+        assert_eq!(q.try_pop(), None);
+
+        q.push(p2.clone());
+        q.push(p1.clone());
+        q.push(p22.clone());
+        q.push(p3.clone());
+
+        assert_eq!(q.try_remove(p1.clone()), true);
+        assert_eq!(q.try_remove(p1.clone()), false);
+        assert_eq!(q.try_pop().unwrap(), p22);
         assert_eq!(q.try_pop().unwrap(), p3);
         assert_eq!(q.try_pop(), None);
     }

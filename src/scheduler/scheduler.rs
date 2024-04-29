@@ -17,6 +17,7 @@ pub struct Scheduler {
 
     // Queues
     active_queue: Box<dyn IActiveQ>,
+    unschedulable_queue: BackOffQConstant,
     backoff_queue: Box<dyn IBackOffQ>,
     failed_attempts: HashMap<u64, u64>,
 
@@ -47,6 +48,8 @@ impl Scheduler {
         active_queue: Box<dyn IActiveQ>,
         backoff_queue: Box<dyn IBackOffQ>,
     ) -> Scheduler {
+        let unschedulable_queue_period = cluster_state.borrow().constants.unschedulable_queue_period;
+
         Self {
             ctx,
             cluster_state,
@@ -59,6 +62,7 @@ impl Scheduler {
             self_update_enabled: false,
             failed_attempts: HashMap::new(),
             active_queue,
+            unschedulable_queue: BackOffQConstant::new(unschedulable_queue_period),
             backoff_queue,
             filters,
             post_filters,
@@ -78,6 +82,11 @@ impl Scheduler {
 
 
     pub fn schedule(&mut self) {
+        // From unschedulableQ to activeQ
+        while let Some(pod_uid) = self.unschedulable_queue.try_pop(self.ctx.time()) {
+            self.active_queue.push(self.pending_pods.get(&pod_uid).unwrap().clone());
+        }
+
         // From backoffQ to activeQ
         while let Some(pod_uid) = self.backoff_queue.try_pop(self.ctx.time()) {
             self.active_queue.push(self.pending_pods.get(&pod_uid).unwrap().clone());
@@ -161,8 +170,8 @@ impl Scheduler {
                 let attempts = self.failed_attempts.entry(pod_uid).or_default();
 
                 if *attempts == 0 {
-                    // Simulate UnschedulableQ
-                    self.ctx.emit_self(APISchedulerSecondChance { pod_uid }, self.cluster_state.borrow().constants.unschedulable_queue_period);
+                    // Place pod to UnschedulableQ
+                    self.unschedulable_queue.push(pod_uid, 0, self.ctx.time());
                 } else {
                     // Place pod to BackoffQ
                     self.backoff_queue.push(pod_uid, *attempts, self.ctx.time());
@@ -420,16 +429,12 @@ impl dsc::EventHandler for Scheduler {
                 }
 
                 self.self_update_on();
-                self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
-                self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
             }
             APIAddPod { pod } => {
                 dp_scheduler!("{:.12} scheduler APIAddPod pod_uid:{:?}", self.ctx.time(), pod.metadata.uid);
 
                 self.process_new_pod(pod);
                 self.self_update_on();
-                self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
-                self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
             }
             APIRemovePod { pod_uid } => {
                 dp_scheduler!("{:.12} scheduler APIRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
@@ -437,9 +442,6 @@ impl dsc::EventHandler for Scheduler {
                 if self.running_pods.contains_key(&pod_uid) || self.pending_pods.contains_key(&pod_uid) {
                     self.removed_pod.insert(pod_uid);
                     self.preempt_pod(pod_uid);
-
-                    self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
-                    self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
                 }
             }
             APIAddNode { kubelet_sim_id: _ , node } => {
@@ -460,8 +462,6 @@ impl dsc::EventHandler for Scheduler {
                 dp_scheduler!("{:.12} scheduler APISchedulerSelfUpdate", self.ctx.time());
 
                 self.schedule();
-                self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
-                self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
 
                 if self.pending_pods.len() > 0 {
                     self.ctx.emit_self(APISchedulerSelfUpdate{}, self.cluster_state.borrow().constants.scheduler_self_update_period);
@@ -471,6 +471,7 @@ impl dsc::EventHandler for Scheduler {
             }
             APISchedulerSecondChance { pod_uid } => {
                 dp_scheduler!("{:.12} scheduler APISchedulerSecondChance pod_uid:{:?}", self.ctx.time(), pod_uid);
+                panic!("Kek");
 
                 self.active_queue.push(self.pending_pods.get(&pod_uid).unwrap().clone());
             }
@@ -480,5 +481,8 @@ impl dsc::EventHandler for Scheduler {
                 self.send_ca_metrics(&node_list);
             }
         });
+
+        self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
+        self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
     }
 }
