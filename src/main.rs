@@ -42,15 +42,16 @@ pub mod my_imports {
     pub use crate::objects::object_meta::*;
     pub use crate::objects::hpa_pod_group::*;
 
-    pub use crate::scheduler::active_queue::*;
-    pub use crate::scheduler::backoff_queue::*;
-    pub use crate::scheduler::filter::*;
+    pub use crate::scheduler::queues::active_queue::*;
+    pub use crate::scheduler::queues::active_queue_cmp::*;
+    pub use crate::scheduler::queues::backoff_queue::*;
+    pub use crate::scheduler::pipeline::filter::*;
     pub use crate::scheduler::node_index::*;
-    pub use crate::scheduler::score_normalize::*;
+    pub use crate::scheduler::pipeline::score_normalize::*;
     pub use crate::scheduler::scheduler::*;
-    pub use crate::scheduler::score::*;
-    pub use crate::scheduler::taints_tolerations::*;
-    pub use crate::scheduler::node_affinity::*;
+    pub use crate::scheduler::pipeline::score::*;
+    pub use crate::scheduler::features::taints_tolerations::*;
+    pub use crate::scheduler::features::node_affinity::*;
 
     pub use crate::simulation::workload::*;
     pub use crate::simulation::cluster_state::*;
@@ -216,6 +217,7 @@ fn main() {
             "./data/workload/test_gcsv.csv",
             "./data/out/test_gcsv.txt",
             179,
+            Box::new(ActiveQDefault::default()),
             Box::new(BackOffDefault::default()),
             vec![Box::new(FilterNodeSelector)],
             vec![Box::new(FilterAlwaysTrue)],
@@ -235,6 +237,7 @@ fn main() {
             "./data/workload/test_perf_small.csv",
             "./data/out/test_perf.txt",
             179,
+            Box::new(ActiveQDefault::default()),
             Box::new(BackOffDefault::default()),
             vec![Box::new(FilterNodeSelector)],
             vec![Box::new(FilterAlwaysTrue)],

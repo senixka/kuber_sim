@@ -1,9 +1,5 @@
 pub mod scheduler;
-pub mod active_queue;
-pub mod backoff_queue;
 pub mod node_index;
-pub mod filter;
-pub mod score;
-pub mod score_normalize;
-pub mod taints_tolerations;
-pub mod node_affinity;
+pub mod pipeline;
+pub mod features;
+pub mod queues;

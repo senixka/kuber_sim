@@ -1,9 +1,7 @@
 use crate::my_imports::*;
 
 
-pub struct Scheduler<
-    ActiveQCmp,
-> {
+pub struct Scheduler {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
     api_sim_id: dsc::Id,
@@ -18,7 +16,7 @@ pub struct Scheduler<
     node_rtree: NodeRTree,
 
     // Queues
-    active_queue: BinaryHeap<ActiveQCmp>,
+    active_queue: Box<dyn IActiveQ>,
     backoff_queue: Box<dyn IBackOffQ>,
     failed_attempts: HashMap<u64, u64>,
 
@@ -33,9 +31,7 @@ pub struct Scheduler<
     removed_pod: HashSet<u64>,
 }
 
-impl <
-    ActiveQCmp: TraitActiveQCmp,
-> Scheduler<ActiveQCmp> {
+impl Scheduler {
     pub fn new(
         ctx: dsc::SimulationContext,
         cluster_state: Rc<RefCell<ClusterState>>,
@@ -47,8 +43,9 @@ impl <
         score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
         scorer_weights: Vec<i64>,
 
+        active_queue: Box<dyn IActiveQ>,
         backoff_queue: Box<dyn IBackOffQ>,
-    ) -> Scheduler<ActiveQCmp> {
+    ) -> Scheduler {
         Self {
             ctx,
             cluster_state,
@@ -59,8 +56,8 @@ impl <
             nodes: HashMap::new(),
             node_rtree: NodeRTree::new(),
             self_update_enabled: false,
-            active_queue: BinaryHeap::new(),
             failed_attempts: HashMap::new(),
+            active_queue,
             backoff_queue,
             filters,
             post_filters,
@@ -90,7 +87,7 @@ impl <
     pub fn schedule(&mut self) {
         // From backoffQ to activeQ
         while let Some(pod_uid) = self.backoff_queue.try_pop(self.ctx.time()) {
-            self.active_queue.push(ActiveQCmp::wrap(self.pending_pods.get(&pod_uid).unwrap().clone()));
+            self.active_queue.push(self.pending_pods.get(&pod_uid).unwrap().clone());
         }
 
         let mut possible_nodes: Vec<Node> = Vec::new();
@@ -106,13 +103,12 @@ impl <
         dp_scheduler!("{:.12} scheduler cycle activeQ:{:?}", self.ctx.time(), self.active_queue.len());
 
         // Main scheduling cycle
-        while let Some(wrapper) = self.active_queue.pop() {
+        while let Some(mut pod) = self.active_queue.try_pop() {
             if scheduled_left == 0 || try_schedule_left == 0 {
                 break;
             }
             try_schedule_left -= 1;
 
-            let mut pod = wrapper.inner();
             let pod_uid = pod.metadata.uid;
             let cpu = pod.spec.request_cpu;
             let memory = pod.spec.request_memory;
@@ -307,7 +303,7 @@ impl <
         assert_eq!(pod.status.cluster_resource_starvation, false);
 
         self.pending_pods.insert(pod_uid, pod.clone());
-        self.active_queue.push(ActiveQCmp::wrap(pod));
+        self.active_queue.push(pod);
     }
 
     pub fn process_evicted_pod(&mut self, pod_uid: u64) {
@@ -335,7 +331,7 @@ impl <
         self.pending_pods.insert(pod_uid, pod.clone());
 
         // Place pod to ActiveQ
-        self.active_queue.push(ActiveQCmp::wrap(pod));
+        self.active_queue.push(pod);
     }
 
     pub fn process_finished_pod(&mut self, pod_uid: u64) {
@@ -405,9 +401,7 @@ impl <
     }
 }
 
-impl <
-    ActiveQCmp: TraitActiveQCmp,
-> dsc::EventHandler for Scheduler<ActiveQCmp> {
+impl dsc::EventHandler for Scheduler {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
@@ -484,7 +478,7 @@ impl <
             APISchedulerSecondChance { pod_uid } => {
                 dp_scheduler!("{:.12} scheduler APISchedulerSecondChance pod_uid:{:?}", self.ctx.time(), pod_uid);
 
-                self.active_queue.push(ActiveQCmp::wrap(self.pending_pods.get(&pod_uid).unwrap().clone()));
+                self.active_queue.push(self.pending_pods.get(&pod_uid).unwrap().clone());
             }
             APIGetCAMetrics { node_list } => {
                 dp_scheduler!("{:.12} scheduler APIGetCAMetrics", self.ctx.time());

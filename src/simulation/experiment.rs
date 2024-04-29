@@ -33,7 +33,8 @@ impl Experiment {
         workload_file_path: &str,
         out_path: &str,
         seed: u64,
-        back_off_q_impl: Box<dyn IBackOffQ>,
+        active_q: Box<dyn IActiveQ>,
+        back_off_q: Box<dyn IBackOffQ>,
         filters: Vec<Box<dyn IFilterPlugin>>,
         post_filters: Vec<Box<dyn IFilterPlugin>>,
         scorers: Vec<Box<dyn IScorePlugin>>,
@@ -62,7 +63,7 @@ impl Experiment {
         let api_id = sim.add_handler("api", api.clone());
 
         let scheduler = Rc::new(RefCell::new(
-            Scheduler::<ActiveQCmp>::new(
+            Scheduler::new(
                 sim.create_context("scheduler"),
                 cluster_state.clone(),
                 monitoring.clone(),
@@ -71,7 +72,8 @@ impl Experiment {
                 scorers,
                 normalizers,
                 weights,
-                back_off_q_impl,
+                active_q,
+                back_off_q,
             )
         ));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());

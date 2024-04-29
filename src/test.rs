@@ -7,7 +7,7 @@ pub struct Test ();
 impl Test {
     pub fn test_all() {
         Test::test_backoff_queue();
-        Test::test_active_queue_cmp_min_uid();
+        Test::test_active_queue_cmp_uid();
         Test::test_node_rtree();
         Test::test_active_queue_cmp_priority();
         Test::test_pod_qos_class();
@@ -84,8 +84,8 @@ impl Test {
         assert_eq!(q.pop(), None);
     }
 
-    pub fn test_active_queue_cmp_min_uid() {
-        let mut q = BinaryHeap::<ActiveQCmpMinUid>::new();
+    pub fn test_active_queue_cmp_uid() {
+        let mut q = ActiveMinQ::<ActiveQCmpUid>::new();
 
         let mut p1 = Pod::default();
         let mut p2 = Pod::default();
@@ -97,16 +97,15 @@ impl Test {
         p22.metadata.uid = 2;
         p3.metadata.uid = 3;
 
-        q.push(ActiveQCmpMinUid::wrap(p2.clone()));
-        q.push(ActiveQCmpMinUid::wrap(p1.clone()));
-        q.push(ActiveQCmpMinUid::wrap(p22.clone()));
-        q.push(ActiveQCmpMinUid::wrap(p3.clone()));
+        q.push(p2.clone());
+        q.push(p1.clone());
+        q.push(p22.clone());
+        q.push(p3.clone());
 
-        assert_eq!(q.pop().unwrap().0, p1);
-        assert_eq!(q.pop().unwrap().0, p2);
-        assert_eq!(q.pop().unwrap().0, p22);
-        assert_eq!(q.pop().unwrap().0, p3);
-        assert_eq!(q.pop(), None);
+        assert_eq!(q.try_pop().unwrap(), p1);
+        assert_eq!(q.try_pop().unwrap(), p2);
+        assert_eq!(q.try_pop().unwrap(), p3);
+        assert_eq!(q.try_pop(), None);
     }
 
     pub fn test_node_rtree() {
