@@ -100,14 +100,14 @@ impl Experiment {
                 self.cluster_state.clone(),
                 self.monitoring.clone(),
 
+                active_queue,
+                backoff_queue,
+
                 filters,
                 post_filters,
                 scorers,
                 score_normalizers,
                 scorer_weights,
-
-                active_queue,
-                backoff_queue,
             )
         )));
         self.scheduler_id = Some(self.sim.add_handler("scheduler", self.scheduler.clone().unwrap()));

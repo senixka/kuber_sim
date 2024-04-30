@@ -8,13 +8,12 @@ pub struct APIServer {
     ca_sim_id: dsc::Id,
     hpa_sim_id: dsc::Id,
 
-    // subscriptions: HashMap<APIServerEvent, Vec<dsc::Id>>,
+    // subscriptions: HashMap<, Vec<dsc::Id>>,
 
     // ############## ETCD ##############
-    // pods: HashMap<u64, Pod>, // Pod uid -> Pod
-    pod2group: HashMap<u64, u64>, // pod_uid -> group_uid
-    kubelets: HashMap<u64, dsc::Id>, // node_uid -> kubelet_sim_id
-    pod_consumptions: HashMap<u64, HashMap<u64, (f64, f64)>>, // group_uid -> HashMap<node_uid -> (current_cpu, current_memory)>
+    pod2group: HashMap<u64, u64>,                               // HashMap<pod_uid, group_uid>
+    kubelets: HashMap<u64, dsc::Id>,                            // HashMap<node_uid, kubelet_sim_id>
+    pod_consumptions: HashMap<u64, HashMap<u64, (f64, f64)>>,   // HashMap<group_uid, HashMap<node_uid, (current_cpu, current_memory)>
 }
 
 
@@ -27,10 +26,9 @@ impl APIServer {
             ca_sim_id: dsc::Id::MAX,
             hpa_sim_id: dsc::Id::MAX,
             // subscriptions: HashMap::new(),
-            // pods: HashMap::new(),
+            pod2group: HashMap::new(),
             kubelets: HashMap::new(),
             pod_consumptions: HashMap::new(),
-            pod2group: HashMap::new(),
         }
     }
 
@@ -40,7 +38,7 @@ impl APIServer {
         self.hpa_sim_id = hpa_sim_id;
     }
 
-    // pub fn subscribe(&mut self, event: APIServerEvent, sim_id: dsc::Id) {
+    // pub fn subscribe(&mut self, event: dsc::Event, sim_id: dsc::Id) {
     //     self.subscriptions.entry(event).or_default().push(sim_id);
     // }
 }
@@ -63,6 +61,7 @@ impl dsc::EventHandler for APIServer {
                     }
                 }
             }
+
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid} => {
                 dp_api_server!("{:.12} api_server APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, node_uid, new_phase);
 
@@ -75,31 +74,72 @@ impl dsc::EventHandler for APIServer {
                 }
                 self.ctx.emit(APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
-            APIAddPod { pod } => {
-                dp_api_server!("{:.12} api_server APIAddPod pod:{:?}", self.ctx.time(), pod);
 
+            EventAddPod { pod } => {
+                dp_api_server!("{:.12} api_server EventAddPod pod:{:?}", self.ctx.time(), pod);
+
+                // Bind pod_uid to pod_group
                 self.pod2group.insert(pod.metadata.uid, pod.metadata.group_uid);
-                self.ctx.emit(APIAddPod { pod }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
-            }
-            APIAddNode { kubelet_sim_id, node } => {
-                dp_api_server!("{:.12} api_server APIAddNode node:{:?}", self.ctx.time(), node);
 
+                // Notify scheduler
+                self.ctx.emit(
+                    EventAddPod { pod },
+                    self.scheduler_sim_id,
+                    self.cluster_state.borrow().network_delays.api2scheduler
+                );
+            }
+
+            EventAddNode { kubelet_sim_id, node } => {
+                dp_api_server!("{:.12} api_server EventAddNode node:{:?}", self.ctx.time(), node);
+
+                // Add routing [node_uid] -> [kubelet_sim_id]
                 self.kubelets.insert(node.metadata.uid, kubelet_sim_id);
-                self.ctx.emit(APIAddNode { kubelet_sim_id, node }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
-            }
-            APIRemoveNode { node_uid } => {
-                dp_api_server!("{:.12} api_server APIRemoveNode node:{:?}", self.ctx.time(), node_uid);
 
+                // Notify scheduler
+                self.ctx.emit(
+                    EventAddNode { kubelet_sim_id, node },
+                    self.scheduler_sim_id,
+                    self.cluster_state.borrow().network_delays.api2scheduler
+                );
+            }
+
+            EventRemoveNode { node_uid } => {
+                dp_api_server!("{:.12} api_server EventRemoveNode node:{:?}", self.ctx.time(), node_uid);
+
+                // Remove node_uid from routing
                 match self.kubelets.remove(&node_uid) {
                     Some(kubelet_sim_id) => {
-                        self.ctx.emit(APIRemoveNode { node_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
-                        self.ctx.emit(APIRemoveNode { node_uid }, kubelet_sim_id, self.cluster_state.borrow().network_delays.api2kubelet);
+                        // Notify scheduler
+                        self.ctx.emit(
+                            EventRemoveNode { node_uid },
+                            self.scheduler_sim_id,
+                            self.cluster_state.borrow().network_delays.api2scheduler
+                        );
+
+                        // Notify kubelet
+                        self.ctx.emit(
+                            EventRemoveNode { node_uid },
+                            kubelet_sim_id,
+                            self.cluster_state.borrow().network_delays.api2kubelet
+                        );
                     }
                     None => {
-                        dp_api_server!("{:.12} api_server INNER APIRemoveNode node:{:?} NOT IN ROUTE", self.ctx.time(), node_uid);
+                        dp_api_server!("{:.12} api_server INNER EventRemoveNode node:{:?} NOT IN ROUTE", self.ctx.time(), node_uid);
                     }
                 }
             }
+
+            EventRemoveNodeAck { node_uid } => {
+                dp_api_server!("{:.12} api_server EventRemoveNodeAck node_uid:{:?}", self.ctx.time(), node_uid);
+
+                // Notify CA
+                self.ctx.emit(
+                    EventRemoveNodeAck { node_uid },
+                    self.ca_sim_id,
+                    self.cluster_state.borrow().network_delays.api2ca
+                );
+            }
+
             APIPostCAMetrics { insufficient_resources_pending, requests, node_info } => {
                 dp_api_server!("{:.12} api_server APIPostCAMetrics insufficient_resources_pending:{:?} requests:{:?}", self.ctx.time(), insufficient_resources_pending, requests);
 
@@ -108,16 +148,13 @@ impl dsc::EventHandler for APIServer {
                     self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca
                 );
             }
+
             APIGetCAMetrics { node_list } => {
                 dp_api_server!("{:.12} api_server APIGetCAMetrics", self.ctx.time());
 
                 self.ctx.emit(APIGetCAMetrics { node_list }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
             }
-            APICommitNodeRemove { node_uid } => {
-                dp_api_server!("{:.12} api_server APICommitNodeRemove node_uid:{:?}", self.ctx.time(), node_uid);
 
-                self.ctx.emit(APICommitNodeRemove { node_uid }, self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca);
-            }
             APIUpdatePodMetricsFromKubelet { pod_uid, current_cpu, current_memory } => {
                 dp_api_server!("{:.12} api_server APIUpdatePodMetricsFromKubelet pod_uid:{:?} current_cpu:{:?} current_memory:{:?}", self.ctx.time(), pod_uid, current_cpu, current_memory);
 
@@ -131,6 +168,7 @@ impl dsc::EventHandler for APIServer {
                     }
                 }
             }
+
             APIGetHPAMetrics { pod_groups } => {
                 dp_api_server!("{:.12} api_server APIGetHPAMetrics pod_groups:{:?}", self.ctx.time(), pod_groups);
 
@@ -155,6 +193,7 @@ impl dsc::EventHandler for APIServer {
 
                 self.ctx.emit(APIPostHPAMetrics { pod_groups: result }, self.hpa_sim_id, self.cluster_state.borrow().network_delays.api2hpa);
             }
+
             APIRemoveAnyPodInGroup { group_uid } => {
                 dp_api_server!("{:.12} api_server APIRemoveAnyPodInGroup group_uid:{:?}", self.ctx.time(), group_uid);
 
@@ -164,7 +203,7 @@ impl dsc::EventHandler for APIServer {
                         match index.iter().next() {
                             // If index is not empty
                             Some((&pod_uid, _)) => {
-                                self.ctx.emit(APIRemovePod { pod_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+                                self.ctx.emit(EventRemovePod { pod_uid }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
                             }
                             None => {}
                         }

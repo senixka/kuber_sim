@@ -10,9 +10,9 @@ pub struct Scheduler {
     self_update_enabled: bool,
 
     // Cache
-    running_pods: HashMap<u64, Pod>,
-    pending_pods: HashMap<u64, Pod>,
-    nodes: HashMap<u64, Node>,
+    running_pods: HashMap<u64, Pod>,    // HashMap<pod_uid, Pod>
+    pending_pods: HashMap<u64, Pod>,    // HashMap<pod_uid, Pod>
+    nodes: HashMap<u64, Node>,          // HashMap<node_uid, Node>
     node_rtree: NodeRTree,
 
     // Queues
@@ -27,9 +27,6 @@ pub struct Scheduler {
     scorers: Vec<Box<dyn IScorePlugin>>,
     score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
     scorer_weights: Vec<i64>,
-
-    // To remove running pods
-    removed_pod: HashSet<u64>,
 }
 
 impl Scheduler {
@@ -39,14 +36,16 @@ impl Scheduler {
         cluster_state: Rc<RefCell<ClusterState>>,
         monitoring: Rc<RefCell<Monitoring>>,
 
+        // Queues
+        active_queue: Box<dyn IActiveQ>,
+        backoff_queue: Box<dyn IBackOffQ>,
+
+        // Pipline
         filters: Vec<Box<dyn IFilterPlugin>>,
         post_filters: Vec<Box<dyn IFilterPlugin>>,
         scorers: Vec<Box<dyn IScorePlugin>>,
         score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
         scorer_weights: Vec<i64>,
-
-        active_queue: Box<dyn IActiveQ>,
-        backoff_queue: Box<dyn IBackOffQ>,
     ) -> Scheduler {
         let unschedulable_queue_period = cluster_state.borrow().constants.unschedulable_queue_period;
 
@@ -55,31 +54,43 @@ impl Scheduler {
             cluster_state,
             api_sim_id,
             monitoring,
+            self_update_enabled: false,
+
+            // Cache
             running_pods: HashMap::new(),
             pending_pods: HashMap::new(),
             nodes: HashMap::new(),
             node_rtree: NodeRTree::new(),
-            self_update_enabled: false,
-            failed_attempts: HashMap::new(),
+
+            // Queues
             active_queue,
             unschedulable_queue: BackOffQConstant::new(unschedulable_queue_period),
             backoff_queue,
+            failed_attempts: HashMap::new(),
+
+            // Pipeline
             filters,
             post_filters,
             scorers,
             score_normalizers,
             scorer_weights,
-            removed_pod: HashSet::new(),
         }
     }
+
+    ////////////////// SelfUpdate controller //////////////////
 
     pub fn self_update_on(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
-            self.ctx.emit_self(APISchedulerSelfUpdate {}, self.cluster_state.borrow().constants.scheduler_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.scheduler_self_update_period);
         }
     }
 
+    pub fn self_update_off(&mut self) {
+        self.self_update_enabled = false;
+    }
+
+    ////////////////// Main scheduling cycle //////////////////
 
     pub fn schedule(&mut self) {
         // From unschedulableQ to activeQ
@@ -252,50 +263,57 @@ impl Scheduler {
             // Clear failed attempts
             self.failed_attempts.remove(&pod_uid);
 
-            let data = APIUpdatePodFromScheduler {
-                pod: Some(pod),
-                pod_uid,
-                new_phase: PodPhase::Running,
-                node_uid,
-            };
+            // Send PodPhase update
+            self.send_pod_phase_update(Some(pod), pod_uid, node_uid, PodPhase::Running);
+            scheduled_left -= 1;
 
             dp_scheduler!("{:.12} scheduler pod_uid:{:?} placed -> node_uid:{:?}", self.ctx.time(), pod_uid, node_uid);
-            self.ctx.emit(data, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api);
-            scheduled_left -= 1;
         }
     }
 
+    ////////////////// Helpers for Node cache and RTree cache //////////////////
 
     pub fn is_node_consumable(node: &Node, cpu: u64, memory: u64) -> bool {
         return cpu <= node.spec.available_cpu && memory <= node.spec.available_memory;
     }
 
     pub fn place_pod_to_node(&mut self, pod_uid: u64, node_uid: u64, cpu: u64, memory: u64) {
+        // Get pod's node
         let node = self.nodes.get_mut(&node_uid).unwrap();
 
+        // Remove node from RTree
         self.node_rtree.remove(&node);
 
+        // Update node
         node.consume(cpu, memory);
         let _not_presented = node.status.pods.insert(pod_uid); assert!(_not_presented);
 
+        // Add node to RTree
         self.node_rtree.insert(node.clone());
 
+        // Update monitoring
         self.monitoring.borrow_mut().scheduler_on_node_consume(cpu, memory);
     }
 
     pub fn remove_pod_from_node(&mut self, pod_uid: u64, node_uid: u64, cpu: u64, memory: u64) {
+        // Get pod's node
         let node = self.nodes.get_mut(&node_uid).unwrap();
 
+        // Remove node from RTree
         self.node_rtree.remove(&node);
 
+        // Update node
         node.restore(cpu, memory);
         let _was_presented = node.status.pods.remove(&pod_uid); assert!(_was_presented);
 
+        // Add node to RTree
         self.node_rtree.insert(node.clone());
 
+        // Update monitoring
         self.monitoring.borrow_mut().scheduler_on_node_restore(cpu, memory);
     }
 
+    ////////////////// Process pod by phase ////////////////////////////////////
 
     pub fn process_new_pod(&mut self, pod: Pod) {
         let pod_uid = pod.metadata.uid;
@@ -323,28 +341,25 @@ impl Scheduler {
             pod.status.node_uid = None;
         }
 
-        // If pod was removed by api-server -> drop pod
-        if self.removed_pod.contains(&pod_uid) {
-            self.removed_pod.remove(&pod_uid);
-            return;
-        }
-
         // Place pod to pending set
         pod.status.phase = PodPhase::Pending;
         self.pending_pods.insert(pod_uid, pod.clone());
 
         // Place pod to ActiveQ
         self.active_queue.push(pod);
+
+        // Update monitoring
+        self.monitoring.borrow_mut().scheduler_on_pod_evicted();
     }
 
-    pub fn process_finished_pod(&mut self, pod_uid: u64) {
+    pub fn process_finished_pod(&mut self, pod_uid: u64, phase: PodPhase) {
         assert_eq!(self.running_pods.contains_key(&pod_uid), true);
         assert_eq!(self.pending_pods.contains_key(&pod_uid), false);
 
         // Remove pod from running
         let pod = self.running_pods.remove(&pod_uid).unwrap();
 
-        // Restore node resources
+        // Restore node resources if node exist
         let node_uid = pod.status.node_uid.unwrap();
         if self.nodes.contains_key(&node_uid) {
                 self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
@@ -352,8 +367,71 @@ impl Scheduler {
 
         // Remove pod's failed attempts
         self.failed_attempts.remove(&pod_uid);
+
+        // Update monitoring
+        match phase {
+            PodPhase::Succeeded => {
+                self.monitoring.borrow_mut().scheduler_on_pod_succeed();
+            }
+            PodPhase::Failed => {
+                self.monitoring.borrow_mut().scheduler_on_pod_failed();
+            }
+            _ => {
+                panic!("Logic error. This fn can be called only with phase Succeeded or Failed.");
+            }
+        }
     }
 
+    pub fn process_removed_pod(&mut self, pod_uid: u64) {
+        // Remove pod's failed attempts
+        self.failed_attempts.remove(&pod_uid);
+
+        // Remove pod from cache
+        match (self.running_pods.remove(&pod_uid), self.pending_pods.remove(&pod_uid)) {
+            (Some(pod), None) => {
+                // Restore node resources if node exist
+                let node_uid = pod.status.node_uid.unwrap();
+                if self.nodes.contains_key(&node_uid) {
+                    self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
+                }
+
+                // Update monitoring
+                self.monitoring.borrow_mut().scheduler_on_pod_removed();
+            }
+            (None, Some(pod)) => {
+                // Try remove from BackOffQ or UnschedulableQ or ActiveQ
+                let pod_uid = pod.metadata.uid;
+                let result = self.backoff_queue.try_remove(pod_uid)
+                                  || self.unschedulable_queue.try_remove(pod_uid)
+                                  || self.active_queue.try_remove(pod);
+                assert!(result, "Invariant violated. Pending pod not in any queue.");
+
+                // Update monitoring
+                self.monitoring.borrow_mut().scheduler_on_pod_removed()
+            }
+            (None, None) => {
+                // Nothing to do
+            }
+            (Some(_), Some(_)) => {
+                panic!("Invariant violated. Same pod in pending and running.");
+            }
+        }
+    }
+
+    ////////////////// Helpers //////////////////
+
+    pub fn is_pod_cached(&self, pod_uid: u64) -> bool {
+        return self.running_pods.contains_key(&pod_uid) || self.pending_pods.contains_key(&pod_uid);
+    }
+
+    ////////////////// Export metrics //////////////////
+
+    pub fn send_pod_phase_update(&self, pod: Option<Pod>, pod_uid: u64, node_uid: u64, new_phase: PodPhase) {
+        self.ctx.emit(APIUpdatePodFromScheduler { pod, pod_uid, new_phase, node_uid },
+                      self.api_sim_id,
+                      self.cluster_state.borrow().network_delays.kubelet2api
+        );
+    }
 
     pub fn send_ca_metrics(&mut self, node_list: &Vec<u64>) {
         let mut pending = 0;
@@ -386,23 +464,25 @@ impl Scheduler {
         );
     }
 
-    pub fn preempt_pod(&mut self, pod_uid: u64) {
-        // If pod in pending -> do nothing
-        if self.pending_pods.contains_key(&pod_uid) {
-            return;
-        }
-
-        // If pod in running -> preempt
-        if self.running_pods.contains_key(&pod_uid) {
-            let pod = self.running_pods.get(&pod_uid).unwrap();
-            self.ctx.emit(
-                APIUpdatePodFromScheduler { pod: None, pod_uid, new_phase: PodPhase::Pending, node_uid: pod.status.node_uid.unwrap() },
-                self.api_sim_id,
-                self.cluster_state.borrow().network_delays.scheduler2api
-            );
-        }
-    }
+    // TODO: preemption
+    // pub fn preempt_pod(&mut self, pod_uid: u64) {
+    //     // If pod in pending -> do nothing
+    //     if self.pending_pods.contains_key(&pod_uid) {
+    //         return;
+    //     }
+    //
+    //     // If pod in running -> preempt
+    //     if self.running_pods.contains_key(&pod_uid) {
+    //         let pod = self.running_pods.get(&pod_uid).unwrap();
+    //         self.ctx.emit(
+    //             APIUpdatePodFromScheduler { pod: None, pod_uid, new_phase: PodPhase::Pending, node_uid: pod.status.node_uid.unwrap() },
+    //             self.api_sim_id,
+    //             self.cluster_state.borrow().network_delays.scheduler2api
+    //         );
+    //     }
+    // }
 }
+
 
 impl dsc::EventHandler for Scheduler {
     fn on(&mut self, event: dsc::Event) {
@@ -410,71 +490,93 @@ impl dsc::EventHandler for Scheduler {
             APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
                 dp_scheduler!("{:.12} scheduler APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, _node_uid, new_phase);
 
+                // If this pod was previously removed -> do nothing
+                if !self.is_pod_cached(pod_uid) {
+                    return;
+                }
+
+                // Process PodPhase
                 match new_phase {
+                    PodPhase::Succeeded | PodPhase::Failed => {
+                        self.process_finished_pod(pod_uid, new_phase);
+                    }
                     PodPhase::Pending => {
                         self.process_evicted_pod(pod_uid);
-                        self.monitoring.borrow_mut().scheduler_on_pod_evicted();
-                    }
-                    PodPhase::Succeeded => {
-                        self.process_finished_pod(pod_uid);
-                        self.monitoring.borrow_mut().scheduler_on_pod_succeed();
+
+                        // We get new pending pod -> run self update
+                        self.self_update_on();
                     }
                     PodPhase::Running => {
-                        panic!("Bad Logic PodPhase Running");
-                    }
-                    PodPhase::Failed => {
-                        self.process_finished_pod(pod_uid);
-                        self.monitoring.borrow_mut().scheduler_on_pod_failed();
+                        panic!("Logic error. PodPhase Running is not expected.");
                     }
                 }
-
-                self.self_update_on();
             }
-            APIAddPod { pod } => {
-                dp_scheduler!("{:.12} scheduler APIAddPod pod_uid:{:?}", self.ctx.time(), pod.metadata.uid);
 
+            EventAddPod { pod } => {
+                dp_scheduler!("{:.12} scheduler EventAddPod pod_uid:{:?}", self.ctx.time(), pod.metadata.uid);
+
+                // Update inner state
                 self.process_new_pod(pod);
+
+                // New pending pod -> run self update
                 self.self_update_on();
             }
-            APIRemovePod { pod_uid } => {
-                dp_scheduler!("{:.12} scheduler APIRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
 
-                if self.running_pods.contains_key(&pod_uid) || self.pending_pods.contains_key(&pod_uid) {
-                    self.removed_pod.insert(pod_uid);
-                    self.preempt_pod(pod_uid);
+            EventRemovePod { pod_uid } => {
+                dp_scheduler!("{:.12} scheduler EventRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
+
+                // If pod is running -> notify kubelet to evict this pod
+                if self.running_pods.contains_key(&pod_uid) {
+                    let node_uid = self.running_pods.get(&pod_uid).unwrap().status.node_uid.unwrap();
+                    self.send_pod_phase_update(None, pod_uid, node_uid, PodPhase::Pending);
                 }
-            }
-            APIAddNode { kubelet_sim_id: _ , node } => {
-                dp_scheduler!("{:.12} scheduler APIAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);
 
+                // Update inner state
+                self.process_removed_pod(pod_uid);
+
+                // If we get PodPhase updates for this pod later -> do nothing.
+            }
+
+            EventAddNode { kubelet_sim_id: _ , node } => {
+                dp_scheduler!("{:.12} scheduler EventAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);
+
+                // Update monitoring
                 self.monitoring.borrow_mut().scheduler_on_node_added(&node);
+
+                // Update cache
                 self.nodes.insert(node.metadata.uid, node.clone());
                 self.node_rtree.insert(node);
             }
-            APIRemoveNode { node_uid } => {
-                dp_scheduler!("{:.12} scheduler APIRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
 
+            EventRemoveNode { node_uid } => {
+                dp_scheduler!("{:.12} scheduler EventRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
+
+                // Update cache
                 let node = self.nodes.remove(&node_uid).unwrap();
                 self.node_rtree.remove(&node);
-                self.monitoring.borrow_mut().scheduler_on_node_removed(&node);
-            }
-            APISchedulerSelfUpdate {} => {
-                dp_scheduler!("{:.12} scheduler APISchedulerSelfUpdate", self.ctx.time());
 
+                // Update monitoring
+                self.monitoring.borrow_mut().scheduler_on_node_removed(&node);
+
+                // Here we only delete a node without doing anything with pods on this node.
+                // We expect to get PodPhase updates for each pod on this node later.
+                // After this update pods will be rescheduled.
+            }
+
+            EventSelfUpdate {} => {
+                dp_scheduler!("{:.12} scheduler EventSelfUpdate", self.ctx.time());
+
+                // Main scheduling cycle
                 self.schedule();
 
+                // If there are pending pods -> continue SelfUpdate
                 if self.pending_pods.len() > 0 {
-                    self.ctx.emit_self(APISchedulerSelfUpdate{}, self.cluster_state.borrow().constants.scheduler_self_update_period);
+                    self.ctx.emit_self(EventSelfUpdate{}, self.cluster_state.borrow().constants.scheduler_self_update_period);
                 } else {
-                    self.self_update_enabled = false;
+                    self.self_update_off();
                 }
             }
-            APISchedulerSecondChance { pod_uid } => {
-                dp_scheduler!("{:.12} scheduler APISchedulerSecondChance pod_uid:{:?}", self.ctx.time(), pod_uid);
-                panic!("Kek");
 
-                self.active_queue.push(self.pending_pods.get(&pod_uid).unwrap().clone());
-            }
             APIGetCAMetrics { node_list } => {
                 dp_scheduler!("{:.12} scheduler APIGetCAMetrics", self.ctx.time());
 
@@ -482,6 +584,7 @@ impl dsc::EventHandler for Scheduler {
             }
         });
 
+        // Update monitoring
         self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
         self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
     }

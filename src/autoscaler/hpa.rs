@@ -28,7 +28,7 @@ impl HPA {
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
             self.is_turned_on = true;
-            self.ctx.emit_self(APIHPASelfUpdate {}, self.cluster_state.borrow().constants.hpa_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.hpa_self_update_period);
         }
     }
 
@@ -47,7 +47,7 @@ impl HPA {
 
                 let mut pod = hpa_pg.pod_group.pod.clone();
                 pod.prepare(hpa_pg.pod_group.group_uid);
-                self.ctx.emit( APIAddPod { pod }, self.api_sim_id, self.cluster_state.borrow().network_delays.hpa2api);
+                self.ctx.emit( EventAddPod { pod }, self.api_sim_id, self.cluster_state.borrow().network_delays.hpa2api);
             } else if hpa_pg.max_size < size {
                 dp_hpa!("{:.12} hpa pod(group_uid:{:?}) remove <- cluster (size)", self.ctx.time(), hpa_pg.pod_group.group_uid);
 
@@ -63,7 +63,7 @@ impl HPA {
 
                 let mut pod = hpa_pg.pod_group.pod.clone();
                 pod.prepare(hpa_pg.pod_group.group_uid);
-                self.ctx.emit( APIAddPod { pod }, self.api_sim_id, self.cluster_state.borrow().network_delays.hpa2api);
+                self.ctx.emit( EventAddPod { pod }, self.api_sim_id, self.cluster_state.borrow().network_delays.hpa2api);
             }
         }
     }
@@ -83,15 +83,15 @@ impl dsc::EventHandler for HPA {
 
                 self.turn_off();
             }
-            APIHPASelfUpdate {} => {
-                dp_hpa!("{:.12} hpa APIHPASelfUpdate", self.ctx.time());
+            EventSelfUpdate {} => {
+                dp_hpa!("{:.12} hpa EventSelfUpdate", self.ctx.time());
 
                 if !self.is_turned_on {
                     panic!("Bad logic. Self update should be canceled.");
                 }
 
                 self.ctx.emit(APIGetHPAMetrics { pod_groups: self.groups.iter().map(|x| x.pod_group.group_uid).collect() }, self.api_sim_id, self.cluster_state.borrow().network_delays.hpa2api);
-                self.ctx.emit_self(APIHPASelfUpdate {}, self.cluster_state.borrow().constants.hpa_self_update_period);
+                self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.hpa_self_update_period);
             }
             APIPostHPAMetrics { pod_groups } => {
                 dp_hpa!("{:.12} hpa APIPostHPAMetrics pod_info:{:?}", self.ctx.time(), pod_groups);

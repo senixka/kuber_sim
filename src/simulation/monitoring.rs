@@ -42,6 +42,8 @@ pub struct Monitoring {
     succeed_pod_counter: u64,
     failed_pod_counter: u64,
     evicted_pod_counter: u64,
+    removed_pod_counter: u64,
+
     node_counter: u64,
 
     // max_pending_pod: u64,
@@ -60,7 +62,7 @@ impl Monitoring {
             scheduler_used_cpu: 0, scheduler_used_memory: 0,
             kubelets_used_cpu: 0, kubelets_used_memory: 0,
             n_pod_in_simulation: 0, succeed_pod_counter: 0, pending_pod_counter: 0,
-            failed_pod_counter: 0, running_pod_counter: 0, evicted_pod_counter: 0,
+            failed_pod_counter: 0, running_pod_counter: 0, evicted_pod_counter: 0, removed_pod_counter: 0,
             node_counter: 0,
             kubelet_utilization_cpu_numerator: Vec::new(),
             kubelet_utilization_memory_numerator: Vec::new(),
@@ -79,7 +81,7 @@ impl Monitoring {
 
         if !self.self_update_enabled {
             self.self_update_enabled = true;
-            self.ctx.emit_self(APIMonitoringSelfUpdate {}, self.cluster_state.borrow().constants.monitoring_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.monitoring_self_update_period);
         }
     }
 
@@ -148,6 +150,10 @@ impl Monitoring {
         self.failed_pod_counter += 1;
     }
 
+    pub fn scheduler_on_pod_removed(&mut self) {
+        self.removed_pod_counter += 1;
+    }
+
     pub fn scheduler_on_pod_evicted(&mut self) {
         self.evicted_pod_counter += 1;
     }
@@ -184,18 +190,18 @@ impl Monitoring {
         self.pending_pod.push(self.pending_pod_counter);
 
         print!(
-            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9}  Finished: {:<9}  Succeed: {:<9}  Running: {:<9}  Pending: {:<9}  Evicted: {:<9}  Failed: {:<9}\n",
+            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9}  Succeed: {:<9}  Running: {:<9}  Pending: {:<9}  Evicted: {:<9}  Removed: {:<9}  Failed: {:<9}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.kubelets_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
             (self.scheduler_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
             self.node_counter,
-            self.succeed_pod_counter + self.failed_pod_counter,
             self.succeed_pod_counter,
             self.running_pod_counter,
             self.pending_pod_counter,
             self.evicted_pod_counter,
+            self.removed_pod_counter,
             self.failed_pod_counter,
         );
     }
@@ -219,10 +225,11 @@ impl Monitoring {
 impl dsc::EventHandler for Monitoring {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            APIMonitoringSelfUpdate { } => {
+            EventSelfUpdate { } => {
                 self.print_statistics();
+
                 if self.self_update_enabled {
-                    self.ctx.emit_self(APIMonitoringSelfUpdate {}, self.cluster_state.borrow().constants.monitoring_self_update_period);
+                    self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.monitoring_self_update_period);
                 }
             }
         });

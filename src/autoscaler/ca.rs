@@ -43,11 +43,11 @@ impl CA {
 
                 let kubelet = Rc::new(RefCell::new(Kubelet::new(
                     sim.create_context(name.clone()),
-                    Node::default(),
                     cluster_state.clone(),
                     monitoring.clone(),
+                    api_sim_id,
+                    Node::default(),
                 )));
-                kubelet.borrow_mut().presimulation_init(api_sim_id);
                 let kubelet_id = sim.add_handler(name, kubelet.clone());
 
                 ca.kubelet_pool.push((kubelet_id, kubelet));
@@ -63,7 +63,7 @@ impl CA {
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
             self.is_turned_on = true;
-            self.ctx.emit_self(APICASelfUpdate {}, self.cluster_state.borrow().constants.ca_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.ca_self_update_period);
         }
     }
 
@@ -91,7 +91,7 @@ impl CA {
 
                     if *cycles >= self.cluster_state.borrow().constants.ca_remove_node_delay_cycle {
                         dp_ca!("{:.12} ca Issues APIRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
-                        self.ctx.emit(APIRemoveNode { node_uid: *node_uid }, self.api_sim_id, self.cluster_state.borrow().network_delays.ca2api);
+                        self.ctx.emit(EventRemoveNode { node_uid: *node_uid }, self.api_sim_id, self.cluster_state.borrow().network_delays.ca2api);
                     }
                 }
             }
@@ -137,7 +137,7 @@ impl CA {
 
                 // Set node in kubelet
                 let (kubelet_sim_id, kubelet) = self.kubelet_pool.pop().unwrap();
-                kubelet.borrow_mut().set_node(&node);
+                kubelet.borrow_mut().replace_node(&node);
                 kubelet.borrow_mut().turn_on();
 
                 // Update used nodes
@@ -145,7 +145,7 @@ impl CA {
 
                 dp_ca!("{:.12} ca node:{:?} added -> cluster", self.ctx.time(), node.metadata.uid);
                 self.ctx.emit(
-                    APIAddNode { kubelet_sim_id, node },
+                    EventAddNode { kubelet_sim_id, node },
                     self.api_sim_id,
                     self.cluster_state.borrow().network_delays.ca2api + self.cluster_state.borrow().constants.ca_add_node_delay_time
                 );
@@ -169,23 +169,23 @@ impl dsc::EventHandler for CA {
 
                 self.turn_off();
             }
-            APICASelfUpdate {} => {
-                dp_ca!("{:.12} ca APICASelfUpdate", self.ctx.time());
+            EventSelfUpdate {} => {
+                dp_ca!("{:.12} ca EventSelfUpdate", self.ctx.time());
 
                 if !self.is_turned_on {
                     panic!("Bad logic. Self update should be canceled.");
                 }
 
                 self.ctx.emit(APIGetCAMetrics { node_list: self.used_nodes.keys().map(|x| *x).collect() }, self.api_sim_id, self.cluster_state.borrow().network_delays.ca2api);
-                self.ctx.emit_self(APICASelfUpdate {}, self.cluster_state.borrow().constants.ca_self_update_period);
+                self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.ca_self_update_period);
             }
             APIPostCAMetrics { insufficient_resources_pending, requests, node_info } => {
                 dp_ca!("{:.12} ca APIPostCAMetrics insufficient_resources_pending:{:?} requests:{:?} node_info:{:?}", self.ctx.time(), insufficient_resources_pending, requests, node_info);
 
                 self.process_metrics(insufficient_resources_pending, &requests, &node_info);
             }
-            APICommitNodeRemove { node_uid } => {
-                dp_ca!("{:.12} ca APICommitNodeRemove node_uid:{:?}", self.ctx.time(), node_uid);
+            EventRemoveNodeAck { node_uid } => {
+                dp_ca!("{:.12} ca EventRemoveNodeAck node_uid:{:?}", self.ctx.time(), node_uid);
 
                 let (kubelet_sim_id, kubelet, group_uid) = self.used_nodes.remove(&node_uid).unwrap();
                 self.kubelet_pool.push((kubelet_sim_id, kubelet));

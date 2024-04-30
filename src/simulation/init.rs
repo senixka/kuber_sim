@@ -66,7 +66,10 @@ impl Init {
                 pod.prepare(pod_group.group_uid);
 
                 assert!(last_time <= pod.spec.arrival_time);
-                self.ctx.emit_ordered(APIAddPod{ pod: pod.clone() }, self.api_sim_id, pod.spec.arrival_time);
+                self.ctx.emit_ordered(EventAddPod { pod: pod.clone() },
+                                      self.api_sim_id,
+                                      pod.spec.arrival_time
+                );
                 last_time = pod.spec.arrival_time;
             }
         }
@@ -83,15 +86,15 @@ impl Init {
 
                 let kubelet = Rc::new(RefCell::new(Kubelet::new(
                     sim.create_context(name.clone()),
-                    node.clone(),
                     self.cluster_state.clone(),
                     self.monitoring.clone(),
+                    self.api_sim_id,
+                    node.clone(),
                 )));
-                kubelet.borrow_mut().presimulation_init(self.api_sim_id);
                 kubelet.borrow_mut().turn_on();
 
                 let kubelet_id = sim.add_handler(name, kubelet.clone());
-                self.ctx.emit_now(APIAddNode{ kubelet_sim_id: kubelet_id, node: node.clone(), }, self.api_sim_id);
+                self.ctx.emit_now(EventAddNode { kubelet_sim_id: kubelet_id, node: node.clone() }, self.api_sim_id);
             }
         }
     }

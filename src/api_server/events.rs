@@ -6,21 +6,21 @@ use crate::my_imports::*;
 // [Emit]:      { Init | HPA } -> Api
 // [Consume]:   Api -> { Scheduler }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIAddPod {
+pub struct EventAddPod {
     pub pod: Pod,
 }
 
-// [Emit]:      { HPA } -> Api
-// [Consume]:   Api -> { Kubelet | Scheduler }
+// [Emit]:      {} -> Api
+// [Consume]:   Api -> { Scheduler }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIRemovePod {
+pub struct EventRemovePod {
     pub pod_uid: u64,
 }
 
 // [Emit]:      { Init | CA } -> Api
 // [Consume]:   Api -> { Scheduler }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIAddNode {
+pub struct EventAddNode {
     pub kubelet_sim_id: dsc::Id,
     pub node: Node,
 }
@@ -28,7 +28,7 @@ pub struct APIAddNode {
 // [Emit]:      { CA } -> Api
 // [Consume]:   Api -> { Kubelet | Scheduler }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIRemoveNode {
+pub struct EventRemoveNode {
     pub node_uid: u64,
 }
 
@@ -36,7 +36,7 @@ pub struct APIRemoveNode {
 // [Emit]:      { Kubelet } -> Api
 // [Consume]:   Api -> { CA }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APICommitNodeRemove {
+pub struct EventRemoveNodeAck {
     pub node_uid: u64,
 }
 
@@ -61,6 +61,7 @@ pub struct APIUpdatePodFromKubelet {
     pub node_uid: u64,
 }
 
+
 // [Emit]:      { Kubelet } -> Api
 // [Consume]:   Api -> {}
 #[derive(Clone, Serialize, Deserialize)]
@@ -71,19 +72,9 @@ pub struct APIUpdatePodMetricsFromKubelet {
 }
 
 
-
-/////////////////////////////////////// Scheduler inner ////////////////////////////////////////////
-
-// [Emit self]:      Scheduler
+// [Emit self]:      { Any }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APISchedulerSelfUpdate {
-}
-
-
-// [Emit self]:      Scheduler
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APISchedulerSecondChance {
-    pub pod_uid: u64,
+pub struct EventSelfUpdate {
 }
 
 
@@ -92,28 +83,13 @@ pub struct APISchedulerSecondChance {
 
 // [Emit self]:      Kubelet
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIKubeletSelfNextChange {
+pub struct EventKubeletNextChange {
     pub pod_uid: u64,
 }
 
 
 
-////////////////////////////////////// Monitoring inner ////////////////////////////////////////////
-
-// [Emit self]:      Monitoring
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APIMonitoringSelfUpdate {
-}
-
-
-
 ///////////////////////////////////////// HPA inner ////////////////////////////////////////////////
-
-// [Emit self]:      HPA
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APIHPASelfUpdate {
-}
-
 
 // [Emit]:      { HPA } -> Api
 // [Consume]:   Api -> {}
@@ -169,11 +145,6 @@ pub struct APIPostCAMetrics {
 pub struct APIGetCAMetrics {
     pub node_list: Vec<u64>,
 }
-
-
-// [Emit self]:      CA
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APICASelfUpdate {}
 
 
 // [Emit self]:      CA
