@@ -108,15 +108,15 @@ pub struct APIPostHPAMetrics {
 
 
 // [Emit]:      {} -> Api
-// [Consume]:   Api -> { HPA }
+// [Consume]:   Api -> { CA | HPA }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIHPATurnOn {}
+pub struct EventTurnOn {}
 
 
 // [Emit]:      {} -> Api
-// [Consume]:   Api -> { HPA }
+// [Consume]:   Api -> { CA | HPA }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIHPATurnOff {}
+pub struct EventTurnOff {}
 
 
 // [Emit]:      { HPA } -> Api
@@ -132,29 +132,20 @@ pub struct APIRemoveAnyPodInGroup {
 // [Emit]:      { Scheduler } -> Api
 // [Consume]:   Api -> { CA }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIPostCAMetrics {
-    pub insufficient_resources_pending: u64,
-    pub requests: Vec<(u64, u64)>,
-    pub node_info: Vec<(u64, f64, f64)>,
+pub struct EventPostCAMetrics {
+    pub pending_pod_count: u64,
+    pub used_nodes_utilization: Vec<(u64, f64, f64)>,
+    pub may_help: Option<u64>,
 }
 
 
 // [Emit]:      { CA } -> Api
 // [Consume]:   Api -> { Scheduler }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIGetCAMetrics {
-    pub node_list: Vec<u64>,
+pub struct EventGetCAMetrics {
+    pub used_nodes: Vec<u64>,
+    pub available_nodes: Vec<NodeGroup>,
 }
-
-
-// [Emit self]:      CA
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APICATurnOn {}
-
-
-// [Emit self]:      CA
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APICATurnOff {}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

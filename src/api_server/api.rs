@@ -140,19 +140,26 @@ impl dsc::EventHandler for APIServer {
                 );
             }
 
-            APIPostCAMetrics { insufficient_resources_pending, requests, node_info } => {
-                dp_api_server!("{:.12} api_server APIPostCAMetrics insufficient_resources_pending:{:?} requests:{:?}", self.ctx.time(), insufficient_resources_pending, requests);
+            EventGetCAMetrics { used_nodes, available_nodes } => {
+                dp_api_server!("{:.12} api_server EventGetCAMetrics used_nodes:{:?} available_nodes:{:?}", self.ctx.time(), used_nodes, available_nodes);
 
+                // Send metrics request to scheduler
                 self.ctx.emit(
-                    APIPostCAMetrics { insufficient_resources_pending, requests, node_info },
-                    self.ca_sim_id, self.cluster_state.borrow().network_delays.api2ca
+                    EventGetCAMetrics { used_nodes, available_nodes },
+                    self.scheduler_sim_id,
+                    self.cluster_state.borrow().network_delays.api2scheduler
                 );
             }
 
-            APIGetCAMetrics { node_list } => {
-                dp_api_server!("{:.12} api_server APIGetCAMetrics", self.ctx.time());
+            EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help } => {
+                dp_api_server!("{:.12} api_server EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}", self.ctx.time(), pending_pod_count, used_nodes_utilization, may_help);
 
-                self.ctx.emit(APIGetCAMetrics { node_list }, self.scheduler_sim_id, self.cluster_state.borrow().network_delays.api2scheduler);
+                // Send metrics to CA
+                self.ctx.emit(
+                    EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help },
+                    self.ca_sim_id,
+                    self.cluster_state.borrow().network_delays.api2ca
+                );
             }
 
             APIUpdatePodMetricsFromKubelet { pod_uid, current_cpu, current_memory } => {

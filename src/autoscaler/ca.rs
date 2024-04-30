@@ -5,15 +5,21 @@ pub struct CA {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
     api_sim_id: dsc::Id,
-    // monitoring: Rc<RefCell<Monitoring>>,
 
+    // Is CA turned on
     is_turned_on: bool,
 
-    kubelet_pool: Vec<(dsc::Id, Rc<RefCell<Kubelet>>)>, // (kubelet_sim_id, kubelet)
-    free_nodes: BTreeMap<u64, NodeGroup>, // node_uid -> node_group
-    used_nodes: BTreeMap<u64, (dsc::Id, Rc<RefCell<Kubelet>>, u64)>, // node_uid -> (kubelet_sim_id, kubelet, group_uid)
+    // Pool of free kubelets
+    kubelet_pool: Vec<(dsc::Id, Rc<RefCell<Kubelet>>)>,                 // Vec<(kubelet_sim_id, kubelet)>
 
-    low_utilization: BTreeMap<u64, u64>, // node_uid -> cycle counter
+    // Free nodes in each group_uid
+    free_nodes_by_group: BTreeMap<u64, NodeGroup>,                      // BTreeMap<group_uid, node_group>
+
+    // Currently used nodes
+    used_nodes: BTreeMap<u64, (dsc::Id, Rc<RefCell<Kubelet>>, u64)>,    // BTreeMap<node_uid, (kubelet_sim_id, kubelet, group_uid)>
+
+    // Node candidates on removal
+    low_utilization: BTreeMap<u64, u64>,                                // BTreeMap<node_uid, cycle_counter>
 }
 
 
@@ -27,20 +33,27 @@ impl CA {
             ctx,
             cluster_state: cluster_state.clone(),
             api_sim_id,
-            // monitoring: monitoring.clone(),
+
+            // CA is created in turned off state
             is_turned_on: false,
+
+            // Inner state
             kubelet_pool: Vec::new(),
-            free_nodes: BTreeMap::new(),
+            free_nodes_by_group: BTreeMap::new(),
             used_nodes: BTreeMap::new(),
             low_utilization: BTreeMap::new(),
         };
 
-        let mut counter = 0;
+        // Prepare kubelet pool from cluster state
+        let mut uid_counter = 0;
         for group in &cluster_state.borrow().ca_nodes {
+            // Process node group
             for _ in 0..group.amount {
-                counter += 1;
-                let name = "kubelet_ca_".to_owned() + &*counter.to_string();
+                // Create kubelet unique name
+                uid_counter += 1;
+                let name = "kubelet_ca_".to_owned() + &*uid_counter.to_string();
 
+                // Create and register kubelet in simulation
                 let kubelet = Rc::new(RefCell::new(Kubelet::new(
                     sim.create_context(name.clone()),
                     cluster_state.clone(),
@@ -50,15 +63,21 @@ impl CA {
                 )));
                 let kubelet_id = sim.add_handler(name, kubelet.clone());
 
+                // Add kubelet to pool
                 ca.kubelet_pool.push((kubelet_id, kubelet));
             }
 
-            ca.free_nodes.insert(group.group_uid, group.clone());
-            ca.free_nodes.get_mut(&group.group_uid).unwrap().node.prepare();
+            // Add full group to free nodes
+            ca.free_nodes_by_group.insert(group.group_uid, group.clone());
+
+            // Prepare group's node to get correct values of available resources
+            ca.free_nodes_by_group.get_mut(&group.group_uid).unwrap().node.prepare();
         }
 
         return ca;
     }
+
+    ////////////////// CA Turn On/Off //////////////////
 
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
@@ -74,58 +93,55 @@ impl CA {
         }
     }
 
-    pub fn process_metrics(&mut self, insufficient_resources_pending: u64, requests: &Vec<(u64, u64)>, node_info: &Vec<(u64, f64, f64)>) {
-        // Clear not loaded nodes
+    ////////////////// Process metrics //////////////////
+
+    pub fn process_metrics(&mut self, pending_pod_count: u64, used_nodes_utilization: &Vec<(u64, f64, f64)>, may_help: Option<u64>) {
+        // Remove nodes with low utilization
         let (min_cpu, min_memory) = (
             self.cluster_state.borrow().constants.ca_remove_node_cpu_percent,
             self.cluster_state.borrow().constants.ca_remove_node_memory_percent,
         );
-        for (node_uid, ref cpu, ref memory) in node_info {
-            if *cpu <= min_cpu && *memory <= min_memory {
-                if self.used_nodes.contains_key(&node_uid) {
-                    if !self.low_utilization.contains_key(node_uid) {
-                        self.low_utilization.insert(*node_uid, 0);
-                    }
-                    let cycles = self.low_utilization.get_mut(&node_uid).unwrap();
-                    *cycles += 1;
-
-                    if *cycles >= self.cluster_state.borrow().constants.ca_remove_node_delay_cycle {
-                        dp_ca!("{:.12} ca Issues APIRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
-                        self.ctx.emit(EventRemoveNode { node_uid: *node_uid }, self.api_sim_id, self.cluster_state.borrow().network_delays.ca2api);
-                    }
-                }
-            }
-        }
-
-        if insufficient_resources_pending < self.cluster_state.borrow().constants.ca_add_node_min_pending {
-            return;
-        }
-
-        // Find best node
-        let mut best_group: Option<u64> = None;
-        for (_, group) in &self.free_nodes {
-            if group.amount == 0 {
+        for &(node_uid, cpu, memory) in used_nodes_utilization {
+            // If utilization is not low -> remove its cycle count and skip
+            if cpu > min_cpu || memory > min_memory {
+                self.low_utilization.remove(&node_uid);
                 continue;
             }
 
-            for (cpu, memory) in requests {
-                if group.node.is_consumable(*cpu, *memory) {
-                    best_group = Some(group.group_uid);
-                    break;
-                }
+            // If node is not used -> remove its cycle count and skip
+            if !self.used_nodes.contains_key(&node_uid) {
+                self.low_utilization.remove(&node_uid);
+                continue;
             }
 
-            if best_group.is_some() {
-                break;
+            // Increase cycle count with low utilization for this node
+            let cycles = self.low_utilization.entry(node_uid).or_default();
+            *cycles += 1;
+
+            // If cycle count more than remove threshold
+            if *cycles >= self.cluster_state.borrow().constants.ca_remove_node_delay_cycle {
+                dp_ca!("{:.12} ca Issues EventRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
+                self.ctx.emit(
+                    EventRemoveNode { node_uid },
+                    self.api_sim_id,
+                    self.cluster_state.borrow().network_delays.ca2api
+                );
             }
         }
-        // println!("Best:{:?}", best_group);
-        // println!("FreeNodes:{:?}", self.free_nodes);
 
-        // Submit best node
-        match best_group {
+        // If it's not enough pending pods -> return
+        if pending_pod_count < self.cluster_state.borrow().constants.ca_add_node_min_pending {
+            return;
+        }
+
+        match may_help {
+            None => {
+                // If no one node could help -> return
+                return;
+            }
             Some(group_uid) => {
-                let group = self.free_nodes.get_mut(&group_uid).unwrap();
+                // Locate node group
+                let group = self.free_nodes_by_group.get_mut(&group_uid).unwrap();
 
                 // Use one node from group
                 assert!(group.amount > 0);
@@ -135,14 +151,17 @@ impl CA {
                 // Prepare node
                 node.prepare();
 
-                // Set node in kubelet
+                // Take kubelet from pool
                 let (kubelet_sim_id, kubelet) = self.kubelet_pool.pop().unwrap();
+                // Replace node in kubelet
                 kubelet.borrow_mut().replace_node(&node);
+                // Turn on kubelet
                 kubelet.borrow_mut().turn_on();
 
                 // Update used nodes
                 self.used_nodes.insert(node.metadata.uid, (kubelet_sim_id, kubelet, group_uid));
 
+                // Emit AddNode event
                 dp_ca!("{:.12} ca node:{:?} added -> cluster", self.ctx.time(), node.metadata.uid);
                 self.ctx.emit(
                     EventAddNode { kubelet_sim_id, node },
@@ -150,7 +169,6 @@ impl CA {
                     self.cluster_state.borrow().network_delays.ca2api + self.cluster_state.borrow().constants.ca_add_node_delay_time
                 );
             }
-            None => {}
         }
     }
 }
@@ -159,37 +177,59 @@ impl CA {
 impl dsc::EventHandler for CA {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            APICATurnOn {} => {
-                dp_ca!("{:.12} ca APICATurnOn", self.ctx.time());
+            EventTurnOn {} => {
+                dp_ca!("{:.12} ca EventTurnOn", self.ctx.time());
 
                 self.turn_on();
             }
-            APICATurnOff {} => {
-                dp_ca!("{:.12} ca APICATurnOff", self.ctx.time());
+
+            EventTurnOff {} => {
+                dp_ca!("{:.12} ca EventTurnOff", self.ctx.time());
 
                 self.turn_off();
             }
+
             EventSelfUpdate {} => {
                 dp_ca!("{:.12} ca EventSelfUpdate", self.ctx.time());
 
-                if !self.is_turned_on {
-                    panic!("Bad logic. Self update should be canceled.");
-                }
+                assert!(self.is_turned_on, "Logic error. Self update should be canceled for CA.");
 
-                self.ctx.emit(APIGetCAMetrics { node_list: self.used_nodes.keys().map(|x| *x).collect() }, self.api_sim_id, self.cluster_state.borrow().network_delays.ca2api);
-                self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.ca_self_update_period);
-            }
-            APIPostCAMetrics { insufficient_resources_pending, requests, node_info } => {
-                dp_ca!("{:.12} ca APIPostCAMetrics insufficient_resources_pending:{:?} requests:{:?} node_info:{:?}", self.ctx.time(), insufficient_resources_pending, requests, node_info);
+                // Request metrics for future process
+                self.ctx.emit(
+                    EventGetCAMetrics {
+                        used_nodes: self.used_nodes.keys().map(|x| *x).collect(),
+                        available_nodes: self.free_nodes_by_group.iter().filter_map(
+                            |(_, group)|
+                            if group.amount > 0 { Some(group.clone()) } else { None }
+                        ).collect(),
+                    },
+                    self.api_sim_id,
+                    self.cluster_state.borrow().network_delays.ca2api
+                );
 
-                self.process_metrics(insufficient_resources_pending, &requests, &node_info);
+                // Emit Self-Update
+                self.ctx.emit_self(
+                    EventSelfUpdate {},
+                    self.cluster_state.borrow().constants.ca_self_update_period
+                );
             }
+
+            EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help } => {
+                dp_ca!("{:.12} ca EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}", self.ctx.time(), pending_pod_count, used_nodes_utilization, may_help);
+
+                self.process_metrics(pending_pod_count, &used_nodes_utilization, may_help);
+            }
+
             EventRemoveNodeAck { node_uid } => {
                 dp_ca!("{:.12} ca EventRemoveNodeAck node_uid:{:?}", self.ctx.time(), node_uid);
 
+                // Kubelet now turned off. Remove node from used
                 let (kubelet_sim_id, kubelet, group_uid) = self.used_nodes.remove(&node_uid).unwrap();
+                // Return kubelet to pool
                 self.kubelet_pool.push((kubelet_sim_id, kubelet));
-                self.free_nodes.get_mut(&group_uid).unwrap().amount += 1;
+                // Increase free nodes in group counter
+                self.free_nodes_by_group.get_mut(&group_uid).unwrap().amount += 1;
+                // Remove node's utilization info
                 self.low_utilization.remove(&node_uid);
             }
         });

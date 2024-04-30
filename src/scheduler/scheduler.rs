@@ -433,34 +433,46 @@ impl Scheduler {
         );
     }
 
-    pub fn send_ca_metrics(&mut self, node_list: &Vec<u64>) {
-        let mut pending = 0;
-        let mut requests: Vec<(u64, u64)> = Vec::new();
+    pub fn count_and_send_ca_metrics(&mut self, used_nodes: &Vec<u64>, available_nodes: &Vec<NodeGroup>) {
+        // For pending pods look available node which may help
+        let mut may_help: Option<u64> = None;
+        let mut pending_pod_count = 0;
         for (_, pod) in &self.pending_pods {
-            if pod.status.cluster_resource_starvation {
-                pending += 1;
-                requests.push((pod.spec.request_cpu, pod.spec.request_memory));
+            // Only pods which cannot be scheduled due to insufficient resources on nodes
+            if !pod.status.cluster_resource_starvation {
+                continue
+            }
+            pending_pod_count += 1;
+
+            // Try to find node which may help
+            if may_help.is_none() {
+                for node_group in available_nodes {
+                    if node_group.node.is_consumable(pod.spec.request_cpu, pod.spec.request_memory) {
+                        may_help = Some(node_group.group_uid);
+                        break;
+                    }
+                }
             }
         }
 
-        let mut node_info: Vec<(u64, f64, f64)> = Vec::new();
-        for node_uid in node_list {
+        // Count utilization for requested nodes
+        let mut used_nodes_utilization: Vec<(u64, f64, f64)> = Vec::with_capacity(used_nodes.len());
+        for node_uid in used_nodes {
             let node = self.nodes.get(node_uid);
             if node.is_some() {
                 let spec = node.unwrap().spec.clone();
                 let cpu: f64 = ((spec.installed_cpu - spec.available_cpu) as f64 * 100.0) / (spec.installed_cpu as f64);
                 let memory: f64 = ((spec.installed_memory - spec.available_memory) as f64 * 100.0) / (spec.installed_memory as f64);
 
-                node_info.push((*node_uid, cpu, memory));
+                used_nodes_utilization.push((*node_uid, cpu, memory));
             }
         }
 
+        // Send metrics
         self.ctx.emit(
-            APIPostCAMetrics {
-                insufficient_resources_pending: pending,
-                requests,
-                node_info,
-            }, self.api_sim_id, self.cluster_state.borrow().network_delays.scheduler2api
+            EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help },
+            self.api_sim_id,
+            self.cluster_state.borrow().network_delays.scheduler2api
         );
     }
 
@@ -551,12 +563,17 @@ impl dsc::EventHandler for Scheduler {
             EventRemoveNode { node_uid } => {
                 dp_scheduler!("{:.12} scheduler EventRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
 
-                // Update cache
-                let node = self.nodes.remove(&node_uid).unwrap();
-                self.node_rtree.remove(&node);
+                // Update cache if necessary
+                match self.nodes.remove(&node_uid) {
+                    Some(node) => {
+                        // Remove node from RTree
+                        self.node_rtree.remove(&node);
 
-                // Update monitoring
-                self.monitoring.borrow_mut().scheduler_on_node_removed(&node);
+                        // Update monitoring
+                        self.monitoring.borrow_mut().scheduler_on_node_removed(&node);
+                    }
+                    None => {} // Nothing to do
+                }
 
                 // Here we only delete a node without doing anything with pods on this node.
                 // We expect to get PodPhase updates for each pod on this node later.
@@ -577,10 +594,10 @@ impl dsc::EventHandler for Scheduler {
                 }
             }
 
-            APIGetCAMetrics { node_list } => {
-                dp_scheduler!("{:.12} scheduler APIGetCAMetrics", self.ctx.time());
+            EventGetCAMetrics { used_nodes, available_nodes } => {
+                dp_scheduler!("{:.12} scheduler EventGetCAMetrics", self.ctx.time());
 
-                self.send_ca_metrics(&node_list);
+                self.count_and_send_ca_metrics(&used_nodes, &available_nodes);
             }
         });
 

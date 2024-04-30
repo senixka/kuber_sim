@@ -78,7 +78,7 @@ impl dsc::EventHandler for HPA {
             //
             //     self.turn_on();
             // }
-            APIHPATurnOff {} => {
+            EventTurnOff {} => {
                 dp_hpa!("{:.12} hpa APIHPATurnOff", self.ctx.time());
 
                 self.turn_off();
