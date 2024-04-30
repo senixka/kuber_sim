@@ -44,7 +44,7 @@ pub struct EventRemoveNodeAck {
 // [Emit]:      { Scheduler } -> Api
 // [Consume]:   Api -> { Kubelet }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIUpdatePodFromScheduler {
+pub struct EventUpdatePodFromScheduler {
     pub pod: Option<Pod>,
     pub pod_uid: u64,
     pub new_phase: PodPhase,
@@ -55,55 +55,18 @@ pub struct APIUpdatePodFromScheduler {
 // [Emit]:      { Kubelet } -> Api
 // [Consume]:   Api -> { Scheduler }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIUpdatePodFromKubelet {
+pub struct EventUpdatePodFromKubelet {
     pub pod_uid: u64,
     pub new_phase: PodPhase,
     pub node_uid: u64,
 }
 
 
-// [Emit]:      { Kubelet } -> Api
-// [Consume]:   Api -> {}
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APIUpdatePodMetricsFromKubelet {
-    pub pod_uid: u64,
-    pub current_cpu: f64,
-    pub current_memory: f64,
-}
+///////////////////////////////////////////// Common ///////////////////////////////////////////////
 
-
-// [Emit self]:      { Any }
+// [Emit self]:      { CA | HPA | Scheduler | Monitoring }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct EventSelfUpdate {
-}
-
-
-
-/////////////////////////////////////// Kubelet inner //////////////////////////////////////////////
-
-// [Emit self]:      Kubelet
-#[derive(Clone, Serialize, Deserialize)]
-pub struct EventKubeletNextChange {
-    pub pod_uid: u64,
-}
-
-
-
-///////////////////////////////////////// HPA inner ////////////////////////////////////////////////
-
-// [Emit]:      { HPA } -> Api
-// [Consume]:   Api -> {}
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APIGetHPAMetrics {
-    pub pod_groups: Vec<u64>,
-}
-
-// [Emit]:      {} -> Api
-// [Consume]:   Api -> { HPA }
-#[derive(Clone, Serialize, Deserialize)]
-pub struct APIPostHPAMetrics {
-    pub pod_groups: Vec<(u64, f64, f64)>, // (group_uid, current cpu usage, current memory usage)
-    //        group_uid--^  cpu-^    ^--memory
 }
 
 
@@ -119,10 +82,48 @@ pub struct EventTurnOn {}
 pub struct EventTurnOff {}
 
 
+
+/////////////////////////////////////////// Kubelet ////////////////////////////////////////////////
+
+
+// [Emit]:      { Kubelet } -> Api
+// [Consume]:   Api -> {}
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventUpdatePodMetricsFromKubelet {
+    pub pod_uid: u64,
+    pub current_cpu: f64,
+    pub current_memory: f64,
+}
+
+
+// [Emit self]:      Kubelet
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventKubeletNextChange {
+    pub pod_uid: u64,
+}
+
+
+///////////////////////////////////////// HPA  ////////////////////////////////////////////////
+
 // [Emit]:      { HPA } -> Api
 // [Consume]:   Api -> {}
 #[derive(Clone, Serialize, Deserialize)]
-pub struct APIRemoveAnyPodInGroup {
+pub struct EventGetHPAMetrics {
+    pub pod_groups: Vec<u64>,
+}
+
+// [Emit]:      {} -> Api
+// [Consume]:   Api -> { HPA }
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventPostHPAMetrics {
+    pub group_utilization: Vec<(u64, f64, f64)>,
+}
+
+
+// [Emit]:      { HPA } -> Api
+// [Consume]:   Api -> {}
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventRemoveAnyPodInGroup {
     pub group_uid: u64,
 }
 

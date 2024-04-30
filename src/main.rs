@@ -151,37 +151,48 @@ fn main() {
         test.prepare();
         test.run_for_duration(100.0);
 
-        test.enable_cluster_autoscaler();
+        test.enable_ca();
         test.run_for_duration(20.0);
 
-        test.disable_cluster_autoscaler();
+        test.disable_ca();
         test.run_for_duration(100.0);
 
-        test.enable_cluster_autoscaler();
+        test.enable_ca();
         test.run_for_duration(100.0);
 
     }
 
-    // // Test horizontal pod autoscaler
-    // if value == "hpa" {
-    //     let mut test = Experiment::new::<ActiveQCmpDefault, BackOffDefault, 0, 0, 0>(
-    //         "./data/cluster_state/test_hpa.yaml",
-    //         "./data/workload/test_hpa.yaml",
-    //         "./data/out/test_hpa.txt",
-    //         179,
-    //         BackOffDefault::default(),
-    //         [],
-    //         [],
-    //         [],
-    //         [],
-    //         [],
-    //     );
-    //     test.prepare_cluster();
-    //
-    //     test.enable_hpa();
-    //     test.step_until_no_events();
-    //     //test.run_for_duration(150.0);
-    // }
+    // Test horizontal pod autoscaler
+    if value == "hpa" {
+        let mut test = Experiment::new(
+            "./data/cluster_state/test_hpa.yaml".to_string(),
+            "./data/workload/test_hpa.yaml".to_string(),
+            "./data/out/test_hpa.txt".to_string(),
+            179,
+        );
+
+        test.add_scheduler(Box::new(ActiveQDefault::default()),
+                           Box::new(BackOffQDefault::default()),
+                           vec![Box::new(FilterNodeSelector)],
+                           vec![Box::new(FilterAlwaysTrue)],
+                           vec![Box::new(ScoreTetris)],
+                           vec![Box::new(ScoreNormalizeSkip)],
+                           vec![2]);
+        test.add_hpa();
+
+        test.prepare();
+        test.enable_hpa();
+        // test.step_until_no_events();
+
+        // test.enable_hpa();
+        test.run_for_duration(150.0);
+        //
+        // test.disable_hpa();
+        // test.run_for_duration(50.0);
+        //
+        // test.enable_hpa();
+        // test.run_for_duration(100.0);
+    }
 
 
     // // test node affinity

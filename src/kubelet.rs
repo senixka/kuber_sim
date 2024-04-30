@@ -214,7 +214,7 @@ impl Kubelet {
     ////////////////// Export metrics //////////////////
 
     pub fn send_pod_metrics(&self, pod_uid: u64, current_cpu: f64, current_memory: f64) {
-        self.ctx.emit(APIUpdatePodMetricsFromKubelet { pod_uid, current_cpu, current_memory},
+        self.ctx.emit(EventUpdatePodMetricsFromKubelet { pod_uid, current_cpu, current_memory},
                       self.api_sim_id,
                       self.cluster_state.borrow().network_delays.kubelet2api
         );
@@ -222,7 +222,7 @@ impl Kubelet {
 
     pub fn send_pod_phase_update(&self, pod_uid: u64, new_phase: PodPhase) {
         self.ctx.emit(
-            APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: self.node.metadata.uid },
+            EventUpdatePodFromKubelet { pod_uid, new_phase, node_uid: self.node.metadata.uid },
             self.api_sim_id,
             self.cluster_state.borrow().network_delays.kubelet2api
         );
@@ -232,8 +232,8 @@ impl Kubelet {
 impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            APIUpdatePodFromScheduler { pod , pod_uid, new_phase, node_uid } => {
-                dp_kubelet!("{:.12} node:{:?} APIUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid, new_phase);
+            EventUpdatePodFromScheduler { pod , pod_uid, new_phase, node_uid } => {
+                dp_kubelet!("{:.12} node:{:?} EventUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid, new_phase);
 
                 // Some invariants assertions
                 assert_eq!(node_uid, self.node.metadata.uid);

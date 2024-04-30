@@ -2,12 +2,12 @@ use crate::my_imports::*;
 
 
 pub struct Experiment {
-    cluster_state_file_path: String,
-    workload_file_path: String,
-    output_file_path: String,
+    // cluster_state_file_path: String,
+    // workload_file_path: String,
+    // output_file_path: String,
 
     sim: dsc::Simulation,
-    seed: u64,
+    // seed: u64,
 
     api: Rc<RefCell<APIServer>>,
     cluster_state: Rc<RefCell<ClusterState>>,
@@ -16,7 +16,7 @@ pub struct Experiment {
     monitoring: Rc<RefCell<Monitoring>>,
 
     api_id: dsc::Id,
-    monitoring_id: dsc::Id,
+    // monitoring_id: dsc::Id,
 
     scheduler: Option<Rc<RefCell<Scheduler>>>,
     scheduler_id: Option<dsc::Id>,
@@ -57,7 +57,7 @@ impl Experiment {
                 sim.create_context("monitoring"), cluster_state.clone(), &output_file_path,
             )
         ));
-        let monitoring_id = sim.add_handler("monitoring", monitoring.clone());
+        let _ = sim.add_handler("monitoring", monitoring.clone());
 
         // Init component
         let init = Rc::new(RefCell::new(
@@ -67,10 +67,10 @@ impl Experiment {
         ));
 
         Self {
-            cluster_state_file_path, workload_file_path, output_file_path,
-            sim, seed,
+            // cluster_state_file_path, workload_file_path, output_file_path,
+            sim, // seed,
             api, cluster_state, workload, init, monitoring,
-            api_id, monitoring_id,
+            api_id, // monitoring_id,
             scheduler: None,
             scheduler_id: None,
             ca: None,
@@ -141,7 +141,7 @@ impl Experiment {
 
         let scheduler_id = self.scheduler_id.unwrap();
         let ca_id = self.ca_id.unwrap_or(dsc::Id::MAX);
-        let hpa_id = self.ca_id.unwrap_or(dsc::Id::MAX);
+        let hpa_id = self.hpa_id.unwrap_or(dsc::Id::MAX);
 
         self.api.borrow_mut().prepare(scheduler_id, ca_id, hpa_id);
         self.monitoring.borrow_mut().presimulation_init(ca_id, hpa_id);
@@ -152,11 +152,11 @@ impl Experiment {
         self.is_preparation_done = true;
     }
 
-    pub fn enable_cluster_autoscaler(&self) {
+    pub fn enable_ca(&self) {
         self.ca.clone().unwrap().borrow_mut().turn_on();
     }
 
-    pub fn disable_cluster_autoscaler(&self) {
+    pub fn disable_ca(&self) {
         self.ca.clone().unwrap().borrow_mut().turn_off();
     }
 

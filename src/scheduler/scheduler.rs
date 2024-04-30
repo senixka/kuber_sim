@@ -427,7 +427,7 @@ impl Scheduler {
     ////////////////// Export metrics //////////////////
 
     pub fn send_pod_phase_update(&self, pod: Option<Pod>, pod_uid: u64, node_uid: u64, new_phase: PodPhase) {
-        self.ctx.emit(APIUpdatePodFromScheduler { pod, pod_uid, new_phase, node_uid },
+        self.ctx.emit(EventUpdatePodFromScheduler { pod, pod_uid, new_phase, node_uid },
                       self.api_sim_id,
                       self.cluster_state.borrow().network_delays.kubelet2api
         );
@@ -499,7 +499,7 @@ impl Scheduler {
 impl dsc::EventHandler for Scheduler {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            APIUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
+            EventUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
                 dp_scheduler!("{:.12} scheduler APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, _node_uid, new_phase);
 
                 // If this pod was previously removed -> do nothing
