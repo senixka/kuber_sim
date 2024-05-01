@@ -53,8 +53,8 @@ impl WorkLoad {
             pod.spec.arrival_time = data[1].parse().unwrap();
             pod.spec.request_cpu = data[2].parse().unwrap();
             pod.spec.request_memory = data[3].parse().unwrap();
-            pod.spec.limit_cpu = data[4].parse().unwrap_or(u64::MAX);
-            pod.spec.limit_memory = data[5].parse().unwrap_or(u64::MAX);
+            pod.spec.limit_cpu = data[4].parse().unwrap_or(i64::MAX);
+            pod.spec.limit_memory = data[5].parse().unwrap_or(i64::MAX);
             pod.spec.priority = data[6].parse().unwrap_or(0);
 
             let pod_labels: Vec<&str> = data[7].split(";").collect();

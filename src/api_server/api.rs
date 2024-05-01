@@ -220,7 +220,7 @@ impl dsc::EventHandler for APIServer {
                     }
                 }
 
-                // Send metrics to CA
+                // Send metrics to HPA
                 self.ctx.emit(
                     EventPostHPAMetrics { group_utilization },
                     self.hpa_sim_id,

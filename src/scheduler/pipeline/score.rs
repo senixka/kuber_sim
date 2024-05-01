@@ -79,7 +79,7 @@ impl IScorePlugin for ScoreTetris {
         let n_mem = node.spec.available_memory;
         let p_cpu = pod.spec.request_cpu;
         let p_mem = pod.spec.request_memory;
-        let scale = 10000;
+        let scale = 10000.0;
 
         return if n_cpu * p_mem >= n_mem * p_cpu {
             let y = (n_cpu * p_mem - n_mem * p_cpu) as f64;
@@ -91,7 +91,7 @@ impl IScorePlugin for ScoreTetris {
             let reversed: f64 = std::f64::consts::PI / 2.0 - angle;
             assert!(reversed >= 0.0);
 
-            reversed as i64 * scale
+            (reversed * scale) as i64
         } else {
             let y = (n_mem * p_cpu - n_cpu * p_mem) as f64;
             let x = (n_cpu * p_cpu + n_mem * p_mem) as f64;
@@ -102,7 +102,7 @@ impl IScorePlugin for ScoreTetris {
             let reversed: f64 = std::f64::consts::PI / 2.0 - angle;
             assert!(reversed >= 0.0);
 
-            reversed as i64 * scale
+            (reversed * scale) as i64
         }
     }
 }

@@ -10,10 +10,14 @@ pub struct Kubelet {
     // Underlying node
     pub node: Node,
 
-    // Inner state
+    // Pod info
     pub pods: HashMap<u64, Pod>,                            // HashMap<pod_uid, Pod>
-    pub evict_order: BTreeSet<(QoSClass, i64, u64)>,        // BTreeSet<(pod_QoSClass, pod_priority, pod_uid)>
-    pub running_loads: BTreeMap<u64, (u64, u64, LoadType)>, // BTreeMap<pod_uid, (current_cpu, current_memory, load_profile)>
+    // (BestEffort) or (Burstable with usage > requests) pods
+    pub eviction_order_first: BTreeSet<(i64, i64, u64)>,       // BTreeSet<(priority, memory_request - memory_usage, pod_uid)>
+    // (Guaranteed) or (Burstable with usage <= requests) pods
+    pub eviction_order_second: BTreeSet<(i64, u64)>,           // BTreeSet<(priority, pod_uid)>
+    // Pod's load profiles
+    pub running_loads: BTreeMap<u64, (i64, i64, LoadType)>, // BTreeMap<pod_uid, (current_cpu, current_memory, load_profile)>
 
     // Is kubelet turned on
     pub is_turned_on: bool,
@@ -34,67 +38,46 @@ impl Kubelet {
 
             // Inner state
             pods: HashMap::new(),
-            evict_order: BTreeSet::new(),
+            eviction_order_first: BTreeSet::new(),
+            eviction_order_second: BTreeSet::new(),
             running_loads: BTreeMap::new(),
             is_turned_on: false,
         }
     }
 
-    ////////////////// Process pod events //////////////////
+    ////////////////// Eviction  //////////////////
 
-    pub fn process_new_pod(&mut self, pod: Pod) {
-        // Get pod_uid
-        let pod_uid = pod.metadata.uid;
+    pub fn do_eviction(&mut self) {
+        // Do eviction should be called only in case of resource overuse
+        assert!(self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0);
+        // Inner invariant
+        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
 
-        // Store original pod
-        assert!(!self.pods.contains_key(&pod_uid));
-        self.pods.insert(pod_uid, pod.clone());
+        // Firstly, use first-order eviction set
+        while !self.eviction_order_first.is_empty()
+              && (self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0) {
+            let &(_, _, pod_uid) = self.eviction_order_first.first().unwrap();
 
-        // Run pod's load
-        let mut load = pod.spec.load.clone();
-        let (cpu, memory, next_change, is_finished) = load.start(self.ctx.time());
-        assert!(!is_finished);
-
-        // If pod request exceeds limits
-        if !pod.request_matches_limits(cpu, memory) {
-            // Remove stored pod
-            self.pods.remove(&pod_uid).unwrap();
-
-            // Update pod phase
-            self.send_pod_phase_update(pod_uid, PodPhase::Failed);
-            return;
+            // Evict this pod
+            self.evict_pod(pod_uid);
         }
 
-        // If there are insufficient resources on the node
-        if !self.node.is_consumable(cpu, memory) {
-            // Remove stored pod
-            self.pods.remove(&pod_uid).unwrap();
+        // If still resource overuse, use second-order eviction set
+        while !self.eviction_order_second.is_empty()
+            && (self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0) {
+            let &(_, pod_uid) = self.eviction_order_second.first().unwrap();
 
-            // Update pod phase
-            self.send_pod_phase_update(pod_uid, PodPhase::Pending);
-            return;
+            // Evict this pod
+            self.evict_pod(pod_uid);
         }
 
-        // Consume node resources
-        self.node.consume(cpu, memory);
-        self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
-
-        // Update inner state
-        self.running_loads.insert(pod_uid, (cpu, memory, load));
-        self.evict_order.insert((pod.status.qos_class, pod.spec.priority, pod.metadata.uid));
-
-        // Send pod consumption to Api-server
-        let pod_spec = &self.pods.get(&pod_uid).unwrap().spec;
-        self.send_pod_metrics(pod_uid,
-                              (cpu as f64) * 100.0 / pod_spec.request_cpu as f64,
-                              (memory as f64) * 100.0 / pod_spec.request_memory as f64);
-
-
-        // Pod's load next change event
-        self.ctx.emit_self(EventKubeletNextChange { pod_uid }, next_change);
+        // Assert (Purpose of eviction achieved)
+        assert!(self.node.spec.available_cpu >= 0 && self.node.spec.available_memory >= 0);
+        // Inner invariant
+        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
     }
 
-    pub fn process_evicted_pod(&mut self, pod_uid: u64) {
+    pub fn evict_pod(&mut self, pod_uid: u64) {
         let (prev_cpu, prev_memory, _) = self.running_loads.get_mut(&pod_uid).unwrap();
 
         // Restore previous resources
@@ -105,8 +88,97 @@ impl Kubelet {
         self.remove_pod_without_restoring_resources(pod_uid, PodPhase::Pending);
     }
 
+    pub fn eviction_order_add(first: &mut BTreeSet<(i64, i64, u64)>, second: &mut BTreeSet<(i64, u64)>, pod: &Pod, used_memory: i64) {
+        let (mut newly_inserted_1, mut newly_inserted_2) = (false, false);
+
+        if pod.status.qos_class == QoSClass::BestEffort || pod.spec.request_memory - used_memory < 0 {
+            newly_inserted_1 = first.insert((
+                pod.spec.priority,
+                pod.spec.request_memory - used_memory,
+                pod.metadata.uid
+            ));
+        } else {
+            newly_inserted_2 = second.insert((
+                pod.spec.priority,
+                pod.metadata.uid
+            ));
+        }
+
+        assert!(newly_inserted_1 ^ newly_inserted_2);
+    }
+
+    pub fn eviction_order_remove(first: &mut BTreeSet<(i64, i64, u64)>, second: &mut BTreeSet<(i64, u64)>, pod: &Pod, used_memory: i64) {
+        let (mut was_present_1, mut was_present_2) = (false, false);
+
+        if pod.status.qos_class == QoSClass::BestEffort || pod.spec.request_memory - used_memory < 0 {
+            was_present_1 = first.remove(&(
+                pod.spec.priority,
+                pod.spec.request_memory - used_memory,
+                pod.metadata.uid
+            ));
+        } else {
+            was_present_2 = second.remove(&(
+                pod.spec.priority,
+                pod.metadata.uid
+            ));
+        }
+
+        assert!(was_present_1 ^ was_present_2);
+    }
+
+    ////////////////// Process pod events //////////////////
+
+    pub fn add_new_pod(&mut self, pod: Pod) {
+        // Get pod_uid
+        let pod_uid = pod.metadata.uid;
+        assert!(!self.pods.contains_key(&pod_uid));
+
+        // Get pod's load
+        let mut load = pod.spec.load.clone();
+        let (cpu, memory, next_change, is_finished) = load.start(self.ctx.time());
+        assert!(!is_finished);
+
+        // If pod usage exceeds limits -> pod Failed
+        if !pod.is_usage_matches_limits(cpu, memory) {
+            self.send_pod_phase_update(pod_uid, PodPhase::Failed);
+            return;
+        }
+
+        // If there are insufficient resources on the node -> place pod anyway and trigger eviction
+        let need_eviction = !self.node.is_consumable(cpu, memory);
+
+        // Consume node resources
+        self.node.consume(cpu, memory);
+        self.monitoring.borrow_mut().kubelet_on_pod_placed(cpu, memory);
+
+        // Store pod
+        self.pods.insert(pod_uid, pod.clone());
+        // Store pod's load
+        self.running_loads.insert(pod_uid, (cpu, memory, load));
+        // Add pod to eviction order
+        Kubelet::eviction_order_add(&mut self.eviction_order_first, &mut self.eviction_order_second, &pod, memory);
+
+        // Send pod utilization to Api-server
+        self.send_pod_utilization(pod_uid, cpu, memory, &pod.spec);
+
+        // Pod's load next change event
+        self.ctx.emit_self(EventKubeletNextChange { pod_uid }, next_change);
+
+        // Do eviction if needed
+        if need_eviction {
+            self.do_eviction();
+        }
+
+        // Inner invariants
+        assert!(self.node.spec.available_cpu >= 0);
+        assert!(self.node.spec.available_memory >= 0);
+        assert!(self.node.spec.available_cpu <= self.node.spec.installed_cpu);
+        assert!(self.node.spec.available_memory <= self.node.spec.installed_memory);
+        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
+    }
+
     pub fn on_pod_next_change(&mut self, pod_uid: u64) {
-        // Get Previous and New pod's load
+        // Get previous and new pod's load
         let (prev_cpu, prev_memory, load) = self.running_loads.get_mut(&pod_uid).unwrap();
         let (new_cpu, new_memory, next_change, is_finished) = load.update(self.ctx.time());
 
@@ -120,42 +192,55 @@ impl Kubelet {
             return;
         }
 
-        // If pod exceeds its limits -> pod Failed
-        if !self.pods.get(&pod_uid).unwrap().request_matches_limits(new_cpu, new_memory) {
+        // Locate pod
+        let pod = self.pods.get(&pod_uid).unwrap();
+
+        // If pod usage exceeds limits -> pod Failed
+        if !pod.is_usage_matches_limits(new_cpu, new_memory) {
             self.remove_pod_without_restoring_resources(pod_uid, PodPhase::Failed);
             return;
         }
 
-        // If node has not enough resources -> try eviction
-        if !self.node.is_consumable(new_cpu, new_memory) {
-            // TODO: eviction with respect to Priority & QoS
-            self.remove_pod_without_restoring_resources(pod_uid, PodPhase::Pending);
-            return;
-        }
-
-        assert!(self.node.is_consumable(new_cpu, new_memory));
+        // If there are insufficient resources on the node -> place pod anyway and trigger eviction
+        let need_eviction = !self.node.is_consumable(new_cpu, new_memory);
 
         // Consume node resources
-        *prev_cpu = new_cpu;
-        *prev_memory = new_memory;
         self.node.consume(new_cpu, new_memory);
         self.monitoring.borrow_mut().kubelet_on_pod_placed(new_cpu, new_memory);
 
-        // Update pod consumption in api server
-        let pod_spec = &self.pods.get(&pod_uid).unwrap().spec;
-        self.send_pod_metrics(pod_uid,
-                              (new_cpu as f64) * 100.0 / pod_spec.request_cpu as f64,
-                              (new_memory as f64) * 100.0 / pod_spec.request_memory as f64);
+        // Update eviction order
+        Kubelet::eviction_order_remove(&mut self.eviction_order_first, &mut self.eviction_order_second, &pod, *prev_memory);
+        Kubelet::eviction_order_add(&mut self.eviction_order_first, &mut self.eviction_order_second, &pod, new_memory);
+
+        // Update pod's load
+        (*prev_cpu, *prev_memory) = (new_cpu, new_memory);
+
+        // Send pod utilization to Api-server
+        self.send_pod_utilization(pod_uid, new_cpu, new_memory, &pod.spec);
 
         // Next change self update
         self.ctx.emit_self(EventKubeletNextChange { pod_uid }, next_change);
+
+        // Do eviction if needed
+        if need_eviction {
+            self.do_eviction();
+        }
+
+        // Inner invariants
+        assert!(self.node.spec.available_cpu >= 0);
+        assert!(self.node.spec.available_memory >= 0);
+        assert!(self.node.spec.available_cpu <= self.node.spec.installed_cpu);
+        assert!(self.node.spec.available_memory <= self.node.spec.installed_memory);
+        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
     }
 
     pub fn remove_pod_without_restoring_resources(&mut self, pod_uid: u64, new_phase: PodPhase) {
-        // Update inner state
-        self.running_loads.remove(&pod_uid).unwrap();
+        // Remove load info
+        let (_, memory, _) = self.running_loads.remove(&pod_uid).unwrap();
+        // Remove pod info
         let pod = self.pods.remove(&pod_uid).unwrap();
-        self.evict_order.remove(&(pod.status.qos_class, pod.spec.priority, pod_uid));
+        // Remove from eviction order
+        Kubelet::eviction_order_remove(&mut self.eviction_order_first, &mut self.eviction_order_second, &pod, memory);
 
         // Send PodPhase update
         self.send_pod_phase_update(pod_uid, new_phase);
@@ -181,13 +266,17 @@ impl Kubelet {
         // All resources should be restored
         assert_eq!(self.node.spec.installed_cpu, self.node.spec.available_cpu);
         assert_eq!(self.node.spec.installed_memory, self.node.spec.available_memory);
+        // Inner state invariants
+        assert_eq!(self.pods.len(), self.running_loads.len());
+        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
 
         // Clear inner state
         self.pods.clear();
-        self.evict_order.clear();
+        self.eviction_order_first.clear();
+        self.eviction_order_second.clear();
         self.running_loads.clear();
 
-        // Cancel future events
+        // Cancel future all self-emitted events
         self.ctx.cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
 
         // Turn off kubelet
@@ -206,17 +295,23 @@ impl Kubelet {
         assert_eq!(self.is_turned_on, false);
         assert!(self.pods.is_empty());
         assert!(self.running_loads.is_empty());
-        assert!(self.evict_order.is_empty());
+        assert!(self.eviction_order_first.is_empty());
+        assert!(self.eviction_order_second.is_empty());
 
         self.node = new_node.clone();
     }
 
     ////////////////// Export metrics //////////////////
 
-    pub fn send_pod_metrics(&self, pod_uid: u64, current_cpu: f64, current_memory: f64) {
-        self.ctx.emit(EventUpdatePodMetricsFromKubelet { pod_uid, current_cpu, current_memory},
-                      self.api_sim_id,
-                      self.cluster_state.borrow().network_delays.kubelet2api
+    pub fn send_pod_utilization(&self, pod_uid: u64, current_cpu: i64, current_memory: i64, pod_spec: &PodSpec) {
+        self.ctx.emit(
+            EventUpdatePodMetricsFromKubelet {
+                pod_uid,
+                current_cpu: (current_cpu as f64) * 100.0 / pod_spec.request_cpu as f64,
+                current_memory: (current_memory as f64) * 100.0 / pod_spec.request_memory as f64,
+            },
+            self.api_sim_id,
+            self.cluster_state.borrow().network_delays.kubelet2api
         );
     }
 
@@ -249,7 +344,7 @@ impl dsc::EventHandler for Kubelet {
                         }
 
                         // Update inner state
-                        self.process_new_pod(pod.unwrap());
+                        self.add_new_pod(pod.unwrap());
                     }
                     PodPhase::Pending => {
                         // If pod is not managed by kubelet -> return
@@ -258,7 +353,7 @@ impl dsc::EventHandler for Kubelet {
                         }
 
                         // Update inner state
-                        self.process_evicted_pod(pod_uid);
+                        self.evict_pod(pod_uid);
                     }
                     PodPhase::Succeeded | PodPhase::Failed => {
                         panic!("Logic error. Unexpected pod phase:{:?},", new_phase);
@@ -274,7 +369,7 @@ impl dsc::EventHandler for Kubelet {
 
                 assert!(self.is_turned_on, "Logic error. All self-events should be canceled.");
 
-                // If pod still managed by kubelet
+                // If pod still managed by kubelet -> update its load
                 if self.pods.contains_key(&pod_uid) {
                     self.on_pod_next_change(pod_uid);
                 }

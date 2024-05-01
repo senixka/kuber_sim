@@ -7,13 +7,15 @@ pub struct PodSpec {
     pub arrival_time: f64,
     pub load: LoadType,
 
-    pub request_cpu: u64,
-    pub request_memory: u64,
+    #[serde(default)]
+    pub request_cpu: i64,
+    #[serde(default)]
+    pub request_memory: i64,
 
     #[serde(default)]
-    pub limit_cpu: u64,
+    pub limit_cpu: i64,
     #[serde(default)]
-    pub limit_memory: u64,
+    pub limit_memory: i64,
 
     #[serde(default)]
     pub priority: i64,
@@ -94,27 +96,48 @@ impl Pod {
         self.status.node_uid = None;
 
         if self.spec.limit_cpu == 0 {
-            self.spec.limit_cpu = u64::MAX;
+            self.spec.limit_cpu = i64::MAX;
         }
         if self.spec.limit_memory == 0 {
-            self.spec.limit_memory = u64::MAX;
+            self.spec.limit_memory = i64::MAX;
         }
 
+        // For a Pod to be given a QoS class of Guaranteed:
+        //   - Pod must have a memory limit and a memory request.
+        //   - Pod's memory limit must equal the memory request.
+        //   - Pod must have a CPU limit and a CPU request.
+        //   - Pod's CPU limit must equal the CPU request.
         if self.spec.request_cpu == self.spec.limit_cpu
             && self.spec.request_memory == self.spec.limit_memory {
             self.status.qos_class = QoSClass::Guaranteed;
-        } else if self.spec.limit_cpu < u64::MAX && self.spec.limit_memory < u64::MAX {
+        }
+
+        // A Pod is given a QoS class of Burstable if:
+        //   - The Pod does not meet the criteria for QoS class Guaranteed.
+        //   - Pod has a memory or CPU request or limit.
+        else if self.spec.request_cpu != 0 || self.spec.request_memory != 0
+                || self.spec.limit_cpu < i64::MAX || self.spec.limit_memory < i64::MAX {
             self.status.qos_class = QoSClass::Burstable;
-        } else {
+        }
+
+        // A Pod has a QoS class of BestEffort if:
+        //   - It doesn't meet the criteria for either Guaranteed or Burstable.
+        else {
             self.status.qos_class = QoSClass::BestEffort;
         }
 
         assert!(self.spec.limit_cpu >= self.spec.request_cpu);
         assert!(self.spec.limit_memory >= self.spec.request_memory);
+        assert!(self.spec.request_cpu >= 0);
+        assert!(self.spec.request_memory >= 0);
         assert!(self.spec.load.get_duration() > 0.0);
     }
 
-    pub fn request_matches_limits(&self, cpu: u64, memory: u64) -> bool {
+    pub fn is_usage_matches_limits(&self, cpu: i64, memory: i64) -> bool {
         return cpu <= self.spec.limit_cpu && memory <= self.spec.limit_memory;
+    }
+
+    pub fn is_usage_matches_requests(&self, cpu: i64, memory: i64) -> bool {
+        return cpu <= self.spec.request_cpu && memory <= self.spec.request_memory;
     }
 }

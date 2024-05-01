@@ -11,19 +11,19 @@ pub struct Monitoring {
 
     makespan_time: f64,
 
-    total_installed_cpu: u64,
-    total_installed_memory: u64,
+    total_installed_cpu: i64,
+    total_installed_memory: i64,
 
-    scheduler_used_cpu: u64,
-    scheduler_used_memory: u64,
+    scheduler_used_cpu: i64,
+    scheduler_used_memory: i64,
 
-    kubelets_used_cpu: u64,
-    kubelets_used_memory: u64,
+    kubelets_used_cpu: i64,
+    kubelets_used_memory: i64,
 
-    scheduler_utilization_cpu_numerator: Vec<u64>,
-    scheduler_utilization_memory_numerator: Vec<u64>,
-    kubelet_utilization_cpu_numerator: Vec<u64>,
-    kubelet_utilization_memory_numerator: Vec<u64>,
+    scheduler_utilization_cpu_numerator: Vec<i64>,
+    scheduler_utilization_memory_numerator: Vec<i64>,
+    kubelet_utilization_cpu_numerator: Vec<i64>,
+    kubelet_utilization_memory_numerator: Vec<i64>,
     // utilization_measurements_time: Vec<f64>,
 
     // pod_start_time: HashMap<u64, f64>,
@@ -95,12 +95,12 @@ impl Monitoring {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    pub fn scheduler_on_node_consume(&mut self, cpu: u64, memory: u64) {
+    pub fn scheduler_on_node_consume(&mut self, cpu: i64, memory: i64) {
         self.scheduler_used_cpu += cpu;
         self.scheduler_used_memory += memory;
     }
 
-    pub fn scheduler_on_node_restore(&mut self, cpu: u64, memory: u64) {
+    pub fn scheduler_on_node_restore(&mut self, cpu: i64, memory: i64) {
         assert!(self.scheduler_used_cpu >= cpu);
         assert!(self.scheduler_used_memory >= memory);
 
@@ -160,15 +160,12 @@ impl Monitoring {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    pub fn kubelet_on_pod_placed(&mut self, cpu: u64, memory: u64) {
+    pub fn kubelet_on_pod_placed(&mut self, cpu: i64, memory: i64) {
         self.kubelets_used_cpu += cpu;
         self.kubelets_used_memory += memory;
     }
 
-    pub fn kubelet_on_pod_unplaced(&mut self, cpu: u64, memory: u64) {
-        assert!(self.kubelets_used_cpu >= cpu);
-        assert!(self.kubelets_used_memory >= memory);
-
+    pub fn kubelet_on_pod_unplaced(&mut self, cpu: i64, memory: i64) {
         self.kubelets_used_cpu -= cpu;
         self.kubelets_used_memory -= memory;
     }

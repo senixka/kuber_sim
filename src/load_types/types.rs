@@ -15,23 +15,23 @@ impl LoadType {
         return match self {
             LoadType::Constant(load) => { load.duration }
             LoadType::BusyBox(load) => { load.duration }
-            LoadType::None => { 0.0 }
+            _ => { panic!("Unexpected load type.") }
         }
     }
 
-    pub fn start(&mut self, current_time: f64) -> (u64, u64, f64, bool) {
+    pub fn start(&mut self, current_time: f64) -> (i64, i64, f64, bool) {
         return match self {
             LoadType::Constant(load) => { load.start(current_time) }
             LoadType::BusyBox(load) => { load.start(current_time) }
-            LoadType::None => { (0, 0, 0.0, false) }
+            _ => { panic!("Unexpected load type.") }
         }
     }
 
-    pub fn update(&mut self, current_time: f64) -> (u64, u64, f64, bool) {
+    pub fn update(&mut self, current_time: f64) -> (i64, i64, f64, bool) {
         return match self {
             LoadType::Constant(load) => { load.update(current_time) }
             LoadType::BusyBox(load) => { load.update(current_time) }
-            LoadType::None => { (0, 0, 0.0, false) }
+            _ => { panic!("Unexpected load type.") }
         }
     }
 }

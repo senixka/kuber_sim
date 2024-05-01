@@ -273,11 +273,11 @@ impl Scheduler {
 
     ////////////////// Helpers for Node cache and RTree cache //////////////////
 
-    pub fn is_node_consumable(node: &Node, cpu: u64, memory: u64) -> bool {
+    pub fn is_node_consumable(node: &Node, cpu: i64, memory: i64) -> bool {
         return cpu <= node.spec.available_cpu && memory <= node.spec.available_memory;
     }
 
-    pub fn place_pod_to_node(&mut self, pod_uid: u64, node_uid: u64, cpu: u64, memory: u64) {
+    pub fn place_pod_to_node(&mut self, pod_uid: u64, node_uid: u64, cpu: i64, memory: i64) {
         // Get pod's node
         let node = self.nodes.get_mut(&node_uid).unwrap();
 
@@ -295,7 +295,7 @@ impl Scheduler {
         self.monitoring.borrow_mut().scheduler_on_node_consume(cpu, memory);
     }
 
-    pub fn remove_pod_from_node(&mut self, pod_uid: u64, node_uid: u64, cpu: u64, memory: u64) {
+    pub fn remove_pod_from_node(&mut self, pod_uid: u64, node_uid: u64, cpu: i64, memory: i64) {
         // Get pod's node
         let node = self.nodes.get_mut(&node_uid).unwrap();
 

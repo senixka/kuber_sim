@@ -8,9 +8,7 @@ impl RTreeObject for Node {
     type Envelope = AABB<(i64, i64, i64)>;
 
     fn envelope(&self) -> Self::Envelope {
-        assert!(self.spec.available_cpu <= (i64::MAX as u64));
-        assert!(self.spec.available_memory <= (i64::MAX as u64));
-        AABB::from_point((self.spec.available_cpu as i64, self.spec.available_memory as i64, self.metadata.uid as i64))
+        AABB::from_point((self.spec.available_cpu, self.spec.available_memory, self.metadata.uid as i64))
     }
 }
 
@@ -21,8 +19,8 @@ impl NodeRTree {
     }
 
     #[inline]
-    pub fn find_suitable_nodes(&self, target_cpu: u64, target_memory: u64, result: &mut Vec<Node>) {
-        let query_box = AABB::from_corners((target_cpu as i64, target_memory as i64, 0), (i64::MAX, i64::MAX, i64::MAX));
+    pub fn find_suitable_nodes(&self, target_cpu: i64, target_memory: i64, result: &mut Vec<Node>) {
+        let query_box = AABB::from_corners((target_cpu, target_memory, i64::MIN), (i64::MAX, i64::MAX, i64::MAX));
 
         result.clear();
         for node in self.0.locate_in_envelope(&query_box) {
