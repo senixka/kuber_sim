@@ -59,7 +59,8 @@ pub mod my_imports {
     pub use crate::simulation::init::*;
     pub use crate::simulation::monitoring::*;
 
-    pub use crate::kubelet::*;
+    pub use crate::kubelet::kubelet::*;
+    pub use crate::kubelet::eviction::*;
     pub use crate::test::*;
     pub use crate::*;
 }

@@ -12,10 +12,8 @@ pub struct Kubelet {
 
     // Pod info
     pub pods: HashMap<u64, Pod>,                            // HashMap<pod_uid, Pod>
-    // (BestEffort) or (Burstable with usage > requests) pods
-    pub eviction_order_first: BTreeSet<(i64, i64, u64)>,       // BTreeSet<(priority, memory_request - memory_usage, pod_uid)>
-    // (Guaranteed) or (Burstable with usage <= requests) pods
-    pub eviction_order_second: BTreeSet<(i64, u64)>,           // BTreeSet<(priority, pod_uid)>
+    // Eviction order
+    pub eviction_order: EvictionOrder,
     // Pod's load profiles
     pub running_loads: BTreeMap<u64, (i64, i64, LoadType)>, // BTreeMap<pod_uid, (current_cpu, current_memory, load_profile)>
 
@@ -38,8 +36,7 @@ impl Kubelet {
 
             // Inner state
             pods: HashMap::new(),
-            eviction_order_first: BTreeSet::new(),
-            eviction_order_second: BTreeSet::new(),
+            eviction_order: EvictionOrder::new(),
             running_loads: BTreeMap::new(),
             is_turned_on: false,
         }
@@ -51,21 +48,13 @@ impl Kubelet {
         // Do eviction should be called only in case of resource overuse
         assert!(self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0);
         // Inner invariant
-        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
+        assert_eq!(self.pods.len(), self.eviction_order.len());
 
-        // Firstly, use first-order eviction set
-        while !self.eviction_order_first.is_empty()
+        // While there are pods and eviction needed
+        while !self.eviction_order.is_empty()
               && (self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0) {
-            let &(_, _, pod_uid) = self.eviction_order_first.first().unwrap();
-
-            // Evict this pod
-            self.evict_pod(pod_uid);
-        }
-
-        // If still resource overuse, use second-order eviction set
-        while !self.eviction_order_second.is_empty()
-            && (self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0) {
-            let &(_, pod_uid) = self.eviction_order_second.first().unwrap();
+            // Get first order pod to evict
+            let pod_uid = self.eviction_order.first().unwrap();
 
             // Evict this pod
             self.evict_pod(pod_uid);
@@ -74,7 +63,7 @@ impl Kubelet {
         // Assert (Purpose of eviction achieved)
         assert!(self.node.spec.available_cpu >= 0 && self.node.spec.available_memory >= 0);
         // Inner invariant
-        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
+        assert_eq!(self.pods.len(), self.eviction_order.len());
     }
 
     pub fn evict_pod(&mut self, pod_uid: u64) {
@@ -88,43 +77,6 @@ impl Kubelet {
         self.remove_pod_without_restoring_resources(pod_uid, PodPhase::Pending);
     }
 
-    pub fn eviction_order_add(first: &mut BTreeSet<(i64, i64, u64)>, second: &mut BTreeSet<(i64, u64)>, pod: &Pod, used_memory: i64) {
-        let (mut newly_inserted_1, mut newly_inserted_2) = (false, false);
-
-        if pod.status.qos_class == QoSClass::BestEffort || pod.spec.request_memory - used_memory < 0 {
-            newly_inserted_1 = first.insert((
-                pod.spec.priority,
-                pod.spec.request_memory - used_memory,
-                pod.metadata.uid
-            ));
-        } else {
-            newly_inserted_2 = second.insert((
-                pod.spec.priority,
-                pod.metadata.uid
-            ));
-        }
-
-        assert!(newly_inserted_1 ^ newly_inserted_2);
-    }
-
-    pub fn eviction_order_remove(first: &mut BTreeSet<(i64, i64, u64)>, second: &mut BTreeSet<(i64, u64)>, pod: &Pod, used_memory: i64) {
-        let (mut was_present_1, mut was_present_2) = (false, false);
-
-        if pod.status.qos_class == QoSClass::BestEffort || pod.spec.request_memory - used_memory < 0 {
-            was_present_1 = first.remove(&(
-                pod.spec.priority,
-                pod.spec.request_memory - used_memory,
-                pod.metadata.uid
-            ));
-        } else {
-            was_present_2 = second.remove(&(
-                pod.spec.priority,
-                pod.metadata.uid
-            ));
-        }
-
-        assert!(was_present_1 ^ was_present_2);
-    }
 
     ////////////////// Process pod events //////////////////
 
@@ -156,7 +108,7 @@ impl Kubelet {
         // Store pod's load
         self.running_loads.insert(pod_uid, (cpu, memory, load));
         // Add pod to eviction order
-        Kubelet::eviction_order_add(&mut self.eviction_order_first, &mut self.eviction_order_second, &pod, memory);
+        self.eviction_order.add(&pod, memory);
 
         // Send pod utilization to Api-server
         self.send_pod_utilization(pod_uid, cpu, memory, &pod.spec);
@@ -174,7 +126,7 @@ impl Kubelet {
         assert!(self.node.spec.available_memory >= 0);
         assert!(self.node.spec.available_cpu <= self.node.spec.installed_cpu);
         assert!(self.node.spec.available_memory <= self.node.spec.installed_memory);
-        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
+        assert_eq!(self.pods.len(), self.eviction_order.len());
     }
 
     pub fn on_pod_next_change(&mut self, pod_uid: u64) {
@@ -209,8 +161,8 @@ impl Kubelet {
         self.monitoring.borrow_mut().kubelet_on_pod_placed(new_cpu, new_memory);
 
         // Update eviction order
-        Kubelet::eviction_order_remove(&mut self.eviction_order_first, &mut self.eviction_order_second, &pod, *prev_memory);
-        Kubelet::eviction_order_add(&mut self.eviction_order_first, &mut self.eviction_order_second, &pod, new_memory);
+        self.eviction_order.remove(&pod, *prev_memory);
+        self.eviction_order.add(&pod, new_memory);
 
         // Update pod's load
         (*prev_cpu, *prev_memory) = (new_cpu, new_memory);
@@ -231,7 +183,7 @@ impl Kubelet {
         assert!(self.node.spec.available_memory >= 0);
         assert!(self.node.spec.available_cpu <= self.node.spec.installed_cpu);
         assert!(self.node.spec.available_memory <= self.node.spec.installed_memory);
-        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
+        assert_eq!(self.pods.len(), self.eviction_order.len());
     }
 
     pub fn remove_pod_without_restoring_resources(&mut self, pod_uid: u64, new_phase: PodPhase) {
@@ -240,11 +192,12 @@ impl Kubelet {
         // Remove pod info
         let pod = self.pods.remove(&pod_uid).unwrap();
         // Remove from eviction order
-        Kubelet::eviction_order_remove(&mut self.eviction_order_first, &mut self.eviction_order_second, &pod, memory);
+        self.eviction_order.remove(&pod, memory);
 
         // Send PodPhase update
         self.send_pod_phase_update(pod_uid, new_phase);
     }
+
 
     ////////////////// Kubelet Turn On/Off //////////////////
 
@@ -268,12 +221,11 @@ impl Kubelet {
         assert_eq!(self.node.spec.installed_memory, self.node.spec.available_memory);
         // Inner state invariants
         assert_eq!(self.pods.len(), self.running_loads.len());
-        assert_eq!(self.pods.len(), self.eviction_order_first.len() + self.eviction_order_second.len());
+        assert_eq!(self.pods.len(), self.eviction_order.len());
 
         // Clear inner state
         self.pods.clear();
-        self.eviction_order_first.clear();
-        self.eviction_order_second.clear();
+        self.eviction_order.clear();
         self.running_loads.clear();
 
         // Cancel future all self-emitted events
@@ -289,17 +241,18 @@ impl Kubelet {
         );
     }
 
+
     ////////////////// Kubelet replace node //////////////////
 
     pub fn replace_node(&mut self, new_node: &Node) {
         assert_eq!(self.is_turned_on, false);
         assert!(self.pods.is_empty());
         assert!(self.running_loads.is_empty());
-        assert!(self.eviction_order_first.is_empty());
-        assert!(self.eviction_order_second.is_empty());
+        assert!(self.eviction_order.is_empty());
 
         self.node = new_node.clone();
     }
+
 
     ////////////////// Export metrics //////////////////
 
