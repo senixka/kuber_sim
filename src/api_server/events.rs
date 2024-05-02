@@ -53,13 +53,23 @@ pub struct EventUpdatePodFromScheduler {
 }
 
 
+// [Emit]:      {} -> Api
+// [Consume]:   Api -> { Scheduler }
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventPodUpdateToScheduler {
+    pub pod_uid: u64,
+    pub current_phase: PodPhase,
+}
+
+
 // [Emit]:      { Kubelet } -> Api
 // [Consume]:   Api -> { Scheduler }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct EventUpdatePodFromKubelet {
+pub struct EventPodUpdateFromKubelet {
     pub pod_uid: u64,
-    pub new_phase: PodPhase,
-    pub node_uid: u64,
+    pub current_phase: PodPhase,
+    pub current_cpu: f64,
+    pub current_memory: f64,
 }
 
 
@@ -85,17 +95,6 @@ pub struct EventTurnOff {}
 
 
 /////////////////////////////////////////// Kubelet ////////////////////////////////////////////////
-
-
-// [Emit]:      { Kubelet } -> Api
-// [Consume]:   Api -> {}
-#[derive(Clone, Serialize, Deserialize)]
-pub struct EventUpdatePodMetricsFromKubelet {
-    pub pod_uid: u64,
-    pub current_cpu: f64,
-    pub current_memory: f64,
-}
-
 
 // [Emit self]:      Kubelet
 #[derive(Clone, Serialize, Deserialize)]

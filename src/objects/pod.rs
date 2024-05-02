@@ -2,9 +2,8 @@ use crate::my_imports::*;
 
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PodSpec {
-    pub arrival_time: f64,
     pub load: LoadType,
 
     #[serde(default)]
@@ -22,25 +21,44 @@ pub struct PodSpec {
 
     #[serde(default)]
     pub node_selector: BTreeMap<String, String>,
-
     #[serde(default)]
     pub tolerations: Vec<Toleration>,
-
     #[serde(default)]
     pub node_affinity: NodeAffinity,
 }
-
-impl Eq for PodSpec {}
 
 
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum PodPhase {
+    // [Kubelet IN]:    {}
+    // [Kubelet OUT]:   { When pod is removed because kubelet turns off }
     #[default]
     Pending = 0,
+
+    // [Kubelet IN]:    { Scheduler asks to run pod on node }
+    // [Kubelet OUT]:   {}
     Running = 1,
+
+    // [Kubelet IN]:    {}
+    // [Kubelet OUT]:   { When pod's load successfully finished }
     Succeeded = 2,
+
+    // [Kubelet IN]:    {}
+    // [Kubelet OUT]:   { When pod is finished because its usage exceeds its limits }
     Failed = 3,
+
+    // [Kubelet IN]:    {}
+    // [Kubelet OUT]:   { When pod is evicted because inner node resource pressure }
+    Evicted = 4,
+
+    // [Kubelet IN]:    { Scheduler asks to preempt pod }
+    // [Kubelet OUT]:   { When pod is preempted because scheduler asked }
+    Preempted = 5,
+
+    // [Kubelet IN]:    { Scheduler asks to remove pod }
+    // [Kubelet OUT]:   { When pod is asked to be removed }
+    Removed = 6,
 }
 
 
@@ -80,6 +98,9 @@ pub struct Pod {
     pub metadata: ObjectMeta,
     #[serde(skip)]
     pub status: PodStatus,
+
+    #[serde(default)]
+    pub hpa_profile: Option<HPAProfile>,
 }
 
 impl Pod {

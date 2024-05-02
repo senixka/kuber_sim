@@ -346,7 +346,7 @@ impl Scheduler {
         self.active_queue.push(pod);
     }
 
-    pub fn process_evicted_pod(&mut self, pod_uid: u64) {
+    pub fn process_reschedule_pod(&mut self, pod_uid: u64, phase: PodPhase) {
         assert_eq!(self.running_pods.contains_key(&pod_uid), true);
         assert_eq!(self.pending_pods.contains_key(&pod_uid), false);
 
@@ -368,6 +368,20 @@ impl Scheduler {
         self.active_queue.push(pod);
 
         // Update monitoring
+        match phase {
+            PodPhase::Evicted => {
+                self.monitoring.borrow_mut().scheduler_on_pod_evicted();
+            }
+            PodPhase::Preempted => {
+                self.monitoring.borrow_mut().scheduler_on_pod_preempted();
+            }
+            PodPhase::Pending => {
+                // Do nothing
+            }
+            _ => {
+                panic!("Logic error. This fn can be called only with phase Pending, Evicted or Preempted.");
+            }
+        }
         self.monitoring.borrow_mut().scheduler_on_pod_evicted();
     }
 
@@ -494,32 +508,14 @@ impl Scheduler {
             self.cluster_state.borrow().network_delays.scheduler2api
         );
     }
-
-    // TODO: preemption
-    // pub fn preempt_pod(&mut self, pod_uid: u64) {
-    //     // If pod in pending -> do nothing
-    //     if self.pending_pods.contains_key(&pod_uid) {
-    //         return;
-    //     }
-    //
-    //     // If pod in running -> preempt
-    //     if self.running_pods.contains_key(&pod_uid) {
-    //         let pod = self.running_pods.get(&pod_uid).unwrap();
-    //         self.ctx.emit(
-    //             APIUpdatePodFromScheduler { pod: None, pod_uid, new_phase: PodPhase::Pending, node_uid: pod.status.node_uid.unwrap() },
-    //             self.api_sim_id,
-    //             self.cluster_state.borrow().network_delays.scheduler2api
-    //         );
-    //     }
-    // }
 }
 
 
 impl dsc::EventHandler for Scheduler {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            EventUpdatePodFromKubelet { pod_uid, new_phase, node_uid: _node_uid } => {
-                dp_scheduler!("{:.12} scheduler APIUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, _node_uid, new_phase);
+            EventPodUpdateToScheduler { pod_uid, current_phase } => {
+                dp_scheduler!("{:.12} scheduler EventPodUpdateFromKubelet pod_uid:{:?} current_phase:{:?}", self.ctx.time(), pod_uid, current_phase);
 
                 // If this pod was previously removed -> do nothing
                 if !self.is_pod_cached(pod_uid) {
@@ -527,17 +523,24 @@ impl dsc::EventHandler for Scheduler {
                 }
 
                 // Process PodPhase
-                match new_phase {
+                match current_phase {
                     PodPhase::Succeeded | PodPhase::Failed => {
-                        self.process_finished_pod(pod_uid, new_phase);
+                        self.process_finished_pod(pod_uid, current_phase);
                     }
-                    PodPhase::Pending => {
-                        self.process_evicted_pod(pod_uid);
+                    PodPhase::Pending | PodPhase::Evicted | PodPhase::Preempted => {
+                        self.process_reschedule_pod(pod_uid, current_phase);
 
-                        // We get new pending pod -> run self update
+                        // New pending pod -> run self update
                         self.self_update_on();
                     }
+                    PodPhase::Removed => {
+                        // self.process_removed_pod(pod_uid);
+                        // This process_removed_pod should already be called in EventRemovePod.
+                        // So there this no more information about this pod and we cannot be here.
+                        panic!("Logic error. PodPhase Removed is not expected.");
+                    }
                     PodPhase::Running => {
+                        // This PodPhase update should not reach the scheduler.
                         panic!("Logic error. PodPhase Running is not expected.");
                     }
                 }
@@ -556,10 +559,10 @@ impl dsc::EventHandler for Scheduler {
             EventRemovePod { pod_uid } => {
                 dp_scheduler!("{:.12} scheduler EventRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
 
-                // If pod is running -> notify kubelet to evict this pod
+                // If pod is running -> notify kubelet to remove this pod
                 if self.running_pods.contains_key(&pod_uid) {
                     let node_uid = self.running_pods.get(&pod_uid).unwrap().status.node_uid.unwrap();
-                    self.send_pod_phase_update(None, pod_uid, None, node_uid, PodPhase::Pending);
+                    self.send_pod_phase_update(None, pod_uid, None, node_uid, PodPhase::Removed);
                 }
 
                 // Update inner state

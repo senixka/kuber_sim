@@ -11,9 +11,11 @@ pub struct APIServer {
     // subscriptions: HashMap<, Vec<dsc::Id>>,
 
     // ############## ETCD ##############
-    pod2group: HashMap<u64, u64>,                               // HashMap<pod_uid, group_uid>
     kubelets: HashMap<u64, dsc::Id>,                            // HashMap<node_uid, kubelet_sim_id>
-    pod_consumptions: HashMap<u64, HashMap<u64, (f64, f64)>>,   // HashMap<group_uid, HashMap<node_uid, (current_cpu, current_memory)>
+
+    pod2group: HashMap<u64, u64>,                               // HashMap<pod_uid, group_uid>
+    group_members: HashMap<u64, HashSet<u64>>,                  // HashMap<group_uid, HashSet<pod_uid>
+    pod_metrics: HashMap<u64, (PodPhase, f64, f64)>             // HashMap<pod_uid, current_(PodPhase, cpu, memory)>
 }
 
 
@@ -26,9 +28,10 @@ impl APIServer {
             ca_sim_id: dsc::Id::MAX,
             hpa_sim_id: dsc::Id::MAX,
             // subscriptions: HashMap::new(),
-            pod2group: HashMap::new(),
             kubelets: HashMap::new(),
-            pod_consumptions: HashMap::new(),
+            pod2group: HashMap::new(),
+            group_members: HashMap::new(),
+            pod_metrics: HashMap::new(),
         }
     }
 
@@ -62,9 +65,9 @@ impl dsc::EventHandler for APIServer {
                         );
                     }
                     None => {
-                        // If kubelet turned off (not in routing) -> Notify scheduler
+                        // If kubelet turned off (not in routing) -> Notify scheduler returning this pod
                         self.ctx.emit(
-                            EventUpdatePodFromKubelet { pod_uid, new_phase: PodPhase::Pending, node_uid },
+                            EventPodUpdateToScheduler { pod_uid, current_phase: PodPhase::Pending },
                             self.scheduler_sim_id,
                             self.cluster_state.borrow().network_delays.api2scheduler
                         );
@@ -73,25 +76,20 @@ impl dsc::EventHandler for APIServer {
                 }
             }
 
-            EventUpdatePodFromKubelet { pod_uid, new_phase, node_uid} => {
-                dp_api_server!("{:.12} api_server EventUpdatePodFromKubelet pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, node_uid, new_phase);
+            EventPodUpdateFromKubelet { pod_uid, current_phase, current_cpu, current_memory} => {
+                dp_api_server!("{:.12} api_server EventUpdatePodFromKubelet pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}", self.ctx.time(), pod_uid, current_phase, current_cpu, current_memory);
 
-                // Locate pod's group_uid
-                let group_uid = self.pod2group.get(&pod_uid).unwrap();
-                // Remove pod consumption from group
-                match self.pod_consumptions.get_mut(group_uid) {
-                    Some(index) => {
-                        index.remove(&pod_uid);
-                    }
-                    None => {} // No information about pod
+                // Update pod's metrics
+                self.pod_metrics.insert(pod_uid, (current_phase.clone(), current_cpu, current_memory));
+
+                // Notify scheduler if pod not Running
+                if current_phase != PodPhase::Running {
+                    self.ctx.emit(
+                        EventPodUpdateToScheduler { pod_uid, current_phase },
+                        self.scheduler_sim_id,
+                        self.cluster_state.borrow().network_delays.api2scheduler
+                    );
                 }
-
-                // Notify scheduler
-                self.ctx.emit(
-                    EventUpdatePodFromKubelet { pod_uid, new_phase, node_uid },
-                    self.scheduler_sim_id,
-                    self.cluster_state.borrow().network_delays.api2scheduler
-                );
             }
 
             EventAddPod { pod } => {
@@ -181,75 +179,64 @@ impl dsc::EventHandler for APIServer {
                 );
             }
 
-            EventUpdatePodMetricsFromKubelet { pod_uid, current_cpu, current_memory } => {
-                dp_api_server!("{:.12} api_server EventUpdatePodMetricsFromKubelet pod_uid:{:?} current_cpu:{:?} current_memory:{:?}", self.ctx.time(), pod_uid, current_cpu, current_memory);
-
-                // Locate pod's group
-                let &group_uid = self.pod2group.get(&pod_uid).unwrap();
-
-                // Update pod's consumption
-                let consumption = self.pod_consumptions.entry(group_uid).or_default();
-                consumption.insert(pod_uid, (current_cpu, current_memory));
-            }
-
             EventGetHPAMetrics { pod_groups } => {
                 dp_api_server!("{:.12} api_server EventGetHPAMetrics pod_groups:{:?}", self.ctx.time(), pod_groups);
 
-                let mut group_utilization = Vec::with_capacity(pod_groups.len());
-                for group_uid in pod_groups {
-                    match self.pod_consumptions.get(&group_uid) {
-                        Some(pods) => {
-                            // Sum all group consumed resources
-                            let (mut group_cpu, mut group_memory): (f64, f64) = (0.0, 0.0);
-                            for (_, &(pod_cpu, pod_memory)) in pods {
-                                group_cpu += pod_cpu;
-                                group_memory += pod_memory;
-                            }
-
-                            // Add group utilization
-                            group_utilization.push((
-                                pods.len() as u64,
-                                group_cpu / pods.len() as f64,
-                                group_memory / pods.len() as f64
-                            ));
-                        }
-                        None => {
-                            // Add zero utilization
-                            group_utilization.push((0, 0.0, 0.0));
-                        }
-                    }
-                }
-
-                // Send metrics to HPA
-                self.ctx.emit(
-                    EventPostHPAMetrics { group_utilization },
-                    self.hpa_sim_id,
-                    self.cluster_state.borrow().network_delays.api2hpa
-                );
+                // let mut group_utilization = Vec::with_capacity(pod_groups.len());
+                // for group_uid in pod_groups {
+                //     match self.pod_consumptions.get(&group_uid) {
+                //         Some(pods) => {
+                //             // Sum all group consumed resources
+                //             let (mut group_cpu, mut group_memory): (f64, f64) = (0.0, 0.0);
+                //             for (_, &(pod_cpu, pod_memory)) in pods {
+                //                 group_cpu += pod_cpu;
+                //                 group_memory += pod_memory;
+                //             }
+                //
+                //             // Add group utilization
+                //             group_utilization.push((
+                //                 pods.len() as u64,
+                //                 group_cpu / pods.len() as f64,
+                //                 group_memory / pods.len() as f64
+                //             ));
+                //         }
+                //         None => {
+                //             // Add zero utilization
+                //             group_utilization.push((0, 0.0, 0.0));
+                //         }
+                //     }
+                // }
+                //
+                // // Send metrics to HPA
+                // self.ctx.emit(
+                //     EventPostHPAMetrics { group_utilization },
+                //     self.hpa_sim_id,
+                //     self.cluster_state.borrow().network_delays.api2hpa
+                // );
             }
 
-            EventRemoveAnyPodInGroup { group_uid } => {
-                dp_api_server!("{:.12} api_server EventRemoveAnyPodInGroup group_uid:{:?}", self.ctx.time(), group_uid);
-
-                // Try to locate group pods
-                match self.pod_consumptions.get_mut(&group_uid) {
-                    Some(index) => {
-                        // Try to get any(first) pod from group
-                        match index.iter().next() {
-                            Some((&pod_uid, _)) => {
-                                // Candidate to removal found. Notify scheduler
-                                self.ctx.emit(
-                                    EventRemovePod { pod_uid },
-                                    self.scheduler_sim_id,
-                                    self.cluster_state.borrow().network_delays.api2scheduler
-                                );
-                            }
-                            None => {} // Group is empty, nothing to remove
-                        }
-                    }
-                    None => {} // Group not found, nothing to remove
-                }
-            }
+            // EventRemoveAnyPodInGroup { group_uid } => {
+            //     dp_api_server!("{:.12} api_server EventRemoveAnyPodInGroup group_uid:{:?}", self.ctx.time(), group_uid);
+            //
+            //     // Try to locate group pods
+            //     match self.pod_consumptions.get_mut(&group_uid) {
+            //         Some(index) => {
+            //             // Try to get any(first) pod from group
+            //             match index.iter().next() {
+            //                 Some((&pod_uid, _)) => {
+            //                     // Candidate to removal found. Notify scheduler
+            //                     self.ctx.emit(
+            //                         EventRemovePod { pod_uid },
+            //                         self.scheduler_sim_id,
+            //                         self.cluster_state.borrow().network_delays.api2scheduler
+            //                     );
+            //                 }
+            //                 None => {} // Group is empty, nothing to remove
+            //             }
+            //         }
+            //         None => {} // Group not found, nothing to remove
+            //     }
+            // }
         });
     }
 }

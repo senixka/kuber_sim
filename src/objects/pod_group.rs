@@ -3,11 +3,15 @@ use crate::my_imports::*;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PodGroup {
+    pub submit_time: f64,
+    pub pod_count: u64,
+    pub pod: Pod,
+
+    // #[serde(default)]
+    // pub group_duration: f64,
+
     #[serde(skip)]
     pub group_uid: u64,
-
-    pub amount: u64,
-    pub pod: Pod,
 }
 
 

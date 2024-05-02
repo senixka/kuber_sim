@@ -30,17 +30,18 @@ pub mod my_imports {
 
     pub use crate::autoscaler::ca::*;
     pub use crate::autoscaler::hpa::*;
+    pub use crate::autoscaler::hpa_profile::*;
+    pub use crate::autoscaler::hpa_metric::*;
 
     pub use crate::load_types::types::*;
     pub use crate::load_types::constant::*;
-    pub use crate::load_types::busybox::*;
 
+    pub use crate::load_types::busybox::*;
     pub use crate::objects::pod::*;
     pub use crate::objects::pod_group::*;
     pub use crate::objects::node::*;
     pub use crate::objects::node_group::*;
     pub use crate::objects::object_meta::*;
-    pub use crate::objects::hpa_pod_group::*;
 
     pub use crate::scheduler::queues::active_queue::*;
     pub use crate::scheduler::queues::active_queue_cmp::*;

@@ -43,6 +43,7 @@ pub struct Monitoring {
     failed_pod_counter: u64,
     evicted_pod_counter: u64,
     removed_pod_counter: u64,
+    preempted_pod_counter: u64,
 
     node_counter: u64,
 
@@ -61,7 +62,7 @@ impl Monitoring {
             makespan_time: 0.0, total_installed_cpu: 0, total_installed_memory: 0,
             scheduler_used_cpu: 0, scheduler_used_memory: 0,
             kubelets_used_cpu: 0, kubelets_used_memory: 0,
-            n_pod_in_simulation: 0, succeed_pod_counter: 0, pending_pod_counter: 0,
+            n_pod_in_simulation: 0, succeed_pod_counter: 0, pending_pod_counter: 0, preempted_pod_counter: 0,
             failed_pod_counter: 0, running_pod_counter: 0, evicted_pod_counter: 0, removed_pod_counter: 0,
             node_counter: 0,
             kubelet_utilization_cpu_numerator: Vec::new(),
@@ -158,6 +159,10 @@ impl Monitoring {
         self.evicted_pod_counter += 1;
     }
 
+    pub fn scheduler_on_pod_preempted(&mut self) {
+        self.preempted_pod_counter += 1;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     pub fn kubelet_on_pod_placed(&mut self, cpu: i64, memory: i64) {
@@ -185,9 +190,8 @@ impl Monitoring {
         self.scheduler_utilization_memory_numerator.push(self.scheduler_used_memory);
 
         self.pending_pod.push(self.pending_pod_counter);
-
         print!(
-            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9}  Succeed: {:<9}  Running: {:<9}  Pending: {:<9}  Evicted: {:<9}  Removed: {:<9}  Failed: {:<9}\n",
+            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9}  Succeed: {:<9}  Running: {:<9}  Pending: {:<9}  Evicted: {:<9}  Preempted: {:<9}  Removed: {:<9}  Failed: {:<9}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
@@ -198,9 +202,11 @@ impl Monitoring {
             self.running_pod_counter,
             self.pending_pod_counter,
             self.evicted_pod_counter,
+            self.preempted_pod_counter,
             self.removed_pod_counter,
             self.failed_pod_counter,
         );
+
     }
 
     pub fn dump_statistics(&self) {

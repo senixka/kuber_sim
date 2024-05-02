@@ -59,18 +59,19 @@ impl Init {
             //     }
             // };
 
-            pod_count += pod_group.amount;
+            pod_count += pod_group.pod_count;
 
-            for _ in 0..pod_group.amount {
+            for _ in 0..pod_group.pod_count {
                 let mut pod = pod_group.pod.clone();
                 pod.prepare(pod_group.group_uid);
 
-                assert!(last_time <= pod.spec.arrival_time);
-                self.ctx.emit_ordered(EventAddPod { pod: pod.clone() },
-                                      self.api_sim_id,
-                                      pod.spec.arrival_time
+                assert!(last_time <= pod_group.submit_time);
+                self.ctx.emit_ordered(
+                    EventAddPod { pod: pod.clone() },
+                    self.api_sim_id,
+                    pod_group.submit_time
                 );
-                last_time = pod.spec.arrival_time;
+                last_time = pod_group.submit_time;
             }
         }
         self.monitoring.borrow_mut().set_n_pod_in_simulation(pod_count);

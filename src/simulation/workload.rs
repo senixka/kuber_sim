@@ -4,9 +4,6 @@ use crate::my_imports::*;
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct WorkLoad {
     #[serde(default)]
-    pub hpa_pods: Vec<HPAPodGroup>,
-
-    #[serde(default)]
     pub pods: Vec<PodGroup>,
 }
 
@@ -30,10 +27,6 @@ impl WorkLoad {
             pod_group.prepare();
         }
 
-        for hpa_pod_group in &mut workload.hpa_pods {
-            hpa_pod_group.pod_group.prepare();
-        }
-
         return workload;
     }
 
@@ -50,7 +43,6 @@ impl WorkLoad {
 
             let mut pod = Pod::default();
 
-            pod.spec.arrival_time = data[1].parse().unwrap();
             pod.spec.request_cpu = data[2].parse().unwrap();
             pod.spec.request_memory = data[3].parse().unwrap();
             pod.spec.limit_cpu = data[4].parse().unwrap_or(i64::MAX);
@@ -112,7 +104,8 @@ impl WorkLoad {
             }
 
             let mut pod_group = PodGroup::default();
-            pod_group.amount = data[0].parse().unwrap();
+            pod_group.pod_count = data[0].parse().unwrap();
+            pod_group.submit_time = data[1].parse().unwrap();
             pod_group.pod = pod;
 
             pod_group.prepare();
