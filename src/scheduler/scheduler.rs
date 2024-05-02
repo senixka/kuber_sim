@@ -241,11 +241,30 @@ impl Scheduler {
                 }
             }
 
+            // Get best node
             let node_uid = resulted_nodes[best_node_index].metadata.uid;
+            let node = self.nodes.get(&node_uid).unwrap();
 
 
-            // Place pod to node
-            assert!(self.nodes.get(&node_uid).unwrap().is_consumable(cpu, memory));
+            // If not enough resources -> build preemption list
+            let mut preempt_uids: Vec<u64> = Vec::new();
+            if !node.is_consumable(cpu, memory) {
+                let (mut cpu, mut memory) = (node.spec.available_cpu, node.spec.available_memory);
+                for &tmp_uid in &node.status.pods {
+                    let tmp_pod = self.running_pods.get(&tmp_uid).unwrap();
+                    if tmp_pod.spec.priority >= pod.spec.priority {
+                        continue;
+                    }
+
+                    cpu += tmp_pod.spec.request_cpu;
+                    memory += tmp_pod.spec.request_memory;
+                    preempt_uids.push(tmp_uid);
+
+                    if cpu >= pod.spec.request_cpu && memory >= pod.spec.request_memory {
+                        break;
+                    }
+                }
+            }
 
             // Move cached pod from pending to running
             let mut cached = self.pending_pods.remove(&pod_uid).unwrap();
@@ -264,7 +283,7 @@ impl Scheduler {
             self.failed_attempts.remove(&pod_uid);
 
             // Send PodPhase update
-            self.send_pod_phase_update(Some(pod), pod_uid, node_uid, PodPhase::Running);
+            self.send_pod_phase_update(Some(pod), pod_uid, Some(preempt_uids), node_uid, PodPhase::Running);
             scheduled_left -= 1;
 
             dp_scheduler!("{:.12} scheduler pod_uid:{:?} placed -> node_uid:{:?}", self.ctx.time(), pod_uid, node_uid);
@@ -426,8 +445,8 @@ impl Scheduler {
 
     ////////////////// Export metrics //////////////////
 
-    pub fn send_pod_phase_update(&self, pod: Option<Pod>, pod_uid: u64, node_uid: u64, new_phase: PodPhase) {
-        self.ctx.emit(EventUpdatePodFromScheduler { pod, pod_uid, new_phase, node_uid },
+    pub fn send_pod_phase_update(&self, pod: Option<Pod>, pod_uid: u64, preempt_uids: Option<Vec<u64>>, node_uid: u64, new_phase: PodPhase) {
+        self.ctx.emit(EventUpdatePodFromScheduler { pod, pod_uid, preempt_uids, new_phase, node_uid },
                       self.api_sim_id,
                       self.cluster_state.borrow().network_delays.kubelet2api
         );
@@ -540,7 +559,7 @@ impl dsc::EventHandler for Scheduler {
                 // If pod is running -> notify kubelet to evict this pod
                 if self.running_pods.contains_key(&pod_uid) {
                     let node_uid = self.running_pods.get(&pod_uid).unwrap().status.node_uid.unwrap();
-                    self.send_pod_phase_update(None, pod_uid, node_uid, PodPhase::Pending);
+                    self.send_pod_phase_update(None, pod_uid, None, node_uid, PodPhase::Pending);
                 }
 
                 // Update inner state

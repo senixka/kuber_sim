@@ -47,6 +47,7 @@ pub struct EventRemoveNodeAck {
 pub struct EventUpdatePodFromScheduler {
     pub pod: Option<Pod>,
     pub pod_uid: u64,
+    pub preempt_uids: Option<Vec<u64>>,
     pub new_phase: PodPhase,
     pub node_uid: u64,
 }

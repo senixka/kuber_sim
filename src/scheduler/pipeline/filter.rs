@@ -175,3 +175,35 @@ impl IFilterPlugin for FilterNodeAffinity {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub struct FilterPreemption;
+
+impl IFilterPlugin for FilterPreemption {
+    fn name(&self) -> String {
+        return "FilterPreemption".to_string();
+    }
+
+    fn filter(&self,
+              running_pods: &HashMap<u64, Pod>,
+              _: &HashMap<u64, Pod>,
+              _: &HashMap<u64, Node>,
+              pod: &Pod,
+              node: &Node) -> bool {
+        let (mut cpu, mut memory) = (node.spec.available_cpu, node.spec.available_memory);
+        for &tmp_uid in &node.status.pods {
+            let tmp_pod = running_pods.get(&tmp_uid).unwrap();
+            if tmp_pod.spec.priority >= pod.spec.priority {
+                continue;
+            }
+
+            cpu += tmp_pod.spec.request_cpu;
+            memory += tmp_pod.spec.request_memory;
+
+            if cpu >= pod.spec.request_cpu && memory >= pod.spec.request_memory {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

@@ -80,7 +80,17 @@ impl Kubelet {
 
     ////////////////// Process pod events //////////////////
 
-    pub fn add_new_pod(&mut self, pod: Pod) {
+    pub fn add_new_pod(&mut self, pod: Pod, preempt_uids: &Option<Vec<u64>>) {
+        // Firstly, preempt if needed
+        match preempt_uids {
+            Some(uids) => {
+                for &uid in uids {
+                    self.evict_pod(uid);
+                }
+            }
+            None => {}
+        }
+
         // Get pod_uid
         let pod_uid = pod.metadata.uid;
         assert!(!self.pods.contains_key(&pod_uid));
@@ -280,8 +290,8 @@ impl Kubelet {
 impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            EventUpdatePodFromScheduler { pod , pod_uid, new_phase, node_uid } => {
-                dp_kubelet!("{:.12} node:{:?} EventUpdatePodFromScheduler pod_uid:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid, new_phase);
+            EventUpdatePodFromScheduler { pod , pod_uid, preempt_uids, new_phase, node_uid } => {
+                dp_kubelet!("{:.12} node:{:?} EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid, preempt_uids, new_phase);
 
                 // Some invariants assertions
                 assert_eq!(node_uid, self.node.metadata.uid);
@@ -297,7 +307,7 @@ impl dsc::EventHandler for Kubelet {
                         }
 
                         // Update inner state
-                        self.add_new_pod(pod.unwrap());
+                        self.add_new_pod(pod.unwrap(), &preempt_uids);
                     }
                     PodPhase::Pending => {
                         // If pod is not managed by kubelet -> return

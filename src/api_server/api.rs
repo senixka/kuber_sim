@@ -47,8 +47,8 @@ impl APIServer {
 impl dsc::EventHandler for APIServer {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            EventUpdatePodFromScheduler { pod_uid , pod, new_phase, node_uid } => {
-                dp_api_server!("{:.12} api_server EventUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, node_uid, new_phase);
+            EventUpdatePodFromScheduler { pod_uid , pod, preempt_uids, new_phase, node_uid } => {
+                dp_api_server!("{:.12} api_server EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, preempt_uids, node_uid, new_phase);
 
                 // Get kubelet sim_id
                 let to = self.kubelets.get(&node_uid);
@@ -56,7 +56,7 @@ impl dsc::EventHandler for APIServer {
                     Some(&kubelet_id) => {
                         // If kubelet turned on (routing exists) -> Notify kubelet
                         self.ctx.emit(
-                            EventUpdatePodFromScheduler { pod_uid, pod, new_phase, node_uid },
+                            EventUpdatePodFromScheduler { pod_uid, pod, preempt_uids, new_phase, node_uid },
                             kubelet_id,
                             self.cluster_state.borrow().network_delays.api2kubelet
                         );
