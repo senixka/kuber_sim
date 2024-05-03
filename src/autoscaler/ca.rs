@@ -71,7 +71,7 @@ impl CA {
             ca.free_nodes_by_group.insert(group.group_uid, group.clone());
 
             // Prepare group's node to get correct values of available resources
-            ca.free_nodes_by_group.get_mut(&group.group_uid).unwrap().node.prepare();
+            ca.free_nodes_by_group.get_mut(&group.group_uid).unwrap().node.prepare(group.group_uid);
         }
 
         return ca;
@@ -149,7 +149,7 @@ impl CA {
                 group.amount -= 1;
 
                 // Prepare node
-                node.prepare();
+                node.prepare(group_uid);
 
                 // Take kubelet from pool
                 let (kubelet_sim_id, kubelet) = self.kubelet_pool.pop().unwrap();

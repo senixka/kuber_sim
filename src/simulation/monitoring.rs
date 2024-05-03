@@ -6,8 +6,6 @@ pub struct Monitoring {
     pub ctx: dsc::SimulationContext,
     pub self_update_enabled: bool,
     pub cluster_state: Rc<RefCell<ClusterState>>,
-    pub ca_sim_id: dsc::Id,
-    pub hpa_sim_id: dsc::Id,
 
     makespan_time: f64,
 
@@ -71,15 +69,10 @@ impl Monitoring {
             scheduler_utilization_memory_numerator: Vec::new(),
             pending_pod: Vec::new(),
             out_path: out_path.clone(),
-            ca_sim_id: dsc::Id::MAX,
-            hpa_sim_id: dsc::Id::MAX,
         }
     }
 
-    pub fn presimulation_init(&mut self, ca_sim_id: dsc::Id, hpa_sim_id: dsc::Id) {
-        self.ca_sim_id = ca_sim_id;
-        self.hpa_sim_id = hpa_sim_id;
-
+    pub fn presimulation_init(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
             self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.monitoring_self_update_period);
@@ -191,7 +184,7 @@ impl Monitoring {
 
         self.pending_pod.push(self.pending_pod_counter);
         print!(
-            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9}  Succeed: {:<9}  Running: {:<9}  Pending: {:<9}  Evicted: {:<9}  Preempted: {:<9}  Removed: {:<9}  Failed: {:<9}\n",
+            "{:.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9} Succeed:{:<9} Running:{:<9} Pending:{:<9} Evicted:{:<9} Preempted:{:<9} Removed:{:<9} Failed:{:<9}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,

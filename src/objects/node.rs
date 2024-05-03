@@ -34,13 +34,15 @@ pub struct Node {
 
 
 impl Node {
-    pub fn prepare(&mut self) {
+    pub fn prepare(&mut self, group_uid: u64) {
         static UID_COUNTER: AtomicU64 = AtomicU64::new(1);
         self.metadata.uid = UID_COUNTER.load(Ordering::Relaxed);
         UID_COUNTER.fetch_add(1, Ordering::Relaxed);
 
         self.spec.available_cpu = self.spec.installed_cpu;
         self.spec.available_memory = self.spec.installed_memory;
+
+        self.metadata.group_uid = group_uid;
 
         assert!(self.spec.installed_cpu > 0);
         assert!(self.spec.installed_memory > 0);

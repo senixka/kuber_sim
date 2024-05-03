@@ -81,7 +81,7 @@ impl Init {
         for node_group in self.cluster_state.borrow().nodes.iter() {
             for _ in 0..node_group.amount {
                 let mut node = node_group.node.clone();
-                node.prepare();
+                node.prepare(node_group.group_uid);
 
                 let name = "kubelet_".to_owned() + &*node.metadata.uid.to_string();
 

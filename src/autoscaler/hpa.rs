@@ -1,6 +1,121 @@
 use crate::my_imports::*;
 
 
+#[derive(Debug, Default)]
+struct HPAGroupInfo {
+    // Group cpu numerator
+    numerator_cpu: f64,
+    // Group memory numerator
+    numerator_memory: f64,
+
+    // Counts currently running pods
+    running_pod_count: u64,
+    // Contains all not finished pods
+    alive_uids: BTreeSet<u64>,
+
+    // Never removes its uids
+    last_metrics: HashMap<u64, (PodPhase, f64, f64)>,
+
+    // Submitted with EventAddPod
+    pod_template: Pod,
+}
+
+impl HPAGroupInfo {
+    pub fn update_with_new_pod(&mut self, pod: &Pod) {
+        // It is truly new pod
+        assert!(!self.alive_uids.contains(&pod.metadata.uid));
+
+        // Update pod template
+        if self.pod_template.hpa_profile.is_none() {
+            assert!(pod.hpa_profile.is_some());
+            self.pod_template = pod.clone();
+        }
+
+        // Update last metrics
+        self.last_metrics.insert(pod.metadata.uid, (PodPhase::Pending, 0.0, 0.0));
+        // Update alive uids
+        let _newly_inserted = self.alive_uids.insert(pod.metadata.uid);
+        assert!(_newly_inserted);
+    }
+
+    pub fn update_with_pod_metrics(&mut self, pod_uid: u64, new_phase: PodPhase, new_cpu: f64, new_memory: f64) {
+        // Get last pod metrics
+        let (last_phase, last_cpu, last_memory) = self.last_metrics.get(&pod_uid).unwrap().clone();
+
+        dp_hpa!("HPAGroupInfo update with pod_uid:{:?} new_phase:{:?} new_cpu:{:?} new_memory:{:?}", pod_uid, new_phase, new_cpu, new_memory);
+
+        match last_phase {
+            PodPhase::Running => {
+                // Remove pod's previous utilization from group
+                assert!(self.numerator_cpu >= last_cpu);
+                assert!(self.numerator_memory >= last_memory);
+                self.numerator_cpu -= last_cpu;
+                self.numerator_memory -= last_memory;
+
+                match new_phase {
+                    PodPhase::Running => {
+                        // Changing: Running -> Running
+
+                        // Update utilization
+                        self.numerator_cpu += new_cpu;
+                        self.numerator_memory += new_memory;
+                    }
+                    PodPhase::Succeeded | PodPhase::Failed | PodPhase::Removed => {
+                        // Running -> Finished
+
+                        // Decrease running count
+                        assert!(self.running_pod_count > 0);
+                        self.running_pod_count -= 1;
+
+                        // Remove uid from alive uids
+                        let _was_present = self.alive_uids.remove(&pod_uid);
+                        assert!(_was_present);
+                    }
+                    PodPhase::Pending | PodPhase::Evicted | PodPhase::Preempted => {
+                        // Running -> OnReschedule
+
+                        // Decrease running count
+                        assert!(self.running_pod_count > 0);
+                        self.running_pod_count -= 1;
+                    }
+                }
+            }
+            PodPhase::Pending | PodPhase::Evicted | PodPhase::Preempted => {
+                match new_phase {
+                    PodPhase::Running => {
+                        // Changing: OnReschedule -> Running
+
+                        // Increase utilization
+                        self.numerator_cpu += new_cpu;
+                        self.numerator_memory += new_memory;
+
+                        // Increase running pod count
+                        self.running_pod_count += 1;
+                    }
+                    PodPhase::Succeeded | PodPhase::Failed | PodPhase::Removed => {
+                        // OnReschedule -> Finished
+
+                        // Remove uid from alive uids
+                        let _was_present = self.alive_uids.remove(&pod_uid);
+                        assert!(_was_present);
+                    }
+                    PodPhase::Pending | PodPhase::Evicted | PodPhase::Preempted => {
+                        // OnReschedule -> OnReschedule
+                        // Do nothing
+                    }
+                }
+            }
+            PodPhase::Succeeded | PodPhase::Failed | PodPhase::Removed => {
+                // Finished pod should not get new phase updates
+                panic!("Logic error in HPA metric update. Bad pod phase change:({:?} -> {:?})", last_phase, new_phase);
+            }
+        }
+
+        // Update last metrics
+        self.last_metrics.insert(pod_uid, (new_phase, new_cpu, new_memory));
+    }
+}
+
 pub struct HPA {
     ctx: dsc::SimulationContext,
     cluster_state: Rc<RefCell<ClusterState>>,
@@ -9,17 +124,16 @@ pub struct HPA {
     // Is CA turned on
     is_turned_on: bool,
 
-    // Managed pod groups
-    pod_groups: HashMap<u64, PodGroup>,
+    // Managed pod groups and their metrics
+    managed_groups: HashMap<u64, HPAGroupInfo>,
 }
 
 
 impl HPA {
     pub fn new(ctx: dsc::SimulationContext,
                cluster_state: Rc<RefCell<ClusterState>>,
-               work_load: Rc<RefCell<WorkLoad>>,
                api_sim_id: dsc::Id) -> Self {
-        let mut hpa = Self {
+        Self {
             ctx,
             cluster_state: cluster_state.clone(),
             api_sim_id,
@@ -28,17 +142,8 @@ impl HPA {
             is_turned_on: false,
 
             // Inner state
-            pod_groups: HashMap::new(),
-        };
-
-        // Parse trace, store all hpa profiles
-        for pod_group in &work_load.borrow().pods {
-            if pod_group.pod.hpa_profile.is_some() {
-                hpa.pod_groups.insert(pod_group.group_uid, pod_group.clone());
-            }
+            managed_groups: HashMap::new(),
         }
-
-        return hpa;
     }
 
     ////////////////// HPA Turn On/Off //////////////////
@@ -60,57 +165,59 @@ impl HPA {
 
     ////////////////// Process metrics //////////////////
 
-    // pub fn process_metrics(&mut self, group_utilization: &Vec<(u64, Option(u64, f64, f64))>) {
-    //     // Note: This function relies on the fact that the order and number of elements
-    //     //       in group_utilization and self.groups are the same
-    //
-    //     for (i, &(group_size, cpu, memory)) in group_utilization.iter().enumerate() {
-    //         // Locate current hpa pod group
-    //         let hpa_pg = &self.pod_groups[i];
-    //         // Locate current hpa profile
-    //         let profile = hpa_pg.pod.hpa_profile.unwrap();
-    //
-    //         // If group is too small -> AddPod
-    //         if hpa_pg.min_size > group_size {
-    //             dp_hpa!("{:.12} hpa pod(group_uid:{:?}) add -> cluster (size)", self.ctx.time(), hpa_pg.pod_group.group_uid);
-    //
-    //             // Locate pod template
-    //             let mut pod = hpa_pg.pod_group.pod.clone();
-    //             // Prepare pod
-    //             pod.prepare(hpa_pg.pod_group.group_uid);
-    //             // Emit AddPod event
-    //             self.send_add_pod(pod);
-    //         }
-    //
-    //         // If group size is too big -> RemovePod
-    //         else if hpa_pg.max_size < group_size {
-    //             dp_hpa!("{:.12} hpa pod(group_uid:{:?}) remove <- cluster (size)", self.ctx.time(), hpa_pg.pod_group.group_uid);
-    //
-    //             self.send_remove_any_pod_in_group(hpa_pg.pod_group.group_uid);
-    //         }
-    //
-    //         // If group utilization is low and group size allows -> RemovePod
-    //         else if hpa_pg.min_size < group_size
-    //             && (cpu <= hpa_pg.min_group_cpu_percent && memory <= hpa_pg.min_group_memory_percent) {
-    //             dp_hpa!("{:.12} hpa pod(group_uid:{:?}) remove <- cluster (resources)", self.ctx.time(), hpa_pg.pod_group.group_uid);
-    //
-    //             self.send_remove_any_pod_in_group(hpa_pg.pod_group.group_uid);
-    //         }
-    //
-    //         // If group utilization is high and group size allows -> AddPod
-    //         else if hpa_pg.max_size > group_size
-    //             && (cpu >= hpa_pg.max_group_cpu_percent || memory >= hpa_pg.max_group_memory_percent) {
-    //             dp_hpa!("{:.12} hpa pod(group_uid:{:?}) add -> cluster (resources)", self.ctx.time(), hpa_pg.pod_group.group_uid);
-    //
-    //             // Locate pod template
-    //             let mut pod = hpa_pg.pod_group.pod.clone();
-    //             // Prepare pod
-    //             pod.prepare(hpa_pg.pod_group.group_uid);
-    //             // Emit AddPod event
-    //             self.send_add_pod(pod);
-    //         }
-    //     }
-    // }
+    pub fn make_decisions(&mut self) {
+        for (group_uid, info) in &self.managed_groups {
+            // Get current group size
+            let group_size = info.alive_uids.len() as u64;
+
+            // Count current cpu and memory mean utilization
+            let cpu = info.numerator_cpu / (info.running_pod_count as f64);
+            let memory = info.numerator_memory / (info.running_pod_count as f64);
+
+            // Locate current HPA profile
+            let profile = info.pod_template.clone().hpa_profile.unwrap();
+
+            // If group is too small -> AddPod
+            if profile.min_size > group_size {
+                dp_hpa!("{:.12} hpa pod(group_uid:{:?}) add -> cluster (size)", self.ctx.time(), group_uid);
+
+                // Locate pod template
+                let mut pod = info.pod_template.clone();
+                // Prepare pod
+                pod.prepare(*group_uid);
+                // Emit AddPod event
+                self.send_add_pod(pod);
+            }
+
+            // If group size is too big -> RemovePod
+            else if profile.max_size < group_size {
+                dp_hpa!("{:.12} hpa pod(group_uid:{:?}) remove <- cluster (size)", self.ctx.time(), group_uid);
+
+                self.send_remove_pod(*info.alive_uids.last().unwrap());
+            }
+
+            // If group utilization is low and group size allows -> RemovePod
+            else if profile.min_size < group_size
+                && (cpu <= profile.min_group_cpu_percent && memory <= profile.min_group_memory_percent) {
+                dp_hpa!("{:.12} hpa pod(group_uid:{:?}) remove <- cluster (resources)", self.ctx.time(), group_uid);
+
+                self.send_remove_pod(*info.alive_uids.last().unwrap());
+            }
+
+            // If group utilization is high and group size allows -> AddPod
+            else if profile.max_size > group_size
+                && (cpu >= profile.max_group_cpu_percent || memory >= profile.max_group_memory_percent) {
+                dp_hpa!("{:.12} hpa pod(group_uid:{:?}) add -> cluster (resources)", self.ctx.time(), group_uid);
+
+                // Locate pod template
+                let mut pod = info.pod_template.clone();
+                // Prepare pod
+                pod.prepare(*group_uid);
+                // Emit AddPod event
+                self.send_add_pod(pod);
+            }
+        }
+    }
 
 
     ////////////////// Send Events //////////////////
@@ -123,9 +230,9 @@ impl HPA {
         );
     }
 
-    pub fn send_remove_any_pod_in_group(&self, group_uid: u64) {
+    pub fn send_remove_pod(&self, pod_uid: u64) {
         self.ctx.emit(
-            EventRemoveAnyPodInGroup { group_uid },
+            EventRemovePod { pod_uid },
             self.api_sim_id,
             self.cluster_state.borrow().network_delays.hpa2api
         );
@@ -153,12 +260,8 @@ impl dsc::EventHandler for HPA {
 
                 assert!(self.is_turned_on, "Logic error. Self update should be canceled for HPA.");
 
-                // Request metrics for future process
-                self.ctx.emit(
-                    EventGetHPAMetrics { pod_groups: self.pod_groups.keys().map(|x| *x).collect() },
-                    self.api_sim_id,
-                    self.cluster_state.borrow().network_delays.hpa2api
-                );
+                // Scale up/down groups managed by HPA
+                self.make_decisions();
 
                 // Emit Self-Update
                 self.ctx.emit_self(
@@ -167,10 +270,32 @@ impl dsc::EventHandler for HPA {
                 );
             }
 
-            EventPostHPAMetrics { group_utilization } => {
-                dp_hpa!("{:.12} hpa EventPostHPAMetrics pod_info:{:?}", self.ctx.time(), group_utilization);
+            EventHPAPodMetricsPost { group_uid, pod_uid, current_phase, current_cpu, current_memory } => {
+                dp_hpa!("{:.12} hpa EventHPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}", self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory);
 
-                // self.process_metrics(&group_utilization);
+                // If this group is not managed by HPA -> return
+                if !self.managed_groups.contains_key(&group_uid) {
+                    return;
+                }
+
+                // Locate group info
+                let group_info = self.managed_groups.get_mut(&group_uid).unwrap();
+                // Update group info
+                group_info.update_with_pod_metrics(pod_uid, current_phase, current_cpu, current_memory);
+            }
+
+            EventAddPod { pod } => {
+                dp_hpa!("{:.12} hpa EventAddPod pod:{:?}", self.ctx.time(), pod);
+
+                // If this pod should not be managed by HPA -> return
+                if pod.hpa_profile.is_none() {
+                    return;
+                }
+
+                // Locate pod's group info
+                let group_info = self.managed_groups.entry(pod.metadata.group_uid).or_default();
+                // Update group info
+                group_info.update_with_new_pod(&pod);
             }
         });
     }

@@ -130,7 +130,6 @@ impl Experiment {
             HPA::new(
                 self.sim.create_context("hpa"),
                 self.cluster_state.clone(),
-                self.workload.clone(),
                 self.api_id)
         )));
         self.hpa_id = Some(self.sim.add_handler("hpa", self.hpa.clone().unwrap()));
@@ -140,11 +139,9 @@ impl Experiment {
         assert_eq!(self.is_preparation_done, false);
 
         let scheduler_id = self.scheduler_id.unwrap();
-        let ca_id = self.ca_id.unwrap_or(dsc::Id::MAX);
-        let hpa_id = self.hpa_id.unwrap_or(dsc::Id::MAX);
 
-        self.api.borrow_mut().prepare(scheduler_id, ca_id, hpa_id);
-        self.monitoring.borrow_mut().presimulation_init(ca_id, hpa_id);
+        self.api.borrow_mut().prepare(scheduler_id, self.ca_id, self.hpa_id);
+        self.monitoring.borrow_mut().presimulation_init();
 
         self.init.borrow().submit_nodes(&mut self.sim);
         self.init.borrow().submit_pods();

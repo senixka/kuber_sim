@@ -85,6 +85,9 @@ impl Kubelet {
         let pod_uid = pod.metadata.uid;
         assert!(!self.pods.contains_key(&pod_uid));
 
+        // Send pod update to Api-server
+        self.send_pod_update_zero_usage(pod_uid, PodPhase::Running);
+
         // Get pod's load
         let mut load = pod.spec.load.clone();
         let (cpu, memory, next_change, is_finished) = load.start(self.ctx.time());

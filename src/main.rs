@@ -31,7 +31,6 @@ pub mod my_imports {
     pub use crate::autoscaler::ca::*;
     pub use crate::autoscaler::hpa::*;
     pub use crate::autoscaler::hpa_profile::*;
-    pub use crate::autoscaler::hpa_metric::*;
 
     pub use crate::load_types::types::*;
     pub use crate::load_types::constant::*;

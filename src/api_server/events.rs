@@ -10,7 +10,7 @@ pub struct EventAddPod {
     pub pod: Pod,
 }
 
-// [Emit]:      {} -> Api
+// [Emit]:      { HPA } -> Api
 // [Consume]:   Api -> { Scheduler }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct EventRemovePod {
@@ -105,30 +105,28 @@ pub struct EventKubeletNextChange {
 
 ///////////////////////////////////////// HPA  ////////////////////////////////////////////////
 
-// [Emit]:      { HPA } -> Api
-// [Consume]:   Api -> {}
-#[derive(Clone, Serialize, Deserialize)]
-pub struct EventGetHPAMetrics {
-    pub pod_groups: Vec<u64>,
-}
-
 // [Emit]:      {} -> Api
 // [Consume]:   Api -> { HPA }
 #[derive(Clone, Serialize, Deserialize)]
-pub struct EventPostHPAMetrics {
-    pub group_utilization: Vec<(u64, f64, f64)>,
-}
-
-
-// [Emit]:      { HPA } -> Api
-// [Consume]:   Api -> {}
-#[derive(Clone, Serialize, Deserialize)]
-pub struct EventRemoveAnyPodInGroup {
+pub struct EventHPAPodMetricsPost {
     pub group_uid: u64,
+    pub pod_uid: u64,
+    pub current_phase: PodPhase,
+    pub current_cpu: f64,
+    pub current_memory: f64,
 }
 
 
 ///////////////////////////////////////// CA ///////////////////////////////////////////////////////
+
+// [Emit]:      { CA } -> Api
+// [Consume]:   Api -> { Scheduler }
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventGetCAMetrics {
+    pub used_nodes: Vec<u64>,
+    pub available_nodes: Vec<NodeGroup>,
+}
+
 
 // [Emit]:      { Scheduler } -> Api
 // [Consume]:   Api -> { CA }
@@ -137,15 +135,6 @@ pub struct EventPostCAMetrics {
     pub pending_pod_count: u64,
     pub used_nodes_utilization: Vec<(u64, f64, f64)>,
     pub may_help: Option<u64>,
-}
-
-
-// [Emit]:      { CA } -> Api
-// [Consume]:   Api -> { Scheduler }
-#[derive(Clone, Serialize, Deserialize)]
-pub struct EventGetCAMetrics {
-    pub used_nodes: Vec<u64>,
-    pub available_nodes: Vec<NodeGroup>,
 }
 
 
