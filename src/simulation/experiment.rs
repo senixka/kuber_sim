@@ -149,6 +149,14 @@ impl Experiment {
         self.is_preparation_done = true;
     }
 
+    pub fn enable_dynamic_update(&self) {
+        self.monitoring.clone().borrow_mut().enable_dynamic_update();
+    }
+
+    pub fn disable_dynamic_update(&self) {
+        self.monitoring.clone().borrow_mut().disable_dynamic_update();
+    }
+
     pub fn enable_ca(&self) {
         self.ca.clone().unwrap().borrow_mut().turn_on();
     }

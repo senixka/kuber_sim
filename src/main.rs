@@ -31,6 +31,7 @@ pub mod my_imports {
     pub use crate::autoscaler::ca::*;
     pub use crate::autoscaler::hpa::*;
     pub use crate::autoscaler::hpa_profile::*;
+    pub use crate::autoscaler::hpa_group_info::*;
 
     pub use crate::load_types::types::*;
     pub use crate::load_types::constant::*;
@@ -180,13 +181,14 @@ fn main() {
                            vec![Box::new(ScoreNormalizeSkip)],
                            vec![2]);
         test.add_hpa();
+        test.enable_dynamic_update();
 
         test.prepare();
         test.enable_hpa();
         // test.step_until_no_events();
 
         // test.enable_hpa();
-        test.run_for_duration(150.0);
+        test.run_for_duration(200.0);
         //
         // test.disable_hpa();
         // test.run_for_duration(50.0);
