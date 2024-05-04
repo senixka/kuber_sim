@@ -11,14 +11,16 @@ serde_yaml = "0.9.32"
 serde = { version = "1.0.197", features = ["derive"] }
 dslab-core = { git = "https://github.com/osukhoroslov/dslab/", branch = "main"}
 rstar = "0.12.0"
+histogram = "0.10.1"
 
 [features]
-dp_all = ["dp_api_server", "dp_kubelet", "dp_scheduler", "dp_ca", "dp_hpa"]
+dp_all = ["dp_api_server", "dp_kubelet", "dp_scheduler", "dp_ca", "dp_hpa", "dp_vpa"]
 dp_api_server = []
 dp_scheduler = []
 dp_kubelet = []
 dp_ca = []
 dp_hpa = []
+dp_vpa = []
 
 [profile.perf]
 inherits = "release"

@@ -27,6 +27,9 @@ pub struct Experiment {
     hpa: Option<Rc<RefCell<HPA>>>,
     hpa_id: Option<dsc::Id>,
 
+    vpa: Option<Rc<RefCell<VPA>>>,
+    vpa_id: Option<dsc::Id>,
+
     is_preparation_done: bool,
 }
 
@@ -77,6 +80,8 @@ impl Experiment {
             ca_id: None,
             hpa: None,
             hpa_id: None,
+            vpa: None,
+            vpa_id: None,
             is_preparation_done: false,
         }
     }
@@ -135,12 +140,22 @@ impl Experiment {
         self.hpa_id = Some(self.sim.add_handler("hpa", self.hpa.clone().unwrap()));
     }
 
+    pub fn add_vpa(&mut self) {
+        self.vpa = Some(Rc::new(RefCell::new(
+            VPA::new(
+                self.sim.create_context("vpa"),
+                self.cluster_state.clone(),
+                self.api_id)
+        )));
+        self.vpa_id = Some(self.sim.add_handler("vpa", self.vpa.clone().unwrap()));
+    }
+
     pub fn prepare(&mut self) {
         assert_eq!(self.is_preparation_done, false);
 
         let scheduler_id = self.scheduler_id.unwrap();
 
-        self.api.borrow_mut().prepare(scheduler_id, self.ca_id, self.hpa_id);
+        self.api.borrow_mut().prepare(scheduler_id, self.ca_id, self.hpa_id, self.vpa_id);
         self.monitoring.borrow_mut().presimulation_init();
 
         self.init.borrow().submit_nodes(&mut self.sim);
@@ -171,6 +186,14 @@ impl Experiment {
 
     pub fn disable_hpa(&self) {
         self.hpa.clone().unwrap().borrow_mut().turn_off();
+    }
+
+    pub fn enable_vpa(&self) {
+        self.vpa.clone().unwrap().borrow_mut().turn_on();
+    }
+
+    pub fn disable_vpa(&self) {
+        self.vpa.clone().unwrap().borrow_mut().turn_off();
     }
 
     pub fn step_until_no_events(&mut self) {

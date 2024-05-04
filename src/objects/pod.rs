@@ -101,6 +101,8 @@ pub struct Pod {
 
     #[serde(default)]
     pub hpa_profile: Option<HPAProfile>,
+    #[serde(default)]
+    pub vpa_profile: Option<VPAProfile>,
 }
 
 impl Pod {

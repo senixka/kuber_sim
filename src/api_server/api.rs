@@ -7,9 +7,11 @@ pub struct APIServer {
     scheduler_sim_id: dsc::Id,
     ca_sim_id: dsc::Id,
     hpa_sim_id: dsc::Id,
+    vpa_sim_id: dsc::Id,
 
     is_ca_enabled: bool,
     is_hpa_enabled: bool,
+    is_vpa_enabled: bool,
 
     // Inner state
     kubelets: HashMap<u64, dsc::Id>,                            // HashMap<node_uid, kubelet_sim_id>
@@ -25,17 +27,31 @@ impl APIServer {
             scheduler_sim_id: dsc::Id::MAX,
             ca_sim_id: dsc::Id::MAX,
             hpa_sim_id: dsc::Id::MAX,
+            vpa_sim_id: dsc::Id::MAX,
 
             is_ca_enabled: false,
             is_hpa_enabled: false,
+            is_vpa_enabled: false,
 
             kubelets: HashMap::new(),
             pod2group: HashMap::new(),
         }
     }
 
-    pub fn prepare(&mut self, scheduler_sim_id: dsc::Id, ca_sim_id: Option<dsc::Id>, hpa_sim_id: Option<dsc::Id>) {
+    pub fn prepare(&mut self, scheduler_sim_id: dsc::Id, ca_sim_id: Option<dsc::Id>, hpa_sim_id: Option<dsc::Id>, vpa_sim_id: Option<dsc::Id>) {
         self.scheduler_sim_id = scheduler_sim_id;
+
+        // Init CA info
+        match ca_sim_id {
+            Some(ca_id) => {
+                self.ca_sim_id = ca_id;
+                self.is_ca_enabled = true;
+            }
+            None => {
+                self.ca_sim_id = dsc::Id::MAX;
+                self.is_ca_enabled = false;
+            }
+        }
 
         // Init HPA info
         match hpa_sim_id {
@@ -49,15 +65,15 @@ impl APIServer {
             }
         }
 
-        // Init CA info
-        match ca_sim_id {
-            Some(ca_id) => {
-                self.ca_sim_id = ca_id;
-                self.is_ca_enabled = true;
+        // Init VPA info
+        match vpa_sim_id {
+            Some(vpa_id) => {
+                self.vpa_sim_id = vpa_id;
+                self.is_vpa_enabled = true;
             }
             None => {
-                self.ca_sim_id = dsc::Id::MAX;
-                self.is_ca_enabled = false;
+                self.vpa_sim_id = dsc::Id::MAX;
+                self.is_vpa_enabled = false;
             }
         }
     }
@@ -111,12 +127,27 @@ impl dsc::EventHandler for APIServer {
                         EventHPAPodMetricsPost {
                             group_uid: *self.pod2group.get(&pod_uid).unwrap(),
                             pod_uid,
-                            current_phase,
+                            current_phase: current_phase.clone(),
                             current_cpu,
                             current_memory,
                         },
                         self.hpa_sim_id,
                         self.cluster_state.borrow().network_delays.api2hpa
+                    );
+                }
+
+                // Post pod metrics to VPA if VPA enabled
+                if self.is_vpa_enabled {
+                    self.ctx.emit(
+                        EventVPAPodMetricsPost {
+                            group_uid: *self.pod2group.get(&pod_uid).unwrap(),
+                            pod_uid,
+                            current_phase,
+                            current_cpu,
+                            current_memory,
+                        },
+                        self.vpa_sim_id,
+                        self.cluster_state.borrow().network_delays.api2vpa
                     );
                 }
             }
@@ -150,6 +181,15 @@ impl dsc::EventHandler for APIServer {
                         EventAddPod { pod: pod.clone() },
                         self.hpa_sim_id,
                         self.cluster_state.borrow().network_delays.api2hpa
+                    );
+                }
+
+                // Notify VPA if VPA enabled and pod contains VPA profile
+                if self.is_vpa_enabled && pod.vpa_profile.is_some() {
+                    self.ctx.emit(
+                        EventAddPod { pod: pod.clone() },
+                        self.vpa_sim_id,
+                        self.cluster_state.borrow().network_delays.api2vpa
                     );
                 }
 
@@ -237,32 +277,6 @@ impl dsc::EventHandler for APIServer {
                     self.cluster_state.borrow().network_delays.api2ca
                 );
             }
-
-
-    // let mut group_utilization = Vec::with_capacity(pod_groups.len());
-    // for group_uid in pod_groups {
-    //     match self.pod_consumptions.get(&group_uid) {
-    //         Some(pods) => {
-    //             // Sum all group consumed resources
-    //             let (mut group_cpu, mut group_memory): (f64, f64) = (0.0, 0.0);
-    //             for (_, &(pod_cpu, pod_memory)) in pods {
-    //                 group_cpu += pod_cpu;
-    //                 group_memory += pod_memory;
-    //             }
-    //
-    //             // Add group utilization
-    //             group_utilization.push((
-    //                 pods.len() as u64,
-    //                 group_cpu / pods.len() as f64,
-    //                 group_memory / pods.len() as f64
-    //             ));
-    //         }
-    //         None => {
-    //             // Add zero utilization
-    //             group_utilization.push((0, 0.0, 0.0));
-    //         }
-    //     }
-    // }
         });
     }
 }

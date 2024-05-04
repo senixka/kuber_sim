@@ -6,7 +6,7 @@ pub struct HPA {
     cluster_state: Rc<RefCell<ClusterState>>,
     api_sim_id: dsc::Id,
 
-    // Is CA turned on
+    // Is HPA turned on
     is_turned_on: bool,
 
     // Managed pod groups and their metrics

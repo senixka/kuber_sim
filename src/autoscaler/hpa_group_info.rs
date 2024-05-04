@@ -99,6 +99,8 @@ impl HPAGroupInfo {
                         // Remove uid from alive uids
                         let _was_present = self.alive_uids.remove(&pod_uid);
                         assert!(_was_present);
+
+                        // TODO: Remove uid from last_metrics
                     }
                     PodPhase::Pending | PodPhase::Evicted | PodPhase::Preempted => {
                         // OnReschedule -> OnReschedule

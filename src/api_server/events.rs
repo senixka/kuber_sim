@@ -103,19 +103,6 @@ pub struct EventKubeletNextChange {
 }
 
 
-///////////////////////////////////////// HPA  ////////////////////////////////////////////////
-
-// [Emit]:      {} -> Api
-// [Consume]:   Api -> { HPA }
-#[derive(Clone, Serialize, Deserialize)]
-pub struct EventHPAPodMetricsPost {
-    pub group_uid: u64,
-    pub pod_uid: u64,
-    pub current_phase: PodPhase,
-    pub current_cpu: f64,
-    pub current_memory: f64,
-}
-
 
 ///////////////////////////////////////// CA ///////////////////////////////////////////////////////
 
@@ -138,4 +125,32 @@ pub struct EventPostCAMetrics {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////// HPA  ////////////////////////////////////////////////
+
+// [Emit]:      {} -> Api
+// [Consume]:   Api -> { HPA }
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventHPAPodMetricsPost {
+    pub group_uid: u64,
+    pub pod_uid: u64,
+    pub current_phase: PodPhase,
+    pub current_cpu: f64,
+    pub current_memory: f64,
+}
+
+
+
+///////////////////////////////////////// VPA  ////////////////////////////////////////////////
+
+
+// [Emit]:      {} -> Api
+// [Consume]:   Api -> { VPA }
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventVPAPodMetricsPost {
+    pub group_uid: u64,
+    pub pod_uid: u64,
+    pub current_phase: PodPhase,
+    pub current_cpu: f64,
+    pub current_memory: f64,
+}

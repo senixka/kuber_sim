@@ -32,6 +32,10 @@ pub mod my_imports {
     pub use crate::autoscaler::hpa::*;
     pub use crate::autoscaler::hpa_profile::*;
     pub use crate::autoscaler::hpa_group_info::*;
+    pub use crate::autoscaler::vpa::*;
+    pub use crate::autoscaler::vpa_profile::*;
+    pub use crate::autoscaler::vpa_pod_info::*;
+    pub use crate::autoscaler::vpa_group_info::*;
 
     pub use crate::load_types::types::*;
     pub use crate::load_types::constant::*;
@@ -162,6 +166,33 @@ fn main() {
         test.enable_ca();
         test.run_for_duration(100.0);
 
+    }
+
+    // Test horizontal pod autoscaler
+    if value == "vpa" {
+        let mut test = Experiment::new(
+            "./data/cluster_state/test_vpa.yaml".to_string(),
+            "./data/workload/test_vpa.yaml".to_string(),
+            "./data/out/test_vpa.txt".to_string(),
+            179,
+        );
+
+        test.add_scheduler(Box::new(ActiveQDefault::default()),
+                           Box::new(BackOffQDefault::default()),
+                           vec![Box::new(FilterNodeSelector)],
+                           vec![Box::new(FilterAlwaysTrue)],
+                           vec![Box::new(ScoreTetris)],
+                           vec![Box::new(ScoreNormalizeSkip)],
+                           vec![2]);
+        test.add_vpa();
+        test.enable_dynamic_update();
+
+        test.prepare();
+        test.enable_vpa();
+        // test.step_until_no_events();
+
+        // test.enable_vpa();
+        test.run_for_duration(30.0);
     }
 
     // Test horizontal pod autoscaler
