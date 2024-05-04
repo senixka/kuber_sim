@@ -25,24 +25,22 @@ impl BusyBox {
                 self.duration < dsc::EPSILON);
     }
 
-    // TODO: fix it
     pub fn update(&mut self, current_time: f64) -> (i64, i64, f64, bool) {
-        let epoch = ((current_time - self.start_time) / self.shift_time) as i64;
-        let next_change = (epoch + 1) as f64 * self.shift_time - (current_time - self.start_time);
-        if next_change < dsc::EPSILON {
+        if current_time - self.start_time + dsc::EPSILON > self.duration {
             return (0, 0, 0.0, true);
         }
 
-        if epoch % 2 == 0 {
-            return (self.cpu_down,
-                    self.memory_down,
-                    next_change,
-                    current_time - self.start_time + dsc::EPSILON > self.duration);
+        let epoch = ((current_time - self.start_time) / self.shift_time) as i64;
+
+        let mut next_change = (epoch + 1) as f64 * self.shift_time - (current_time - self.start_time);
+        if next_change < dsc::EPSILON {
+            next_change += 10.0 * dsc::EPSILON;
         }
-        return (self.cpu_up,
-                self.memory_up,
-                next_change,
-                current_time - self.start_time + dsc::EPSILON > self.duration);
+
+        if epoch % 2 == 0 {
+            return (self.cpu_down, self.memory_down, next_change, false);
+        }
+        return (self.cpu_up, self.memory_up, next_change, false);
     }
 }
 
