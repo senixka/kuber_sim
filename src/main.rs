@@ -28,14 +28,14 @@ pub mod my_imports {
     pub use crate::api_server::api::*;
     pub use crate::api_server::events::*;
 
-    pub use crate::autoscaler::ca::*;
-    pub use crate::autoscaler::hpa::*;
-    pub use crate::autoscaler::hpa_profile::*;
-    pub use crate::autoscaler::hpa_group_info::*;
-    pub use crate::autoscaler::vpa::*;
-    pub use crate::autoscaler::vpa_profile::*;
-    pub use crate::autoscaler::vpa_pod_info::*;
-    pub use crate::autoscaler::vpa_group_info::*;
+    pub use crate::autoscaler::ca::ca::*;
+    pub use crate::autoscaler::hpa::hpa::*;
+    pub use crate::autoscaler::hpa::hpa_profile::*;
+    pub use crate::autoscaler::hpa::hpa_group_info::*;
+    pub use crate::autoscaler::vpa::vpa::*;
+    pub use crate::autoscaler::vpa::vpa_profile::*;
+    pub use crate::autoscaler::vpa::vpa_pod_info::*;
+    pub use crate::autoscaler::vpa::vpa_group_info::*;
 
     pub use crate::load_types::types::*;
     pub use crate::load_types::constant::*;
