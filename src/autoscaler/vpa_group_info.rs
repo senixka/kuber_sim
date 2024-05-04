@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use crate::my_imports::*;
 
 
@@ -43,7 +42,7 @@ impl VPAGroupInfo {
 
     pub fn remove_all_finished(&mut self) -> Vec<(u64, VPAPodInfo)> {
         // Find all finished uids
-        let mut finished: Vec<(u64, VPAPodInfo)> = self.uids.iter().filter_map(|x|
+        let finished: Vec<(u64, VPAPodInfo)> = self.uids.iter().filter_map(|x|
             match x.1.is_finished() {
                 true => { Some((x.0.clone(), x.1.clone()))}
                 false => { None }

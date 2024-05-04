@@ -192,7 +192,7 @@ fn main() {
         // test.step_until_no_events();
 
         // test.enable_vpa();
-        test.run_for_duration(30.0);
+        test.run_for_duration(40.0);
     }
 
     // Test horizontal pod autoscaler

@@ -52,11 +52,13 @@ impl VPA {
     pub fn make_decisions(&mut self) {
         // Look for all managed pod groups
         for (group_uid, group_info) in self.managed_groups.iter_mut() {
+            // Get VPA profile
+            let profile = &group_info.pod_template.vpa_profile.clone().unwrap();
 
             // Remove and store all finished uids from group
             let finished = group_info.remove_all_finished();
             dp_vpa!("VPA removed finished:{:?}", finished);
-            for (pod_uid, pod_info) in finished {
+            for (_pod_uid, pod_info) in finished {
                 // Process only Failed pods
                 if !pod_info.is_failed() {
                     continue;
@@ -64,8 +66,8 @@ impl VPA {
                 // If finished pod failed -> reschedule it with new suggested resources
 
                 // Get suggested spec resources
-                let (request_cpu, request_memory, limit_cpu, limit_memory) = pod_info.suggest();
-                dp_vpa!("VPA reschedule failed pod_uid:{:?} with r_cpu:{:?} r_mem:{:?} l_cpu:{:?} l_mem:{:?}", pod_uid, request_cpu, request_memory, limit_cpu, limit_memory);
+                let (request_cpu, request_memory, limit_cpu, limit_memory) = pod_info.suggest(profile);
+                dp_vpa!("VPA reschedule failed pod_uid:{:?} with r_cpu:{:?} r_mem:{:?} l_cpu:{:?} l_mem:{:?}", _pod_uid, request_cpu, request_memory, limit_cpu, limit_memory);
 
                 // Locate pod template
                 let mut pod = group_info.pod_template.clone();
@@ -89,7 +91,7 @@ impl VPA {
             }
 
             // Update all remained uids in group with current time
-            group_info.update_all_with_time(&group_info.pod_template.vpa_profile.clone().unwrap(), self.ctx.time());
+            group_info.update_all_with_time(profile, self.ctx.time());
 
             // If pod's consumption very differs from its request -> reschedule pod with new spec
             for (&pod_uid, pod_info) in group_info.uids.iter_mut() {
@@ -99,7 +101,7 @@ impl VPA {
                 }
 
                 // If request and usage differs not too much -> skip
-                if !pod_info.need_reschedule(&group_info.pod_template.vpa_profile.clone().unwrap(), self.ctx.time()) {
+                if !pod_info.need_reschedule(profile, self.ctx.time()) {
                     continue;
                 }
 
@@ -111,7 +113,7 @@ impl VPA {
                 );
 
                 // Get suggested spec resources
-                let (request_cpu, request_memory, limit_cpu, limit_memory) = pod_info.suggest();
+                let (request_cpu, request_memory, limit_cpu, limit_memory) = pod_info.suggest(profile);
 
                 // Locate pod template
                 let mut pod = group_info.pod_template.clone();

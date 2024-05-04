@@ -120,9 +120,39 @@ impl VPAPodInfo {
         return self.last_phase == PodPhase::Failed || self.last_phase == PodPhase::Succeeded || self.last_phase == PodPhase::Removed;
     }
 
-    pub fn suggest(&self) -> (i64, i64, i64, i64) {
-        // TODO: percentiles, remove current stub
-        return (self.baseline_request_cpu + 10, self.baseline_request_memory + 10, self.baseline_limit_cpu + 10, self.baseline_limit_memory + 10);
+    pub fn suggest(&self, profile: &VPAProfile) -> (i64, i64, i64, i64) {
+        // Get cpu percentiles
+        let cpu_data = self.hist_cpu.percentiles(&[50.0, 90.0, 95.0]).unwrap();
+        assert_eq!(cpu_data.len(), 3);
+        dp_vpa!("VPA Suggest cpu percentiles: {:?}", cpu_data);
+
+        // Count cpu absolute values from baseline and given percent
+        let _lower_bound_cpu = ((self.baseline_request_cpu as f64 * cpu_data[0].0 * profile.recommendation_margin_fraction) as i64).max(profile.min_allowed_cpu).min(profile.max_allowed_cpu);
+        let target_cpu = ((self.baseline_request_cpu as f64 * cpu_data[1].0 * profile.recommendation_margin_fraction) as i64).max(profile.min_allowed_cpu).min(profile.max_allowed_cpu);
+        let _upper_bound_cpu = ((self.baseline_request_cpu as f64 * cpu_data[2].0 * profile.recommendation_margin_fraction) as i64).max(profile.min_allowed_cpu).min(profile.max_allowed_cpu);
+
+        // Get memory percentiles
+        let memory_data = self.hist_memory.percentiles(&[50.0, 90.0, 95.0]).unwrap();
+        assert_eq!(memory_data.len(), 3);
+        dp_vpa!("VPA Suggest memory percentiles: {:?}", memory_data);
+        
+        // Count memory absolute values from baseline and given percent
+        let _lower_bound_memory = ((self.baseline_request_memory as f64 * memory_data[0].0 * profile.recommendation_margin_fraction) as i64).max(profile.min_allowed_memory).min(profile.max_allowed_memory);
+        let target_memory = ((self.baseline_request_memory as f64 * memory_data[1].0 * profile.recommendation_margin_fraction) as i64).max(profile.min_allowed_memory).min(profile.max_allowed_memory);
+        let _upper_bound_memory = ((self.baseline_request_memory as f64 * memory_data[2].0 * profile.recommendation_margin_fraction) as i64).max(profile.min_allowed_memory).min(profile.max_allowed_memory);
+
+        dp_vpa!("########### VPA Suggests #########");
+        dp_vpa!("# Lower CPU:     {:<15} #", _lower_bound_cpu);
+        dp_vpa!("# Lower Memory:  {:<15} #", _lower_bound_memory);
+        dp_vpa!("# ------------------------------ #");
+        dp_vpa!("# Target CPU:    {:<15} #", target_cpu);
+        dp_vpa!("# Target Memory: {:<15} #", target_memory);
+        dp_vpa!("# ------------------------------ #");
+        dp_vpa!("# Upper CPU:     {:<15} #", _upper_bound_cpu);
+        dp_vpa!("# Upper Memory:  {:<15} #", _upper_bound_memory);
+        dp_vpa!("##################################");
+
+        return (target_cpu, target_memory, (target_cpu as f64 * profile.limit_margin_fraction) as i64, (target_memory as f64 * profile.limit_margin_fraction) as i64);
     }
 
     pub fn need_reschedule(&self, profile: &VPAProfile, current_time: f64) -> bool {
@@ -131,11 +161,11 @@ impl VPAPodInfo {
         }
 
         // Get suggested spec resources
-        let (request_cpu, request_memory, limit_cpu, limit_memory) = self.suggest();
+        let (request_cpu, request_memory, _, _) = self.suggest(profile);
 
         // Compare suggested with current requested resources
-        let d_cpu: f64 = ((request_cpu as f64 * 100.0 / self.baseline_request_cpu as f64) - 100.0).abs();
-        let d_memory: f64 = ((request_memory as f64 * 100.0 / self.baseline_request_memory as f64)).abs();
+        let d_cpu: f64 = ((request_cpu as f64 / self.baseline_request_cpu as f64) - 1.0).abs();
+        let d_memory: f64 = ((request_memory as f64 / self.baseline_request_memory as f64) - 1.0).abs();
 
         return d_cpu >= profile.gap_cpu || d_memory >= profile.gap_memory;
     }

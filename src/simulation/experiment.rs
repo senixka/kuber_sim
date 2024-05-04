@@ -11,7 +11,7 @@ pub struct Experiment {
 
     api: Rc<RefCell<APIServer>>,
     cluster_state: Rc<RefCell<ClusterState>>,
-    workload: Rc<RefCell<WorkLoad>>,
+    // workload: Rc<RefCell<WorkLoad>>,
     init: Rc<RefCell<Init>>,
     monitoring: Rc<RefCell<Monitoring>>,
 
@@ -72,7 +72,7 @@ impl Experiment {
         Self {
             // cluster_state_file_path, workload_file_path, output_file_path,
             sim, // seed,
-            api, cluster_state, workload, init, monitoring,
+            api, cluster_state, /*workload,*/ init, monitoring,
             api_id, // monitoring_id,
             scheduler: None,
             scheduler_id: None,

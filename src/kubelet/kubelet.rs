@@ -279,8 +279,8 @@ impl Kubelet {
             EventPodUpdateFromKubelet {
                 pod_uid,
                 current_phase: phase,
-                current_cpu: (cpu as f64) * 100.0 / spec.request_cpu as f64,
-                current_memory: (memory as f64) * 100.0 / spec.request_memory as f64,
+                current_cpu: cpu as f64 / spec.request_cpu as f64,
+                current_memory: memory as f64 / spec.request_memory as f64,
             },
             self.api_sim_id,
             self.cluster_state.borrow().network_delays.kubelet2api

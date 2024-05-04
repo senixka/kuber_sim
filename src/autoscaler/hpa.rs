@@ -83,7 +83,7 @@ impl HPA {
 
             // If group utilization is low and group size allows -> RemovePod
             else if profile.min_size < group_size
-                && (cpu <= profile.min_group_cpu_percent && memory <= profile.min_group_memory_percent) {
+                && (cpu <= profile.min_group_cpu_fraction && memory <= profile.min_group_memory_fraction) {
                 dp_hpa!("{:.12} hpa pod(group_uid:{:?}) remove <- cluster (resources)", self.ctx.time(), group_uid);
 
                 self.send_remove_pod(*info.alive_uids.last().unwrap());
@@ -91,7 +91,7 @@ impl HPA {
 
             // If group utilization is high and group size allows -> AddPod
             else if profile.max_size > group_size
-                && (cpu >= profile.max_group_cpu_percent || memory >= profile.max_group_memory_percent) {
+                && (cpu >= profile.max_group_cpu_fraction || memory >= profile.max_group_memory_fraction) {
                 dp_hpa!("{:.12} hpa pod(group_uid:{:?}) add -> cluster (resources)", self.ctx.time(), group_uid);
 
                 // Locate pod template
