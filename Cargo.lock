@@ -123,6 +123,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "heck"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
+
+[[package]]
 name = "hermit-abi"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -138,6 +144,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5bd81cb9a629d0a868f2092937332fca5fd985971d2155bf6fcc225ef8a6be2c"
 dependencies = [
  "thiserror",
+]
+
+[[package]]
+name = "impl-enum"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fd48df611bdfc457ea8c24c8c26e5c9d64857454fa8221da7db463d134371f3"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -162,6 +180,7 @@ version = "0.1.0"
 dependencies = [
  "dslab-core",
  "histogram",
+ "impl-enum",
  "rstar",
  "serde",
  "serde_yaml",

@@ -153,7 +153,6 @@ impl Pod {
         assert!(self.spec.limit_memory >= self.spec.request_memory);
         assert!(self.spec.request_cpu >= 0);
         assert!(self.spec.request_memory >= 0);
-        assert!(self.spec.load.get_duration() > 0.0);
     }
 
     pub fn is_usage_matches_limits(&self, cpu: i64, memory: i64) -> bool {
