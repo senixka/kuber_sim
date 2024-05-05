@@ -17,6 +17,15 @@ pub struct EventRemovePod {
     pub pod_uid: u64,
 }
 
+
+// [Emit]:      { Init } -> Api
+// [Consume]:   Api -> {}
+#[derive(Clone, Serialize, Deserialize)]
+pub struct EventRemovePodGroup {
+    pub group_uid: u64,
+}
+
+
 // [Emit]:      { Init | CA } -> Api
 // [Consume]:   Api -> { Scheduler }
 #[derive(Clone, Serialize, Deserialize)]

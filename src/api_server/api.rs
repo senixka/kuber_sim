@@ -2,8 +2,9 @@ use crate::my_imports::*;
 
 
 pub struct APIServer {
-    ctx: dsc::SimulationContext,
-    cluster_state: Rc<RefCell<ClusterState>>,
+    pub ctx: dsc::SimulationContext,
+    init_config: Rc<RefCell<InitConfig>>,
+
     scheduler_sim_id: dsc::Id,
     ca_sim_id: dsc::Id,
     hpa_sim_id: dsc::Id,
@@ -14,16 +15,17 @@ pub struct APIServer {
     is_vpa_enabled: bool,
 
     // Inner state
-    kubelets: HashMap<u64, dsc::Id>,                            // HashMap<node_uid, kubelet_sim_id>
-    pod2group: HashMap<u64, u64>,                               // HashMap<pod_uid, group_uid>
+    kubelets: HashMap<u64, dsc::Id>,    // HashMap<node_uid, kubelet_sim_id>
+    pod2group: HashMap<u64, u64>,       // HashMap<pod_uid, group_uid>
 }
 
 
 impl APIServer {
-    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, init_config: Rc<RefCell<InitConfig>>) -> Self {
         Self {
             ctx,
-            cluster_state,
+            init_config,
+
             scheduler_sim_id: dsc::Id::MAX,
             ca_sim_id: dsc::Id::MAX,
             hpa_sim_id: dsc::Id::MAX,
@@ -38,7 +40,11 @@ impl APIServer {
         }
     }
 
-    pub fn prepare(&mut self, scheduler_sim_id: dsc::Id, ca_sim_id: Option<dsc::Id>, hpa_sim_id: Option<dsc::Id>, vpa_sim_id: Option<dsc::Id>) {
+    pub fn prepare(&mut self,
+                   scheduler_sim_id: dsc::Id,
+                   ca_sim_id: Option<dsc::Id>,
+                   hpa_sim_id: Option<dsc::Id>,
+                   vpa_sim_id: Option<dsc::Id>) {
         self.scheduler_sim_id = scheduler_sim_id;
 
         // Init CA info
@@ -84,7 +90,10 @@ impl dsc::EventHandler for APIServer {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             EventUpdatePodFromScheduler { pod_uid , pod, preempt_uids, new_phase, node_uid } => {
-                dp_api_server!("{:.12} api_server EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} node_uid:{:?} new_phase:{:?}", self.ctx.time(), pod_uid, preempt_uids, node_uid, new_phase);
+                dp_api_server!(
+                    "{:.12} api_server EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} node_uid:{:?} new_phase:{:?}",
+                    self.ctx.time(), pod_uid, preempt_uids, node_uid, new_phase
+                );
 
                 // Get kubelet sim_id
                 let to = self.kubelets.get(&node_uid);
@@ -94,7 +103,7 @@ impl dsc::EventHandler for APIServer {
                         self.ctx.emit(
                             EventUpdatePodFromScheduler { pod_uid, pod, preempt_uids, new_phase, node_uid },
                             kubelet_id,
-                            self.cluster_state.borrow().network_delays.api2kubelet
+                            self.init_config.borrow().network_delays.api2kubelet
                         );
                     }
                     None => {
@@ -102,22 +111,28 @@ impl dsc::EventHandler for APIServer {
                         self.ctx.emit(
                             EventPodUpdateToScheduler { pod_uid, current_phase: PodPhase::Pending },
                             self.scheduler_sim_id,
-                            self.cluster_state.borrow().network_delays.api2scheduler
+                            self.init_config.borrow().network_delays.api2scheduler
                         );
-                        dp_api_server!("{:.12} api_server INNER EventUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?} NOT IN ROUTE", self.ctx.time(), pod_uid, node_uid, new_phase);
+                        dp_api_server!(
+                            "{:.12} api_server INNER EventUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?} NOT IN ROUTE",
+                            self.ctx.time(), pod_uid, node_uid, new_phase
+                        );
                     }
                 }
             }
 
             EventPodUpdateFromKubelet { pod_uid, current_phase, current_cpu, current_memory} => {
-                dp_api_server!("{:.12} api_server EventUpdatePodFromKubelet pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}", self.ctx.time(), pod_uid, current_phase, current_cpu, current_memory);
+                dp_api_server!(
+                    "{:.12} api_server EventUpdatePodFromKubelet pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
+                    self.ctx.time(), pod_uid, current_phase, current_cpu, current_memory
+                );
 
                 // Notify scheduler if pod not in Running phase
                 if current_phase != PodPhase::Running {
                     self.ctx.emit(
                         EventPodUpdateToScheduler { pod_uid, current_phase: current_phase.clone() },
                         self.scheduler_sim_id,
-                        self.cluster_state.borrow().network_delays.api2scheduler
+                        self.init_config.borrow().network_delays.api2scheduler
                     );
                 }
 
@@ -132,7 +147,7 @@ impl dsc::EventHandler for APIServer {
                             current_memory,
                         },
                         self.hpa_sim_id,
-                        self.cluster_state.borrow().network_delays.api2hpa
+                        self.init_config.borrow().network_delays.api2hpa
                     );
                 }
 
@@ -147,7 +162,7 @@ impl dsc::EventHandler for APIServer {
                             current_memory,
                         },
                         self.vpa_sim_id,
-                        self.cluster_state.borrow().network_delays.api2vpa
+                        self.init_config.borrow().network_delays.api2vpa
                     );
                 }
             }
@@ -159,7 +174,7 @@ impl dsc::EventHandler for APIServer {
                 self.ctx.emit(
                     EventRemovePod { pod_uid },
                     self.scheduler_sim_id,
-                    self.cluster_state.borrow().network_delays.api2scheduler
+                    self.init_config.borrow().network_delays.api2scheduler
                 );
 
                 // Here we only have to notify scheduler. Scheduler will notify kubelet.
@@ -180,7 +195,7 @@ impl dsc::EventHandler for APIServer {
                     self.ctx.emit(
                         EventAddPod { pod: pod.clone() },
                         self.hpa_sim_id,
-                        self.cluster_state.borrow().network_delays.api2hpa
+                        self.init_config.borrow().network_delays.api2hpa
                     );
                 }
 
@@ -189,7 +204,7 @@ impl dsc::EventHandler for APIServer {
                     self.ctx.emit(
                         EventAddPod { pod: pod.clone() },
                         self.vpa_sim_id,
-                        self.cluster_state.borrow().network_delays.api2vpa
+                        self.init_config.borrow().network_delays.api2vpa
                     );
                 }
 
@@ -197,7 +212,7 @@ impl dsc::EventHandler for APIServer {
                 self.ctx.emit(
                     EventAddPod { pod },
                     self.scheduler_sim_id,
-                    self.cluster_state.borrow().network_delays.api2scheduler
+                    self.init_config.borrow().network_delays.api2scheduler
                 );
             }
 
@@ -215,7 +230,7 @@ impl dsc::EventHandler for APIServer {
                 self.ctx.emit(
                     EventAddNode { kubelet_sim_id, node },
                     self.scheduler_sim_id,
-                    self.cluster_state.borrow().network_delays.api2scheduler
+                    self.init_config.borrow().network_delays.api2scheduler
                 );
             }
 
@@ -229,18 +244,21 @@ impl dsc::EventHandler for APIServer {
                         self.ctx.emit(
                             EventRemoveNode { node_uid },
                             self.scheduler_sim_id,
-                            self.cluster_state.borrow().network_delays.api2scheduler
+                            self.init_config.borrow().network_delays.api2scheduler
                         );
 
                         // Notify kubelet
                         self.ctx.emit(
                             EventRemoveNode { node_uid },
                             kubelet_sim_id,
-                            self.cluster_state.borrow().network_delays.api2kubelet
+                            self.init_config.borrow().network_delays.api2kubelet
                         );
                     }
                     None => {
-                        dp_api_server!("{:.12} api_server INNER EventRemoveNode node:{:?} NOT IN ROUTE", self.ctx.time(), node_uid);
+                        dp_api_server!(
+                            "{:.12} api_server INNER EventRemoveNode node:{:?} NOT IN ROUTE",
+                            self.ctx.time(), node_uid
+                        );
                     }
                 }
             }
@@ -252,29 +270,35 @@ impl dsc::EventHandler for APIServer {
                 self.ctx.emit(
                     EventRemoveNodeAck { node_uid },
                     self.ca_sim_id,
-                    self.cluster_state.borrow().network_delays.api2ca
+                    self.init_config.borrow().network_delays.api2ca
                 );
             }
 
             EventGetCAMetrics { used_nodes, available_nodes } => {
-                dp_api_server!("{:.12} api_server EventGetCAMetrics used_nodes:{:?} available_nodes:{:?}", self.ctx.time(), used_nodes, available_nodes);
+                dp_api_server!(
+                    "{:.12} api_server EventGetCAMetrics used_nodes:{:?} available_nodes:{:?}",
+                    self.ctx.time(), used_nodes, available_nodes
+                );
 
                 // Send metrics request to scheduler
                 self.ctx.emit(
                     EventGetCAMetrics { used_nodes, available_nodes },
                     self.scheduler_sim_id,
-                    self.cluster_state.borrow().network_delays.api2scheduler
+                    self.init_config.borrow().network_delays.api2scheduler
                 );
             }
 
             EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help } => {
-                dp_api_server!("{:.12} api_server EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}", self.ctx.time(), pending_pod_count, used_nodes_utilization, may_help);
+                dp_api_server!(
+                    "{:.12} api_server EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}",
+                    self.ctx.time(), pending_pod_count, used_nodes_utilization, may_help
+                );
 
                 // Send metrics to CA
                 self.ctx.emit(
                     EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help },
                     self.ca_sim_id,
-                    self.cluster_state.borrow().network_delays.api2ca
+                    self.init_config.borrow().network_delays.api2ca
                 );
             }
         });

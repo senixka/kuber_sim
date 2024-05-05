@@ -3,7 +3,8 @@ use crate::my_imports::*;
 
 pub struct HPA {
     ctx: dsc::SimulationContext,
-    cluster_state: Rc<RefCell<ClusterState>>,
+    init_config: Rc<RefCell<InitConfig>>,
+
     api_sim_id: dsc::Id,
 
     // Is HPA turned on
@@ -16,11 +17,11 @@ pub struct HPA {
 
 impl HPA {
     pub fn new(ctx: dsc::SimulationContext,
-               cluster_state: Rc<RefCell<ClusterState>>,
+               init_config: Rc<RefCell<InitConfig>>,
                api_sim_id: dsc::Id) -> Self {
         Self {
             ctx,
-            cluster_state: cluster_state.clone(),
+            init_config: init_config.clone(),
             api_sim_id,
 
             // HPA is created in turned off state
@@ -36,7 +37,7 @@ impl HPA {
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
             self.is_turned_on = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.hpa_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().hpa.self_update_period);
         }
     }
 
@@ -111,7 +112,7 @@ impl HPA {
         self.ctx.emit(
             EventAddPod { pod },
             self.api_sim_id,
-            self.cluster_state.borrow().network_delays.hpa2api
+            self.init_config.borrow().network_delays.hpa2api
         );
     }
 
@@ -119,7 +120,7 @@ impl HPA {
         self.ctx.emit(
             EventRemovePod { pod_uid },
             self.api_sim_id,
-            self.cluster_state.borrow().network_delays.hpa2api
+            self.init_config.borrow().network_delays.hpa2api
         );
     }
 }
@@ -151,12 +152,15 @@ impl dsc::EventHandler for HPA {
                 // Emit Self-Update
                 self.ctx.emit_self(
                     EventSelfUpdate {},
-                    self.cluster_state.borrow().constants.hpa_self_update_period
+                    self.init_config.borrow().hpa.self_update_period
                 );
             }
 
             EventHPAPodMetricsPost { group_uid, pod_uid, current_phase, current_cpu, current_memory } => {
-                dp_hpa!("{:.12} hpa EventHPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}", self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory);
+                dp_hpa!(
+                    "{:.12} hpa EventHPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
+                    self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory
+                );
 
                 // If this group is not managed by HPA -> return
                 if !self.managed_groups.contains_key(&group_uid) {

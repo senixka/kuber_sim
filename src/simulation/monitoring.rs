@@ -6,7 +6,7 @@ pub struct Monitoring {
     pub ctx: dsc::SimulationContext,
     pub self_update_enabled: bool,
     pub dynamic_update_enabled: bool,
-    pub cluster_state: Rc<RefCell<ClusterState>>,
+    pub init_config: Rc<RefCell<InitConfig>>,
 
     makespan_time: f64,
 
@@ -34,8 +34,6 @@ pub struct Monitoring {
     pending_pod: Vec<usize>,
     // working_pod: Vec<u64>,
     
-    n_pod_in_simulation: u64, // const
-    
     pending_pod_counter: usize,
     running_pod_counter: usize,
     succeed_pod_counter: u64,
@@ -53,16 +51,18 @@ pub struct Monitoring {
 }
 
 impl Monitoring {
-    pub fn new(ctx: dsc::SimulationContext, cluster_state: Rc<RefCell<ClusterState>>, out_path: &String) -> Self {
+    pub fn new(ctx: dsc::SimulationContext,
+               init_config: Rc<RefCell<InitConfig>>,
+               out_path: &String) -> Self {
         Self {
             ctx,
             self_update_enabled: false,
             dynamic_update_enabled: false,
-            cluster_state,
+            init_config,
             makespan_time: 0.0, total_installed_cpu: 0, total_installed_memory: 0,
             scheduler_used_cpu: 0, scheduler_used_memory: 0,
             kubelets_used_cpu: 0, kubelets_used_memory: 0,
-            n_pod_in_simulation: 0, succeed_pod_counter: 0, pending_pod_counter: 0, preempted_pod_counter: 0,
+            succeed_pod_counter: 0, pending_pod_counter: 0, preempted_pod_counter: 0,
             failed_pod_counter: 0, running_pod_counter: 0, evicted_pod_counter: 0, removed_pod_counter: 0,
             node_counter: 0,
             kubelet_utilization_cpu_numerator: Vec::new(),
@@ -77,16 +77,12 @@ impl Monitoring {
     pub fn presimulation_init(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.monitoring_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().monitoring.self_update_period);
         }
     }
 
     pub fn presimulation_check(&mut self) {
         assert_eq!(self.self_update_enabled, true);
-    }
-
-    pub fn set_n_pod_in_simulation(&mut self, n_pod_in_simulation: u64) {
-        self.n_pod_in_simulation = n_pod_in_simulation;
     }
 
     pub fn enable_dynamic_update(&mut self) {
@@ -287,7 +283,7 @@ impl dsc::EventHandler for Monitoring {
                 self.print_statistics();
 
                 if self.self_update_enabled {
-                    self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.monitoring_self_update_period);
+                    self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().monitoring.self_update_period);
                 }
             }
         });

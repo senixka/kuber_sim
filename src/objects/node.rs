@@ -53,9 +53,6 @@ impl Node {
     }
 
     pub fn consume(&mut self, cpu: i64, memory: i64) {
-        // assert!(self.spec.available_cpu >= cpu);
-        // assert!(self.spec.available_memory >= memory);
-
         self.spec.available_cpu -= cpu;
         self.spec.available_memory -= memory;
     }
@@ -63,8 +60,5 @@ impl Node {
     pub fn restore(&mut self, cpu: i64, memory: i64) {
         self.spec.available_cpu += cpu;
         self.spec.available_memory += memory;
-
-        // assert!(self.spec.available_cpu <= self.spec.installed_cpu);
-        // assert!(self.spec.available_memory <= self.spec.installed_memory);
     }
 }

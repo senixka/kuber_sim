@@ -3,9 +3,10 @@ use crate::my_imports::*;
 
 pub struct Scheduler {
     ctx: dsc::SimulationContext,
-    cluster_state: Rc<RefCell<ClusterState>>,
-    api_sim_id: dsc::Id,
+    init_config: Rc<RefCell<InitConfig>>,
     monitoring: Rc<RefCell<Monitoring>>,
+
+    api_sim_id: dsc::Id,
 
     self_update_enabled: bool,
 
@@ -32,9 +33,9 @@ pub struct Scheduler {
 impl Scheduler {
     pub fn new(
         ctx: dsc::SimulationContext,
-        api_sim_id: dsc::Id,
-        cluster_state: Rc<RefCell<ClusterState>>,
+        init_config: Rc<RefCell<InitConfig>>,
         monitoring: Rc<RefCell<Monitoring>>,
+        api_sim_id: dsc::Id,
 
         // Queues
         active_queue: Box<dyn IActiveQ>,
@@ -47,11 +48,9 @@ impl Scheduler {
         score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
         scorer_weights: Vec<i64>,
     ) -> Scheduler {
-        let unschedulable_queue_period = cluster_state.borrow().constants.unschedulable_queue_period;
-
         Self {
             ctx,
-            cluster_state,
+            init_config: init_config.clone(),
             api_sim_id,
             monitoring,
             self_update_enabled: false,
@@ -64,7 +63,7 @@ impl Scheduler {
 
             // Queues
             active_queue,
-            unschedulable_queue: BackOffQConstant::new(unschedulable_queue_period),
+            unschedulable_queue: BackOffQConstant::new(init_config.borrow().scheduler.unschedulable_queue_backoff_delay),
             backoff_queue,
             failed_attempts: HashMap::new(),
 
@@ -82,7 +81,7 @@ impl Scheduler {
     pub fn self_update_on(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.scheduler_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().scheduler.self_update_period);
         }
     }
 
@@ -109,8 +108,8 @@ impl Scheduler {
         let mut score_matrix: Vec<Vec<i64>> = vec![vec![0; self.nodes.len()]; self.scorers.len()];
 
         let (mut scheduled_left, mut try_schedule_left): (u64, u64) = (
-            self.cluster_state.borrow().constants.scheduler_cycle_max_scheduled,
-            self.cluster_state.borrow().constants.scheduler_cycle_max_to_try,
+            self.init_config.borrow().scheduler.cycle_max_scheduled,
+            self.init_config.borrow().scheduler.cycle_max_to_try,
         );
 
         dp_scheduler!("{:.12} scheduler cycle activeQ:{:?}", self.ctx.time(), self.active_queue.len());
@@ -462,7 +461,7 @@ impl Scheduler {
     pub fn send_pod_phase_update(&self, pod: Option<Pod>, pod_uid: u64, preempt_uids: Option<Vec<u64>>, node_uid: u64, new_phase: PodPhase) {
         self.ctx.emit(EventUpdatePodFromScheduler { pod, pod_uid, preempt_uids, new_phase, node_uid },
                       self.api_sim_id,
-                      self.cluster_state.borrow().network_delays.kubelet2api
+                      self.init_config.borrow().network_delays.kubelet2api
         );
     }
 
@@ -494,8 +493,8 @@ impl Scheduler {
             let node = self.nodes.get(node_uid);
             if node.is_some() {
                 let spec = node.unwrap().spec.clone();
-                let cpu: f64 = ((spec.installed_cpu - spec.available_cpu) as f64 * 100.0) / (spec.installed_cpu as f64);
-                let memory: f64 = ((spec.installed_memory - spec.available_memory) as f64 * 100.0) / (spec.installed_memory as f64);
+                let cpu: f64 = ((spec.installed_cpu - spec.available_cpu) as f64) / (spec.installed_cpu as f64);
+                let memory: f64 = ((spec.installed_memory - spec.available_memory) as f64) / (spec.installed_memory as f64);
 
                 used_nodes_utilization.push((*node_uid, cpu, memory));
             }
@@ -505,7 +504,7 @@ impl Scheduler {
         self.ctx.emit(
             EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help },
             self.api_sim_id,
-            self.cluster_state.borrow().network_delays.scheduler2api
+            self.init_config.borrow().network_delays.scheduler2api
         );
     }
 }
@@ -610,7 +609,7 @@ impl dsc::EventHandler for Scheduler {
 
                 // If there are pending pods -> continue SelfUpdate
                 if self.pending_pods.len() > 0 {
-                    self.ctx.emit_self(EventSelfUpdate{}, self.cluster_state.borrow().constants.scheduler_self_update_period);
+                    self.ctx.emit_self(EventSelfUpdate{}, self.init_config.borrow().scheduler.self_update_period);
                 } else {
                     self.self_update_off();
                 }

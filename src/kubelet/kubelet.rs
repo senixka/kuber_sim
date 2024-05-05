@@ -3,9 +3,9 @@ use crate::my_imports::*;
 
 pub struct Kubelet {
     pub ctx: dsc::SimulationContext,
-    pub cluster_state: Rc<RefCell<ClusterState>>,
-    pub monitoring: Rc<RefCell<Monitoring>>,
     pub api_sim_id: dsc::Id,
+    pub init_config: Rc<RefCell<InitConfig>>,
+    pub monitoring: Rc<RefCell<Monitoring>>,
 
     // Underlying node
     pub node: Node,
@@ -23,15 +23,17 @@ pub struct Kubelet {
 
 impl Kubelet {
     pub fn new(ctx: dsc::SimulationContext,
-               cluster_state: Rc<RefCell<ClusterState>>,
+               init_config: Rc<RefCell<InitConfig>>,
                monitoring: Rc<RefCell<Monitoring>>,
                api_sim_id: dsc::Id,
                node: Node) -> Self {
         Self {
             ctx,
-            cluster_state,
-            monitoring,
             api_sim_id,
+            init_config,
+            monitoring,
+
+            // Underlying node
             node,
 
             // Inner state
@@ -257,7 +259,7 @@ impl Kubelet {
         // Send RemoveNode ACK
         self.ctx.emit(EventRemoveNodeAck { node_uid: self.node.metadata.uid },
                       self.api_sim_id,
-                      self.cluster_state.borrow().network_delays.kubelet2api
+                      self.init_config.borrow().network_delays.kubelet2api
         );
     }
 
@@ -283,7 +285,7 @@ impl Kubelet {
                 current_memory: memory as f64 / spec.request_memory as f64,
             },
             self.api_sim_id,
-            self.cluster_state.borrow().network_delays.kubelet2api
+            self.init_config.borrow().network_delays.kubelet2api
         );
     }
 
@@ -296,7 +298,7 @@ impl Kubelet {
                 current_memory: 0.0,
             },
             self.api_sim_id,
-            self.cluster_state.borrow().network_delays.kubelet2api
+            self.init_config.borrow().network_delays.kubelet2api
         );
     }
 }

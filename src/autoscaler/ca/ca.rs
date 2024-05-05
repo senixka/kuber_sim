@@ -3,7 +3,8 @@ use crate::my_imports::*;
 
 pub struct CA {
     ctx: dsc::SimulationContext,
-    cluster_state: Rc<RefCell<ClusterState>>,
+    init_config: Rc<RefCell<InitConfig>>,
+
     api_sim_id: dsc::Id,
 
     // Is CA turned on
@@ -24,14 +25,15 @@ pub struct CA {
 
 
 impl CA {
-    pub fn new(ctx: dsc::SimulationContext,
-               cluster_state: Rc<RefCell<ClusterState>>,
+    pub fn new(sim: &mut dsc::Simulation,
+               ctx: dsc::SimulationContext,
+               init_config: Rc<RefCell<InitConfig>>,
+               init_nodes: Rc<RefCell<InitNodes>>,
                monitoring: Rc<RefCell<Monitoring>>,
-               api_sim_id: dsc::Id,
-               sim: &mut dsc::Simulation) -> Self {
+               api_sim_id: dsc::Id) -> Self {
         let mut ca = Self {
             ctx,
-            cluster_state: cluster_state.clone(),
+            init_config: init_config.clone(),
             api_sim_id,
 
             // CA is created in turned off state
@@ -46,7 +48,7 @@ impl CA {
 
         // Prepare kubelet pool from cluster state
         let mut uid_counter = 0;
-        for group in &cluster_state.borrow().ca_nodes {
+        for group in &init_nodes.borrow().ca_nodes {
             // Process node group
             for _ in 0..group.amount {
                 // Create kubelet unique name
@@ -56,7 +58,7 @@ impl CA {
                 // Create and register kubelet in simulation
                 let kubelet = Rc::new(RefCell::new(Kubelet::new(
                     sim.create_context(name.clone()),
-                    cluster_state.clone(),
+                    init_config.clone(),
                     monitoring.clone(),
                     api_sim_id,
                     Node::default(),
@@ -82,7 +84,7 @@ impl CA {
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
             self.is_turned_on = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.ca_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().ca.self_update_period);
         }
     }
 
@@ -98,8 +100,8 @@ impl CA {
     pub fn process_metrics(&mut self, pending_pod_count: u64, used_nodes_utilization: &Vec<(u64, f64, f64)>, may_help: Option<u64>) {
         // Remove nodes with low utilization
         let (min_cpu, min_memory) = (
-            self.cluster_state.borrow().constants.ca_remove_node_cpu_percent,
-            self.cluster_state.borrow().constants.ca_remove_node_memory_percent,
+            self.init_config.borrow().ca.remove_node_cpu_fraction,
+            self.init_config.borrow().ca.remove_node_memory_fraction,
         );
         for &(node_uid, cpu, memory) in used_nodes_utilization {
             // If utilization is not low -> remove its cycle count and skip
@@ -119,18 +121,18 @@ impl CA {
             *cycles += 1;
 
             // If cycle count more than remove threshold
-            if *cycles >= self.cluster_state.borrow().constants.ca_remove_node_delay_cycle {
+            if *cycles >= self.init_config.borrow().ca.remove_node_cycle_delay {
                 dp_ca!("{:.12} ca Issues EventRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
                 self.ctx.emit(
                     EventRemoveNode { node_uid },
                     self.api_sim_id,
-                    self.cluster_state.borrow().network_delays.ca2api
+                    self.init_config.borrow().network_delays.ca2api
                 );
             }
         }
 
         // If it's not enough pending pods -> return
-        if pending_pod_count < self.cluster_state.borrow().constants.ca_add_node_min_pending {
+        if pending_pod_count < self.init_config.borrow().ca.add_node_min_pending {
             return;
         }
 
@@ -166,7 +168,7 @@ impl CA {
                 self.ctx.emit(
                     EventAddNode { kubelet_sim_id, node },
                     self.api_sim_id,
-                    self.cluster_state.borrow().network_delays.ca2api + self.cluster_state.borrow().constants.ca_add_node_delay_time
+                    self.init_config.borrow().network_delays.ca2api + self.init_config.borrow().ca.add_node_isp_delay
                 );
             }
         }
@@ -204,13 +206,13 @@ impl dsc::EventHandler for CA {
                         ).collect(),
                     },
                     self.api_sim_id,
-                    self.cluster_state.borrow().network_delays.ca2api
+                    self.init_config.borrow().network_delays.ca2api
                 );
 
                 // Emit Self-Update
                 self.ctx.emit_self(
                     EventSelfUpdate {},
-                    self.cluster_state.borrow().constants.ca_self_update_period
+                    self.init_config.borrow().ca.self_update_period
                 );
             }
 

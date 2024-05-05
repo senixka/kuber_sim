@@ -3,7 +3,7 @@ use crate::my_imports::*;
 
 pub struct VPA {
     ctx: dsc::SimulationContext,
-    cluster_state: Rc<RefCell<ClusterState>>,
+    init_config: Rc<RefCell<InitConfig>>,
     api_sim_id: dsc::Id,
 
     // Is VPA turned on
@@ -16,11 +16,11 @@ pub struct VPA {
 
 impl VPA {
     pub fn new(ctx: dsc::SimulationContext,
-               cluster_state: Rc<RefCell<ClusterState>>,
+               init_config: Rc<RefCell<InitConfig>>,
                api_sim_id: dsc::Id) -> Self {
         Self {
             ctx,
-            cluster_state: cluster_state.clone(),
+            init_config: init_config.clone(),
             api_sim_id,
 
             // VPA is created in turned off state
@@ -36,7 +36,7 @@ impl VPA {
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
             self.is_turned_on = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.cluster_state.borrow().constants.vpa_self_update_period);
+            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().vpa.self_update_period);
         }
     }
 
@@ -86,7 +86,7 @@ impl VPA {
                 self.ctx.emit(
                     EventAddPod { pod },
                     self.api_sim_id,
-                    self.cluster_state.borrow().network_delays.vpa2api
+                    self.init_config.borrow().network_delays.vpa2api
                 );
             }
 
@@ -109,7 +109,7 @@ impl VPA {
                 self.ctx.emit(
                     EventRemovePod { pod_uid },
                     self.api_sim_id,
-                    self.cluster_state.borrow().network_delays.vpa2api
+                    self.init_config.borrow().network_delays.vpa2api
                 );
 
                 // Get suggested spec resources
@@ -131,7 +131,7 @@ impl VPA {
                 self.ctx.emit(
                     EventAddPod { pod },
                     self.api_sim_id,
-                    self.cluster_state.borrow().network_delays.vpa2api
+                    self.init_config.borrow().network_delays.vpa2api
                 );
 
                 // Update pod info
@@ -186,12 +186,15 @@ impl dsc::EventHandler for VPA {
                 // Emit Self-Update
                 self.ctx.emit_self(
                     EventSelfUpdate {},
-                    self.cluster_state.borrow().constants.vpa_self_update_period
+                    self.init_config.borrow().vpa.self_update_period
                 );
             }
 
             EventVPAPodMetricsPost { group_uid, pod_uid, current_phase, current_cpu, current_memory } => {
-                dp_vpa!("{:.12} vpa EventVPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}", self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory);
+                dp_vpa!(
+                    "{:.12} vpa EventVPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
+                    self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory
+                );
 
                 // If this group is not managed by VPA -> return
                 if !self.managed_groups.contains_key(&group_uid) {

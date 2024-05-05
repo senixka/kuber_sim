@@ -60,10 +60,10 @@ pub mod my_imports {
     pub use crate::scheduler::features::taints_tolerations::*;
     pub use crate::scheduler::features::node_affinity::*;
 
-    pub use crate::simulation::workload::*;
-    pub use crate::simulation::cluster_state::*;
-    pub use crate::simulation::experiment::*;
-    pub use crate::simulation::init::*;
+    pub use crate::simulation::init_trace::*;
+    pub use crate::simulation::init_nodes::*;
+    pub use crate::simulation::init_config::*;
+    pub use crate::simulation::simulation::*;
     pub use crate::simulation::monitoring::*;
 
     pub use crate::kubelet::kubelet::*;
@@ -98,10 +98,10 @@ fn main() {
     // Integrity tests
     Test::test_all();
 
-    let mut value = String::new();
-    stdin().read_line(&mut value).unwrap();
-    value = value.trim().to_string();
-    // let value = "perf".to_string();
+    // let mut value = String::new();
+    // stdin().read_line(&mut value).unwrap();
+    // value = value.trim().to_string();
+    let value = "".to_string();
 
     // Test pod eviction
     // if value == "evict" {
@@ -140,95 +140,140 @@ fn main() {
     // }
 
     // Test pod cluster autoscaler
-    if value == "ca" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/test_ca.yaml".to_string(),
-            "./data/workload/test_ca.yaml".to_string(),
+    if value == "" {
+        let mut init_config = InitConfig::from_yaml(&"./data/cluster_state/test_ca.yaml".to_string());
+        let mut init_nodes = InitNodes::from_yaml(&"./data/cluster_state/test_ca.yaml".to_string());
+        let mut init_trace = InitTrace::from_file(&"./data/workload/test_ca.yaml".to_string());
+
+        // Prepare input
+        init_config.prepare();
+        init_nodes.prepare();
+        init_trace.prepare();
+
+        let mut test = Simulation::new(
             "./data/out/test_ca.txt".to_string(),
+            init_config,
+            init_nodes,
+            init_trace,
             179,
-        );
-        test.add_scheduler(Box::new(ActiveQDefault::default()),
-                           Box::new(BackOffQDefault::default()),
-                           vec![Box::new(FilterNodeSelector)],
-                           vec![Box::new(FilterAlwaysTrue)],
-                           vec![Box::new(ScoreTetris)],
-                           vec![Box::new(ScoreNormalizeSkip)],
-                           vec![2]);
-        test.add_ca();
-
-        test.prepare();
-        test.run_for_duration(100.0);
-
-        test.enable_ca();
-        test.run_for_duration(20.0);
-
-        test.disable_ca();
-        test.run_for_duration(100.0);
-
-        test.enable_ca();
-        test.run_for_duration(100.0);
-
-    }
-
-    // Test horizontal pod autoscaler
-    if value == "vpa" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/test_vpa.yaml".to_string(),
-            "./data/workload/test_vpa.yaml".to_string(),
-            "./data/out/test_vpa.txt".to_string(),
-            179,
+            Box::new(ActiveQDefault::default()),
+            Box::new(BackOffQDefault::default()),
+            vec![Box::new(FilterNodeSelector)],
+            vec![Box::new(FilterAlwaysTrue)],
+            vec![Box::new(ScoreTetris)],
+            vec![Box::new(ScoreNormalizeSkip)],
+            vec![2]
         );
 
-        test.add_scheduler(Box::new(ActiveQDefault::default()),
-                           Box::new(BackOffQDefault::default()),
-                           vec![Box::new(FilterNodeSelector)],
-                           vec![Box::new(FilterAlwaysTrue)],
-                           vec![Box::new(ScoreTetris)],
-                           vec![Box::new(ScoreNormalizeSkip)],
-                           vec![2]);
-        test.add_vpa();
-        test.enable_dynamic_update();
-
         test.prepare();
-        test.enable_vpa();
-        // test.step_until_no_events();
+        test.run_for_duration(50.0);
 
-        // test.enable_vpa();
-        test.run_for_duration(40.0);
-    }
-
-    // Test horizontal pod autoscaler
-    if value == "hpa" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/test_hpa.yaml".to_string(),
-            "./data/workload/test_hpa.yaml".to_string(),
-            "./data/out/test_hpa.txt".to_string(),
-            179,
-        );
-
-        test.add_scheduler(Box::new(ActiveQDefault::default()),
-                           Box::new(BackOffQDefault::default()),
-                           vec![Box::new(FilterNodeSelector)],
-                           vec![Box::new(FilterAlwaysTrue)],
-                           vec![Box::new(ScoreTetris)],
-                           vec![Box::new(ScoreNormalizeSkip)],
-                           vec![2]);
-        test.add_hpa();
-        test.enable_dynamic_update();
-
-        test.prepare();
-        test.enable_hpa();
-        // test.step_until_no_events();
-
-        // test.enable_hpa();
-        test.run_for_duration(200.0);
+        // test.add_ca();
         //
-        // test.disable_hpa();
-        // test.run_for_duration(50.0);
-        //
-        // test.enable_hpa();
+        // test.prepare();
         // test.run_for_duration(100.0);
+        //
+        // test.enable_ca();
+        // test.run_for_duration(20.0);
+        //
+        // test.disable_ca();
+        // test.run_for_duration(100.0);
+        //
+        // test.enable_ca();
+        // test.run_for_duration(100.0);
+
     }
+
+    // // Test pod cluster autoscaler
+    // if value == "ca" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/test_ca.yaml".to_string(),
+    //         "./data/workload/test_ca.yaml".to_string(),
+    //         "./data/out/test_ca.txt".to_string(),
+    //         179,
+    //     );
+    //     test.add_scheduler(Box::new(ActiveQDefault::default()),
+    //                        Box::new(BackOffQDefault::default()),
+    //                        vec![Box::new(FilterNodeSelector)],
+    //                        vec![Box::new(FilterAlwaysTrue)],
+    //                        vec![Box::new(ScoreTetris)],
+    //                        vec![Box::new(ScoreNormalizeSkip)],
+    //                        vec![2]);
+    //     test.add_ca();
+    //
+    //     test.prepare();
+    //     test.run_for_duration(100.0);
+    //
+    //     test.enable_ca();
+    //     test.run_for_duration(20.0);
+    //
+    //     test.disable_ca();
+    //     test.run_for_duration(100.0);
+    //
+    //     test.enable_ca();
+    //     test.run_for_duration(100.0);
+    //
+    // }
+    //
+    // // Test horizontal pod autoscaler
+    // if value == "vpa" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/test_vpa.yaml".to_string(),
+    //         "./data/workload/test_vpa.yaml".to_string(),
+    //         "./data/out/test_vpa.txt".to_string(),
+    //         179,
+    //     );
+    //
+    //     test.add_scheduler(Box::new(ActiveQDefault::default()),
+    //                        Box::new(BackOffQDefault::default()),
+    //                        vec![Box::new(FilterNodeSelector)],
+    //                        vec![Box::new(FilterAlwaysTrue)],
+    //                        vec![Box::new(ScoreTetris)],
+    //                        vec![Box::new(ScoreNormalizeSkip)],
+    //                        vec![2]);
+    //     test.add_vpa();
+    //     test.enable_dynamic_update();
+    //
+    //     test.prepare();
+    //     test.enable_vpa();
+    //     // test.step_until_no_events();
+    //
+    //     // test.enable_vpa();
+    //     test.run_for_duration(40.0);
+    // }
+    //
+    // // Test horizontal pod autoscaler
+    // if value == "hpa" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/test_hpa.yaml".to_string(),
+    //         "./data/workload/test_hpa.yaml".to_string(),
+    //         "./data/out/test_hpa.txt".to_string(),
+    //         179,
+    //     );
+    //
+    //     test.add_scheduler(Box::new(ActiveQDefault::default()),
+    //                        Box::new(BackOffQDefault::default()),
+    //                        vec![Box::new(FilterNodeSelector)],
+    //                        vec![Box::new(FilterAlwaysTrue)],
+    //                        vec![Box::new(ScoreTetris)],
+    //                        vec![Box::new(ScoreNormalizeSkip)],
+    //                        vec![2]);
+    //     test.add_hpa();
+    //     test.enable_dynamic_update();
+    //
+    //     test.prepare();
+    //     test.enable_hpa();
+    //     // test.step_until_no_events();
+    //
+    //     // test.enable_hpa();
+    //     test.run_for_duration(200.0);
+    //     //
+    //     // test.disable_hpa();
+    //     // test.run_for_duration(50.0);
+    //     //
+    //     // test.enable_hpa();
+    //     // test.run_for_duration(100.0);
+    // }
 
 
     // // test node affinity
@@ -264,40 +309,40 @@ fn main() {
     //     test.step_until_no_events();
     // }
 
-    // Test on Google cluster trace with input as csv
-    if value == "gcsv" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/test_gcsv.yaml".to_string(),
-            "./data/workload/test_gcsv.csv".to_string(),
-            "./data/out/test_gcsv.txt".to_string(),
-            179,
-        );
-        test.add_scheduler(Box::new(ActiveQDefault::default()),
-                           Box::new(BackOffQDefault::default()),
-                           vec![Box::new(FilterNodeSelector)],
-                           vec![Box::new(FilterAlwaysTrue)],
-                           vec![Box::new(ScoreTetris)],
-                           vec![Box::new(ScoreNormalizeSkip)],
-                           vec![1]);
-        test.prepare();
-        test.step_until_time(60.0 * 60.0 * 24.0);
-    }
-
-    if value == "perf" {
-        let mut test = Experiment::new(
-            "./data/cluster_state/test_gcsv.yaml".to_string(),
-            "./data/workload/test_perf_small.csv".to_string(),
-            "./data/out/test_perf.txt".to_string(),
-            179,
-        );
-        test.add_scheduler(Box::new(ActiveQDefault::default()),
-                           Box::new(BackOffQDefault::default()),
-                           vec![Box::new(FilterNodeSelector)],
-                           vec![Box::new(FilterAlwaysTrue)],
-                           vec![Box::new(ScoreTetris)],
-                           vec![Box::new(ScoreNormalizeSkip)],
-                           vec![2]);
-        test.prepare();
-        test.step_until_time(60.0 * 60.0 * 60.0);
-    }
+    // // Test on Google cluster trace with input as csv
+    // if value == "gcsv" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/test_gcsv.yaml".to_string(),
+    //         "./data/workload/test_gcsv.csv".to_string(),
+    //         "./data/out/test_gcsv.txt".to_string(),
+    //         179,
+    //     );
+    //     test.add_scheduler(Box::new(ActiveQDefault::default()),
+    //                        Box::new(BackOffQDefault::default()),
+    //                        vec![Box::new(FilterNodeSelector)],
+    //                        vec![Box::new(FilterAlwaysTrue)],
+    //                        vec![Box::new(ScoreTetris)],
+    //                        vec![Box::new(ScoreNormalizeSkip)],
+    //                        vec![1]);
+    //     test.prepare();
+    //     test.step_until_time(60.0 * 60.0 * 24.0);
+    // }
+    //
+    // if value == "perf" {
+    //     let mut test = Experiment::new(
+    //         "./data/cluster_state/test_gcsv.yaml".to_string(),
+    //         "./data/workload/test_perf_small.csv".to_string(),
+    //         "./data/out/test_perf.txt".to_string(),
+    //         179,
+    //     );
+    //     test.add_scheduler(Box::new(ActiveQDefault::default()),
+    //                        Box::new(BackOffQDefault::default()),
+    //                        vec![Box::new(FilterNodeSelector)],
+    //                        vec![Box::new(FilterAlwaysTrue)],
+    //                        vec![Box::new(ScoreTetris)],
+    //                        vec![Box::new(ScoreNormalizeSkip)],
+    //                        vec![2]);
+    //     test.prepare();
+    //     test.step_until_time(60.0 * 60.0 * 60.0);
+    // }
 }
