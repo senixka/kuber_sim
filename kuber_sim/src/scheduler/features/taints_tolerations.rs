@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 // https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TaintTolerationEffect {
@@ -8,7 +7,6 @@ pub enum TaintTolerationEffect {
     NoSchedule = 0,
     PreferNoSchedule = 1,
 }
-
 
 // https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -18,14 +16,12 @@ pub enum TaintTolerationOperator {
     Exists = 1,
 }
 
-
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Taint {
     pub key: String,
     pub value: String,
     pub effect: TaintTolerationEffect,
 }
-
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Toleration {
@@ -35,7 +31,6 @@ pub struct Toleration {
     pub operator: TaintTolerationOperator,
     pub effect: TaintTolerationEffect,
 }
-
 
 impl Taint {
     //
@@ -58,7 +53,8 @@ impl Taint {
         }
 
         if tol.operator == TaintTolerationOperator::Exists
-            || (tol.operator == TaintTolerationOperator::Equal && self.value == tol.value) {
+            || (tol.operator == TaintTolerationOperator::Equal && self.value == tol.value)
+        {
             return true;
         }
         return false;

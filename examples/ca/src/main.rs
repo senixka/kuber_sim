@@ -1,6 +1,5 @@
-use std::time::Duration;
 use kuber_sim::my_imports::*;
-
+use std::time::Duration;
 
 fn main() {
     // println!("Node: {0}", size_of::<Node>());
@@ -86,8 +85,8 @@ fn main() {
             vec![Box::new(FilterAlwaysTrue)],
             vec![Box::new(ScoreTetris)],
             vec![Box::new(ScoreNormalizeSkip)],
-            vec![2]);
-
+            vec![2],
+        );
 
         let mut exp = Experiment::new();
         exp.add_simulation(
@@ -100,7 +99,7 @@ fn main() {
             |sim: &mut Simulation| {
                 sim.prepare();
                 sim.step_for_duration(42.0);
-            }
+            },
         );
 
         // --------------------------- Change ---------------------------
@@ -118,7 +117,7 @@ fn main() {
             |sim: &mut Simulation| {
                 sim.prepare();
                 sim.step_for_duration(23.0);
-            }
+            },
         );
 
         exp.spawn_all();
@@ -216,7 +215,6 @@ fn main() {
     //     // test.enable_hpa();
     //     // test.run_for_duration(100.0);
     // }
-
 
     // // test node affinity
     // if value == "na" {

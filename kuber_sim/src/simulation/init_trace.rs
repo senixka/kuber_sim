@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TraceEvent {
     AddPodGroup(PodGroup),
@@ -35,7 +34,6 @@ impl PartialEq for TraceEventWrapper {
 
 impl Eq for TraceEventWrapper {}
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -43,7 +41,6 @@ pub struct InitTrace {
     #[serde(default)]
     pub trace: Vec<TraceEventWrapper>,
 }
-
 
 impl InitTrace {
     pub fn from_file(path: &String) -> Self {
@@ -177,11 +174,7 @@ impl InitTrace {
                     TraceEvent::RemovePodGroup(inner_event) => {
                         // Emit inner event
                         assert!(last_time <= delayed.submit_time);
-                        emitter.emit_ordered(
-                            inner_event,
-                            api_sim_id,
-                            delayed.submit_time
-                        );
+                        emitter.emit_ordered(inner_event, api_sim_id, delayed.submit_time);
                         last_time = delayed.submit_time;
                     }
                     TraceEvent::AddPodGroup(_) => {
@@ -200,11 +193,7 @@ impl InitTrace {
 
                         // Emit AddNode event
                         assert!(last_time <= wrapper.submit_time);
-                        emitter.emit_ordered(
-                            EventAddPod { pod: pod.clone() },
-                            api_sim_id,
-                            wrapper.submit_time
-                        );
+                        emitter.emit_ordered(EventAddPod { pod: pod.clone() }, api_sim_id, wrapper.submit_time);
                         last_time = wrapper.submit_time;
                     }
 
@@ -212,7 +201,9 @@ impl InitTrace {
                     if pod_group.group_duration != 0.0 {
                         delayed_events.insert(TraceEventWrapper {
                             submit_time: wrapper.submit_time + pod_group.group_duration,
-                            event: TraceEvent::RemovePodGroup(EventRemovePodGroup { group_uid: pod_group.group_uid }),
+                            event: TraceEvent::RemovePodGroup(EventRemovePodGroup {
+                                group_uid: pod_group.group_uid,
+                            }),
                         });
                     }
                 }
@@ -229,11 +220,7 @@ impl InitTrace {
                 TraceEvent::RemovePodGroup(inner_event) => {
                     // Emit inner event
                     assert!(last_time <= delayed.submit_time);
-                    emitter.emit_ordered(
-                        inner_event,
-                        api_sim_id,
-                        delayed.submit_time
-                    );
+                    emitter.emit_ordered(inner_event, api_sim_id, delayed.submit_time);
                     last_time = delayed.submit_time;
                 }
                 TraceEvent::AddPodGroup(_) => {

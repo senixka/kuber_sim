@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 pub struct CA {
     ctx: dsc::SimulationContext,
     init_config: Rc<RefCell<InitConfig>>,
@@ -11,26 +10,27 @@ pub struct CA {
     is_turned_on: bool,
 
     // Pool of free kubelets
-    kubelet_pool: Vec<(dsc::Id, Rc<RefCell<Kubelet>>)>,                 // Vec<(kubelet_sim_id, kubelet)>
+    kubelet_pool: Vec<(dsc::Id, Rc<RefCell<Kubelet>>)>, // Vec<(kubelet_sim_id, kubelet)>
 
     // Free nodes in each group_uid
-    free_nodes_by_group: BTreeMap<u64, NodeGroup>,                      // BTreeMap<group_uid, node_group>
+    free_nodes_by_group: BTreeMap<u64, NodeGroup>, // BTreeMap<group_uid, node_group>
 
     // Currently used nodes
-    used_nodes: BTreeMap<u64, (dsc::Id, Rc<RefCell<Kubelet>>, u64)>,    // BTreeMap<node_uid, (kubelet_sim_id, kubelet, group_uid)>
+    used_nodes: BTreeMap<u64, (dsc::Id, Rc<RefCell<Kubelet>>, u64)>, // BTreeMap<node_uid, (kubelet_sim_id, kubelet, group_uid)>
 
     // Node candidates on removal
-    low_utilization: BTreeMap<u64, u64>,                                // BTreeMap<node_uid, cycle_counter>
+    low_utilization: BTreeMap<u64, u64>, // BTreeMap<node_uid, cycle_counter>
 }
 
-
 impl CA {
-    pub fn new(sim: &mut dsc::Simulation,
-               ctx: dsc::SimulationContext,
-               init_config: Rc<RefCell<InitConfig>>,
-               init_nodes: Rc<RefCell<InitNodes>>,
-               monitoring: Rc<RefCell<Monitoring>>,
-               api_sim_id: dsc::Id) -> Self {
+    pub fn new(
+        sim: &mut dsc::Simulation,
+        ctx: dsc::SimulationContext,
+        init_config: Rc<RefCell<InitConfig>>,
+        init_nodes: Rc<RefCell<InitNodes>>,
+        monitoring: Rc<RefCell<Monitoring>>,
+        api_sim_id: dsc::Id,
+    ) -> Self {
         let mut ca = Self {
             ctx,
             init_config: init_config.clone(),
@@ -73,7 +73,11 @@ impl CA {
             ca.free_nodes_by_group.insert(group.group_uid, group.clone());
 
             // Prepare group's node to get correct values of available resources
-            ca.free_nodes_by_group.get_mut(&group.group_uid).unwrap().node.prepare(group.group_uid);
+            ca.free_nodes_by_group
+                .get_mut(&group.group_uid)
+                .unwrap()
+                .node
+                .prepare(group.group_uid);
         }
 
         return ca;
@@ -84,20 +88,27 @@ impl CA {
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
             self.is_turned_on = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().ca.self_update_period);
+            self.ctx
+                .emit_self(EventSelfUpdate {}, self.init_config.borrow().ca.self_update_period);
         }
     }
 
     pub fn turn_off(&mut self) {
         if self.is_turned_on {
             self.is_turned_on = false;
-            self.ctx.cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
+            self.ctx
+                .cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
         }
     }
 
     ////////////////// Process metrics //////////////////
 
-    pub fn process_metrics(&mut self, pending_pod_count: u64, used_nodes_utilization: &Vec<(u64, f64, f64)>, may_help: Option<u64>) {
+    pub fn process_metrics(
+        &mut self,
+        pending_pod_count: u64,
+        used_nodes_utilization: &Vec<(u64, f64, f64)>,
+        may_help: Option<u64>,
+    ) {
         // Remove nodes with low utilization
         let (min_cpu, min_memory) = (
             self.init_config.borrow().ca.remove_node_cpu_fraction,
@@ -122,11 +133,15 @@ impl CA {
 
             // If cycle count more than remove threshold
             if *cycles >= self.init_config.borrow().ca.remove_node_cycle_delay {
-                dp_ca!("{:.12} ca Issues EventRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
+                dp_ca!(
+                    "{:.12} ca Issues EventRemoveNode node_uid:{:?}",
+                    self.ctx.time(),
+                    node_uid
+                );
                 self.ctx.emit(
                     EventRemoveNode { node_uid },
                     self.api_sim_id,
-                    self.init_config.borrow().network_delays.ca2api
+                    self.init_config.borrow().network_delays.ca2api,
                 );
             }
         }
@@ -161,20 +176,24 @@ impl CA {
                 kubelet.borrow_mut().turn_on();
 
                 // Update used nodes
-                self.used_nodes.insert(node.metadata.uid, (kubelet_sim_id, kubelet, group_uid));
+                self.used_nodes
+                    .insert(node.metadata.uid, (kubelet_sim_id, kubelet, group_uid));
 
                 // Emit AddNode event
-                dp_ca!("{:.12} ca node:{:?} added -> cluster", self.ctx.time(), node.metadata.uid);
+                dp_ca!(
+                    "{:.12} ca node:{:?} added -> cluster",
+                    self.ctx.time(),
+                    node.metadata.uid
+                );
                 self.ctx.emit(
                     EventAddNode { kubelet_sim_id, node },
                     self.api_sim_id,
-                    self.init_config.borrow().network_delays.ca2api + self.init_config.borrow().ca.add_node_isp_delay
+                    self.init_config.borrow().network_delays.ca2api + self.init_config.borrow().ca.add_node_isp_delay,
                 );
             }
         }
     }
 }
-
 
 impl dsc::EventHandler for CA {
     fn on(&mut self, event: dsc::Event) {
@@ -200,24 +219,33 @@ impl dsc::EventHandler for CA {
                 self.ctx.emit(
                     EventGetCAMetrics {
                         used_nodes: self.used_nodes.keys().map(|x| *x).collect(),
-                        available_nodes: self.free_nodes_by_group.iter().filter_map(
-                            |(_, group)|
-                            if group.amount > 0 { Some(group.clone()) } else { None }
-                        ).collect(),
+                        available_nodes: self
+                            .free_nodes_by_group
+                            .iter()
+                            .filter_map(|(_, group)| if group.amount > 0 { Some(group.clone()) } else { None })
+                            .collect(),
                     },
                     self.api_sim_id,
-                    self.init_config.borrow().network_delays.ca2api
+                    self.init_config.borrow().network_delays.ca2api,
                 );
 
                 // Emit Self-Update
-                self.ctx.emit_self(
-                    EventSelfUpdate {},
-                    self.init_config.borrow().ca.self_update_period
-                );
+                self.ctx
+                    .emit_self(EventSelfUpdate {}, self.init_config.borrow().ca.self_update_period);
             }
 
-            EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help } => {
-                dp_ca!("{:.12} ca EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}", self.ctx.time(), pending_pod_count, used_nodes_utilization, may_help);
+            EventPostCAMetrics {
+                pending_pod_count,
+                used_nodes_utilization,
+                may_help,
+            } => {
+                dp_ca!(
+                    "{:.12} ca EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}",
+                    self.ctx.time(),
+                    pending_pod_count,
+                    used_nodes_utilization,
+                    may_help
+                );
 
                 self.process_metrics(pending_pod_count, &used_nodes_utilization, may_help);
             }

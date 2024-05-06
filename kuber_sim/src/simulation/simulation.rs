@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 pub struct Simulation {
     sim: dsc::Simulation,
 
@@ -27,14 +26,15 @@ pub struct Simulation {
     is_preparation_done: bool,
 }
 
-
 impl Simulation {
-    pub fn new(output_file_path: String,
-               init_config: InitConfig,
-               init_nodes: InitNodes,
-               init_trace: InitTrace,
-               pipeline_config: PipelineConfig,
-               seed: u64) -> Self {
+    pub fn new(
+        output_file_path: String,
+        init_config: InitConfig,
+        init_nodes: InitNodes,
+        init_trace: InitTrace,
+        pipeline_config: PipelineConfig,
+        seed: u64,
+    ) -> Self {
         // DSLab core
         let mut sim = dsc::Simulation::new(seed);
 
@@ -42,41 +42,36 @@ impl Simulation {
         let init_config_ptr = Rc::new(RefCell::new(init_config));
 
         // Api-server component
-        let api = Rc::new(RefCell::new(
-            APIServer::new(
-                sim.create_context("api_server"), init_config_ptr.clone()
-            )
-        ));
+        let api = Rc::new(RefCell::new(APIServer::new(
+            sim.create_context("api_server"),
+            init_config_ptr.clone(),
+        )));
         let api_id = sim.add_handler("api_server", api.clone());
 
         // Monitoring component
-        let monitoring = Rc::new(RefCell::new(
-            Monitoring::new(
-                sim.create_context("monitoring"), init_config_ptr.clone(), &output_file_path,
-            )
-        ));
+        let monitoring = Rc::new(RefCell::new(Monitoring::new(
+            sim.create_context("monitoring"),
+            init_config_ptr.clone(),
+            &output_file_path,
+        )));
         let _ = sim.add_handler("monitoring", monitoring.clone());
 
         assert_eq!(pipeline_config.scorers.len(), pipeline_config.score_normalizers.len());
         assert_eq!(pipeline_config.scorers.len(), pipeline_config.scorer_weights.len());
 
-        let scheduler = Rc::new(RefCell::new(
-            Scheduler::new(
-                sim.create_context("scheduler"),
-                init_config_ptr.clone(),
-                monitoring.clone(),
-                api_id,
-
-                pipeline_config.active_queue,
-                pipeline_config.backoff_queue,
-
-                pipeline_config.filters,
-                pipeline_config.post_filters,
-                pipeline_config.scorers,
-                pipeline_config.score_normalizers,
-                pipeline_config.scorer_weights,
-            )
-        ));
+        let scheduler = Rc::new(RefCell::new(Scheduler::new(
+            sim.create_context("scheduler"),
+            init_config_ptr.clone(),
+            monitoring.clone(),
+            api_id,
+            pipeline_config.active_queue,
+            pipeline_config.backoff_queue,
+            pipeline_config.filters,
+            pipeline_config.post_filters,
+            pipeline_config.scorers,
+            pipeline_config.score_normalizers,
+            pipeline_config.scorer_weights,
+        )));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
 
         Self {
@@ -134,10 +129,18 @@ impl Simulation {
     pub fn prepare(&mut self) {
         assert_eq!(self.is_preparation_done, false);
 
-        self.api.borrow_mut().prepare(self.scheduler_id, self.ca_id, self.hpa_id, self.vpa_id);
+        self.api
+            .borrow_mut()
+            .prepare(self.scheduler_id, self.ca_id, self.hpa_id, self.vpa_id);
         self.monitoring.borrow_mut().presimulation_init();
 
-        self.init_nodes.submit(&mut self.sim, &self.api.borrow().ctx, self.init_config.clone(), self.monitoring.clone(), self.api_id);
+        self.init_nodes.submit(
+            &mut self.sim,
+            &self.api.borrow().ctx,
+            self.init_config.clone(),
+            self.monitoring.clone(),
+            self.api_id,
+        );
         self.init_trace.submit(&self.api.borrow().ctx, self.api_id);
 
         // TODO: clear local nodes and trace
@@ -152,7 +155,6 @@ impl Simulation {
     pub fn disable_dynamic_update(&self) {
         self.monitoring.borrow_mut().disable_dynamic_update();
     }
-
 
     pub fn enable_ca(&self) {
         self.ca.clone().unwrap().borrow_mut().turn_on();

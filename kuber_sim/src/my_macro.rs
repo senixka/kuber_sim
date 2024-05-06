@@ -7,9 +7,8 @@ macro_rules! debug_print {
 #[macro_export]
 #[cfg(not(feature = "dp_all"))]
 macro_rules! debug_print {
-    ($( $args:expr ),*) => {}
+    ($( $args:expr ),*) => {};
 }
-
 
 #[macro_export]
 #[cfg(feature = "dp_api_server")]
@@ -20,9 +19,8 @@ macro_rules! dp_api_server {
 #[macro_export]
 #[cfg(not(feature = "dp_api_server"))]
 macro_rules! dp_api_server {
-    ($( $args:expr ),*) => {}
+    ($( $args:expr ),*) => {};
 }
-
 
 #[macro_export]
 #[cfg(feature = "dp_scheduler")]
@@ -33,9 +31,8 @@ macro_rules! dp_scheduler {
 #[macro_export]
 #[cfg(not(feature = "dp_scheduler"))]
 macro_rules! dp_scheduler {
-    ($( $args:expr ),*) => {}
+    ($( $args:expr ),*) => {};
 }
-
 
 #[macro_export]
 #[cfg(feature = "dp_kubelet")]
@@ -46,9 +43,8 @@ macro_rules! dp_kubelet {
 #[macro_export]
 #[cfg(not(feature = "dp_kubelet"))]
 macro_rules! dp_kubelet {
-    ($( $args:expr ),*) => {}
+    ($( $args:expr ),*) => {};
 }
-
 
 #[macro_export]
 #[cfg(feature = "dp_ca")]
@@ -59,9 +55,8 @@ macro_rules! dp_ca {
 #[macro_export]
 #[cfg(not(feature = "dp_ca"))]
 macro_rules! dp_ca {
-    ($( $args:expr ),*) => {}
+    ($( $args:expr ),*) => {};
 }
-
 
 #[macro_export]
 #[cfg(feature = "dp_hpa")]
@@ -72,9 +67,8 @@ macro_rules! dp_hpa {
 #[macro_export]
 #[cfg(not(feature = "dp_hpa"))]
 macro_rules! dp_hpa {
-    ($( $args:expr ),*) => {}
+    ($( $args:expr ),*) => {};
 }
-
 
 #[macro_export]
 #[cfg(feature = "dp_vpa")]
@@ -85,5 +79,5 @@ macro_rules! dp_vpa {
 #[macro_export]
 #[cfg(not(feature = "dp_vpa"))]
 macro_rules! dp_vpa {
-    ($( $args:expr ),*) => {}
+    ($( $args:expr ),*) => {};
 }

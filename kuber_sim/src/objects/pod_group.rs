@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PodGroup {
     pub pod_count: u64,
@@ -12,7 +11,6 @@ pub struct PodGroup {
     #[serde(skip)]
     pub group_uid: u64,
 }
-
 
 impl PodGroup {
     pub fn prepare(&mut self) {

@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HPAProfile {
     pub min_size: u64,

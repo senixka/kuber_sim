@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PodSpec {
@@ -26,7 +25,6 @@ pub struct PodSpec {
     #[serde(default)]
     pub node_affinity: NodeAffinity,
 }
-
 
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -61,7 +59,6 @@ pub enum PodPhase {
     Removed = 6,
 }
 
-
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/#quality-of-service-classes
 #[derive(Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub enum QoSClass {
@@ -70,7 +67,6 @@ pub enum QoSClass {
     Burstable = 1,
     Guaranteed = 2,
 }
-
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podstatus-v1-core
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -87,7 +83,6 @@ pub struct PodStatus {
     #[serde(skip)]
     pub cluster_resource_starvation: bool,
 }
-
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -130,19 +125,19 @@ impl Pod {
         //   - Pod's memory limit must equal the memory request.
         //   - Pod must have a CPU limit and a CPU request.
         //   - Pod's CPU limit must equal the CPU request.
-        if self.spec.request_cpu == self.spec.limit_cpu
-            && self.spec.request_memory == self.spec.limit_memory {
+        if self.spec.request_cpu == self.spec.limit_cpu && self.spec.request_memory == self.spec.limit_memory {
             self.status.qos_class = QoSClass::Guaranteed;
         }
-
         // A Pod is given a QoS class of Burstable if:
         //   - The Pod does not meet the criteria for QoS class Guaranteed.
         //   - Pod has a memory or CPU request or limit.
-        else if self.spec.request_cpu != 0 || self.spec.request_memory != 0
-                || self.spec.limit_cpu < i64::MAX || self.spec.limit_memory < i64::MAX {
+        else if self.spec.request_cpu != 0
+            || self.spec.request_memory != 0
+            || self.spec.limit_cpu < i64::MAX
+            || self.spec.limit_memory < i64::MAX
+        {
             self.status.qos_class = QoSClass::Burstable;
         }
-
         // A Pod has a QoS class of BestEffort if:
         //   - It doesn't meet the criteria for either Guaranteed or Burstable.
         else {

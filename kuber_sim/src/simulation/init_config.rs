@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkDelays {
     // Scheduler
@@ -39,7 +38,6 @@ impl NetworkDelays {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigMonitoring {
     pub self_update_period: f64,
@@ -47,10 +45,12 @@ pub struct ConfigMonitoring {
 
 impl ConfigMonitoring {
     pub fn prepare(&mut self) {
-        assert!(self.self_update_period > 0.0, "ConfigMonitoring.self_update_period must be > 0.0");
+        assert!(
+            self.self_update_period > 0.0,
+            "ConfigMonitoring.self_update_period must be > 0.0"
+        );
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigScheduler {
@@ -62,8 +62,14 @@ pub struct ConfigScheduler {
 
 impl ConfigScheduler {
     pub fn prepare(&mut self) {
-        assert!(self.self_update_period > 0.0, "ConfigScheduler.self_update_period must be > 0.0");
-        assert!(self.unschedulable_queue_backoff_delay >= 0.0, "ConfigScheduler.unschedulable_queue_backoff_delay must be >= 0.0");
+        assert!(
+            self.self_update_period > 0.0,
+            "ConfigScheduler.self_update_period must be > 0.0"
+        );
+        assert!(
+            self.unschedulable_queue_backoff_delay >= 0.0,
+            "ConfigScheduler.unschedulable_queue_backoff_delay must be >= 0.0"
+        );
 
         // Zero is special value
         if self.cycle_max_scheduled == 0 {
@@ -74,7 +80,6 @@ impl ConfigScheduler {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigCA {
@@ -92,13 +97,24 @@ pub struct ConfigCA {
 
 impl ConfigCA {
     pub fn prepare(&mut self) {
-        assert!(self.self_update_period > 0.0, "ConfigCA.self_update_period must be > 0.0");
-        assert!(self.add_node_isp_delay >= 0.0, "ConfigCA.add_node_isp_delay must be >= 0.0");
-        assert!(0.0 <= self.remove_node_cpu_fraction && self.remove_node_cpu_fraction <= 1.0, "ConfigCA.remove_node_cpu_fraction must be in [0.0, 1.0]");
-        assert!(0.0 <= self.remove_node_memory_fraction && self.remove_node_memory_fraction <= 1.0, "ConfigCA.remove_node_memory_fraction must be in [0.0, 1.0]");
+        assert!(
+            self.self_update_period > 0.0,
+            "ConfigCA.self_update_period must be > 0.0"
+        );
+        assert!(
+            self.add_node_isp_delay >= 0.0,
+            "ConfigCA.add_node_isp_delay must be >= 0.0"
+        );
+        assert!(
+            0.0 <= self.remove_node_cpu_fraction && self.remove_node_cpu_fraction <= 1.0,
+            "ConfigCA.remove_node_cpu_fraction must be in [0.0, 1.0]"
+        );
+        assert!(
+            0.0 <= self.remove_node_memory_fraction && self.remove_node_memory_fraction <= 1.0,
+            "ConfigCA.remove_node_memory_fraction must be in [0.0, 1.0]"
+        );
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigHPA {
@@ -107,11 +123,12 @@ pub struct ConfigHPA {
 
 impl ConfigHPA {
     pub fn prepare(&mut self) {
-        assert!(self.self_update_period > 0.0, "ConfigHPA.self_update_period must be > 0.0");
+        assert!(
+            self.self_update_period > 0.0,
+            "ConfigHPA.self_update_period must be > 0.0"
+        );
     }
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigVPA {
@@ -120,11 +137,12 @@ pub struct ConfigVPA {
 
 impl ConfigVPA {
     pub fn prepare(&mut self) {
-        assert!(self.self_update_period > 0.0, "ConfigVPA.self_update_period must be > 0.0");
+        assert!(
+            self.self_update_period > 0.0,
+            "ConfigVPA.self_update_period must be > 0.0"
+        );
     }
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitConfig {
@@ -135,7 +153,6 @@ pub struct InitConfig {
     pub hpa: ConfigHPA,
     pub vpa: ConfigVPA,
 }
-
 
 impl InitConfig {
     pub fn from_yaml(path: &String) -> Self {

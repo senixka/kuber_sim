@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 pub struct HPA {
     ctx: dsc::SimulationContext,
     init_config: Rc<RefCell<InitConfig>>,
@@ -14,11 +13,8 @@ pub struct HPA {
     managed_groups: HashMap<u64, HPAGroupInfo>,
 }
 
-
 impl HPA {
-    pub fn new(ctx: dsc::SimulationContext,
-               init_config: Rc<RefCell<InitConfig>>,
-               api_sim_id: dsc::Id) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, init_config: Rc<RefCell<InitConfig>>, api_sim_id: dsc::Id) -> Self {
         Self {
             ctx,
             init_config: init_config.clone(),
@@ -37,17 +33,18 @@ impl HPA {
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
             self.is_turned_on = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().hpa.self_update_period);
+            self.ctx
+                .emit_self(EventSelfUpdate {}, self.init_config.borrow().hpa.self_update_period);
         }
     }
 
     pub fn turn_off(&mut self) {
         if self.is_turned_on {
             self.is_turned_on = false;
-            self.ctx.cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
+            self.ctx
+                .cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
         }
     }
-
 
     ////////////////// Process metrics //////////////////
 
@@ -65,7 +62,11 @@ impl HPA {
 
             // If group is too small -> AddPod
             if profile.min_size > group_size {
-                dp_hpa!("{:.12} hpa pod(group_uid:{:?}) add -> cluster (size)", self.ctx.time(), group_uid);
+                dp_hpa!(
+                    "{:.12} hpa pod(group_uid:{:?}) add -> cluster (size)",
+                    self.ctx.time(),
+                    group_uid
+                );
 
                 // Locate pod template
                 let mut pod = info.pod_template.clone();
@@ -74,26 +75,37 @@ impl HPA {
                 // Emit AddPod event
                 self.send_add_pod(pod);
             }
-
             // If group size is too big -> RemovePod
             else if profile.max_size < group_size {
-                dp_hpa!("{:.12} hpa pod(group_uid:{:?}) remove <- cluster (size)", self.ctx.time(), group_uid);
+                dp_hpa!(
+                    "{:.12} hpa pod(group_uid:{:?}) remove <- cluster (size)",
+                    self.ctx.time(),
+                    group_uid
+                );
 
                 self.send_remove_pod(*info.alive_uids.last().unwrap());
             }
-
             // If group utilization is low and group size allows -> RemovePod
             else if profile.min_size < group_size
-                && (cpu <= profile.min_group_cpu_fraction && memory <= profile.min_group_memory_fraction) {
-                dp_hpa!("{:.12} hpa pod(group_uid:{:?}) remove <- cluster (resources)", self.ctx.time(), group_uid);
+                && (cpu <= profile.min_group_cpu_fraction && memory <= profile.min_group_memory_fraction)
+            {
+                dp_hpa!(
+                    "{:.12} hpa pod(group_uid:{:?}) remove <- cluster (resources)",
+                    self.ctx.time(),
+                    group_uid
+                );
 
                 self.send_remove_pod(*info.alive_uids.last().unwrap());
             }
-
             // If group utilization is high and group size allows -> AddPod
             else if profile.max_size > group_size
-                && (cpu >= profile.max_group_cpu_fraction || memory >= profile.max_group_memory_fraction) {
-                dp_hpa!("{:.12} hpa pod(group_uid:{:?}) add -> cluster (resources)", self.ctx.time(), group_uid);
+                && (cpu >= profile.max_group_cpu_fraction || memory >= profile.max_group_memory_fraction)
+            {
+                dp_hpa!(
+                    "{:.12} hpa pod(group_uid:{:?}) add -> cluster (resources)",
+                    self.ctx.time(),
+                    group_uid
+                );
 
                 // Locate pod template
                 let mut pod = info.pod_template.clone();
@@ -105,14 +117,13 @@ impl HPA {
         }
     }
 
-
     ////////////////// Send Events //////////////////
 
     pub fn send_add_pod(&self, pod: Pod) {
         self.ctx.emit(
             EventAddPod { pod },
             self.api_sim_id,
-            self.init_config.borrow().network_delays.hpa2api
+            self.init_config.borrow().network_delays.hpa2api,
         );
     }
 
@@ -120,11 +131,10 @@ impl HPA {
         self.ctx.emit(
             EventRemovePod { pod_uid },
             self.api_sim_id,
-            self.init_config.borrow().network_delays.hpa2api
+            self.init_config.borrow().network_delays.hpa2api,
         );
     }
 }
-
 
 impl dsc::EventHandler for HPA {
     fn on(&mut self, event: dsc::Event) {
@@ -144,19 +154,26 @@ impl dsc::EventHandler for HPA {
             EventSelfUpdate {} => {
                 dp_hpa!("{:.12} hpa EventSelfUpdate", self.ctx.time());
 
-                assert!(self.is_turned_on, "Logic error. Self update should be canceled for HPA.");
+                assert!(
+                    self.is_turned_on,
+                    "Logic error. Self update should be canceled for HPA."
+                );
 
                 // Scale up/down groups managed by HPA
                 self.make_decisions();
 
                 // Emit Self-Update
-                self.ctx.emit_self(
-                    EventSelfUpdate {},
-                    self.init_config.borrow().hpa.self_update_period
-                );
+                self.ctx
+                    .emit_self(EventSelfUpdate {}, self.init_config.borrow().hpa.self_update_period);
             }
 
-            EventHPAPodMetricsPost { group_uid, pod_uid, current_phase, current_cpu, current_memory } => {
+            EventHPAPodMetricsPost {
+                group_uid,
+                pod_uid,
+                current_phase,
+                current_cpu,
+                current_memory,
+            } => {
                 dp_hpa!(
                     "{:.12} hpa EventHPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
                     self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory

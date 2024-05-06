@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 pub trait IActiveQ {
     fn push(&mut self, pod: Pod);
     fn try_pop(&mut self) -> Option<Pod>;
@@ -11,22 +10,17 @@ pub trait IActiveQ {
 
 pub type ActiveQDefault = ActiveMinQ<ActiveQCmpDefault>;
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct ActiveMinQ<PodWrapper: TraitActiveQCmp> (pub BTreeSet<PodWrapper>);
+pub struct ActiveMinQ<PodWrapper: TraitActiveQCmp>(pub BTreeSet<PodWrapper>);
 
 impl<PodWrapper: TraitActiveQCmp> ActiveMinQ<PodWrapper> {
     pub fn new() -> Self {
-        Self {
-            0: BTreeSet::new()
-        }
+        Self { 0: BTreeSet::new() }
     }
 
     pub fn default() -> Self {
-        Self {
-            0: BTreeSet::default()
-        }
+        Self { 0: BTreeSet::default() }
     }
 }
 
@@ -37,13 +31,9 @@ impl<PodWrapper: TraitActiveQCmp + Send + 'static> IActiveQ for ActiveMinQ<PodWr
 
     fn try_pop(&mut self) -> Option<Pod> {
         return match self.0.pop_first() {
-            Some(wrapper) => {
-                Some(wrapper.inner())
-            }
-            None => {
-                None
-            }
-        }
+            Some(wrapper) => Some(wrapper.inner()),
+            None => None,
+        };
     }
 
     fn try_remove(&mut self, pod: Pod) -> bool {
@@ -59,22 +49,17 @@ impl<PodWrapper: TraitActiveQCmp + Send + 'static> IActiveQ for ActiveMinQ<PodWr
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct ActiveMaxQ<PodWrapper: TraitActiveQCmp> (pub BTreeSet<PodWrapper>);
+pub struct ActiveMaxQ<PodWrapper: TraitActiveQCmp>(pub BTreeSet<PodWrapper>);
 
 impl<PodWrapper: TraitActiveQCmp> ActiveMaxQ<PodWrapper> {
     pub fn new() -> Self {
-        Self {
-            0: BTreeSet::new()
-        }
+        Self { 0: BTreeSet::new() }
     }
 
     pub fn default() -> Self {
-        Self {
-            0: BTreeSet::default()
-        }
+        Self { 0: BTreeSet::default() }
     }
 }
 
@@ -85,13 +70,9 @@ impl<PodWrapper: TraitActiveQCmp + Send + 'static> IActiveQ for ActiveMaxQ<PodWr
 
     fn try_pop(&mut self) -> Option<Pod> {
         return match self.0.pop_last() {
-            Some(wrapper) => {
-                Some(wrapper.inner())
-            }
-            None => {
-                None
-            }
-        }
+            Some(wrapper) => Some(wrapper.inner()),
+            None => None,
+        };
     }
 
     fn try_remove(&mut self, pod: Pod) -> bool {
@@ -106,6 +87,5 @@ impl<PodWrapper: TraitActiveQCmp + Send + 'static> IActiveQ for ActiveMaxQ<PodWr
         return Box::new(ActiveMaxQ::<PodWrapper>::new());
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

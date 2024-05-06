@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BusyBoxInfinite {
     #[serde(skip)]
@@ -13,7 +12,6 @@ pub struct BusyBoxInfinite {
 
     pub shift_time: f64,
 }
-
 
 impl BusyBoxInfinite {
     pub fn start(&mut self, current_time: f64) -> (i64, i64, f64, bool) {

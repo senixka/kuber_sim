@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitNodes {
     #[serde(default)]
@@ -9,7 +8,6 @@ pub struct InitNodes {
     #[serde(default)]
     pub ca_nodes: Vec<NodeGroup>,
 }
-
 
 impl InitNodes {
     pub fn from_yaml(path: &String) -> Self {
@@ -35,12 +33,14 @@ impl InitNodes {
         }
     }
 
-    pub fn submit(&self,
-                  sim: &mut dsc::Simulation,
-                  emitter: &dsc::SimulationContext,
-                  init_config: Rc<RefCell<InitConfig>>,
-                  monitoring: Rc<RefCell<Monitoring>>,
-                  api_sim_id: dsc::Id) {
+    pub fn submit(
+        &self,
+        sim: &mut dsc::Simulation,
+        emitter: &dsc::SimulationContext,
+        init_config: Rc<RefCell<InitConfig>>,
+        monitoring: Rc<RefCell<Monitoring>>,
+        api_sim_id: dsc::Id,
+    ) {
         for node_group in self.nodes.iter() {
             for _ in 0..node_group.amount {
                 // Get node template
@@ -65,7 +65,13 @@ impl InitNodes {
                 // Register kubelet in simulation
                 let kubelet_id = sim.add_handler(name, kubelet.clone());
                 // Emit AddNode event
-                emitter.emit_now(EventAddNode { kubelet_sim_id: kubelet_id, node: node.clone() }, api_sim_id);
+                emitter.emit_now(
+                    EventAddNode {
+                        kubelet_sim_id: kubelet_id,
+                        node: node.clone(),
+                    },
+                    api_sim_id,
+                );
             }
         }
     }

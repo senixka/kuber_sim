@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeGroup {
     #[serde(skip)]
@@ -9,7 +8,6 @@ pub struct NodeGroup {
     pub amount: u64,
     pub node: Node,
 }
-
 
 impl NodeGroup {
     pub fn prepare(&mut self) {

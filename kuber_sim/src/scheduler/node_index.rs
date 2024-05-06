@@ -1,17 +1,18 @@
 use crate::my_imports::*;
 
-
-pub struct NodeRTree (RTree<Node>);
-
+pub struct NodeRTree(RTree<Node>);
 
 impl RTreeObject for Node {
     type Envelope = AABB<(i64, i64, i64)>;
 
     fn envelope(&self) -> Self::Envelope {
-        AABB::from_point((self.spec.available_cpu, self.spec.available_memory, self.metadata.uid as i64))
+        AABB::from_point((
+            self.spec.available_cpu,
+            self.spec.available_memory,
+            self.metadata.uid as i64,
+        ))
     }
 }
-
 
 impl NodeRTree {
     pub fn new() -> Self {

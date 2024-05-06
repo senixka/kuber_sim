@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Default)]
 pub struct VPAGroupInfo {
     // Pods VPA info
@@ -9,7 +8,6 @@ pub struct VPAGroupInfo {
     // Submitted with EventAddPod
     pub pod_template: Pod,
 }
-
 
 impl VPAGroupInfo {
     pub fn update_with_new_pod(&mut self, pod: &Pod, current_time: f64) {
@@ -27,7 +25,14 @@ impl VPAGroupInfo {
         self.uids.insert(pod.metadata.uid, VPAPodInfo::new(pod, current_time));
     }
 
-    pub fn update_with_pod_metrics(&mut self, pod_uid: u64, current_phase: PodPhase, current_cpu: f64, current_memory: f64, current_time: f64) {
+    pub fn update_with_pod_metrics(
+        &mut self,
+        pod_uid: u64,
+        current_phase: PodPhase,
+        current_cpu: f64,
+        current_memory: f64,
+        current_time: f64,
+    ) {
         // Locate pod info
         let pod_info = self.uids.get_mut(&pod_uid).unwrap();
         // Update pod info
@@ -36,18 +41,20 @@ impl VPAGroupInfo {
             current_time,
             current_phase,
             current_cpu,
-            current_memory
+            current_memory,
         );
     }
 
     pub fn remove_all_finished(&mut self) -> Vec<(u64, VPAPodInfo)> {
         // Find all finished uids
-        let finished: Vec<(u64, VPAPodInfo)> = self.uids.iter().filter_map(|x|
-            match x.1.is_finished() {
-                true => { Some((x.0.clone(), x.1.clone()))}
-                false => { None }
-            }
-        ).collect();
+        let finished: Vec<(u64, VPAPodInfo)> = self
+            .uids
+            .iter()
+            .filter_map(|x| match x.1.is_finished() {
+                true => Some((x.0.clone(), x.1.clone())),
+                false => None,
+            })
+            .collect();
 
         // Remove all finished uids
         for (uid, _) in &finished {

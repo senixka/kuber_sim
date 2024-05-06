@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 pub struct VPA {
     ctx: dsc::SimulationContext,
     init_config: Rc<RefCell<InitConfig>>,
@@ -13,11 +12,8 @@ pub struct VPA {
     managed_groups: HashMap<u64, VPAGroupInfo>,
 }
 
-
 impl VPA {
-    pub fn new(ctx: dsc::SimulationContext,
-               init_config: Rc<RefCell<InitConfig>>,
-               api_sim_id: dsc::Id) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, init_config: Rc<RefCell<InitConfig>>, api_sim_id: dsc::Id) -> Self {
         Self {
             ctx,
             init_config: init_config.clone(),
@@ -36,14 +32,16 @@ impl VPA {
     pub fn turn_on(&mut self) {
         if !self.is_turned_on {
             self.is_turned_on = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().vpa.self_update_period);
+            self.ctx
+                .emit_self(EventSelfUpdate {}, self.init_config.borrow().vpa.self_update_period);
         }
     }
 
     pub fn turn_off(&mut self) {
         if self.is_turned_on {
             self.is_turned_on = false;
-            self.ctx.cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
+            self.ctx
+                .cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
         }
     }
 
@@ -67,7 +65,14 @@ impl VPA {
 
                 // Get suggested spec resources
                 let (request_cpu, request_memory, limit_cpu, limit_memory) = pod_info.suggest(profile);
-                dp_vpa!("VPA reschedule failed pod_uid:{:?} with r_cpu:{:?} r_mem:{:?} l_cpu:{:?} l_mem:{:?}", _pod_uid, request_cpu, request_memory, limit_cpu, limit_memory);
+                dp_vpa!(
+                    "VPA reschedule failed pod_uid:{:?} with r_cpu:{:?} r_mem:{:?} l_cpu:{:?} l_mem:{:?}",
+                    _pod_uid,
+                    request_cpu,
+                    request_memory,
+                    limit_cpu,
+                    limit_memory
+                );
 
                 // Locate pod template
                 let mut pod = group_info.pod_template.clone();
@@ -86,7 +91,7 @@ impl VPA {
                 self.ctx.emit(
                     EventAddPod { pod },
                     self.api_sim_id,
-                    self.init_config.borrow().network_delays.vpa2api
+                    self.init_config.borrow().network_delays.vpa2api,
                 );
             }
 
@@ -109,7 +114,7 @@ impl VPA {
                 self.ctx.emit(
                     EventRemovePod { pod_uid },
                     self.api_sim_id,
-                    self.init_config.borrow().network_delays.vpa2api
+                    self.init_config.borrow().network_delays.vpa2api,
                 );
 
                 // Get suggested spec resources
@@ -131,7 +136,7 @@ impl VPA {
                 self.ctx.emit(
                     EventAddPod { pod },
                     self.api_sim_id,
-                    self.init_config.borrow().network_delays.vpa2api
+                    self.init_config.borrow().network_delays.vpa2api,
                 );
 
                 // Update pod info
@@ -159,7 +164,6 @@ impl VPA {
     // }
 }
 
-
 impl dsc::EventHandler for VPA {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
@@ -178,19 +182,26 @@ impl dsc::EventHandler for VPA {
             EventSelfUpdate {} => {
                 dp_vpa!("{:.12} vpa EventSelfUpdate", self.ctx.time());
 
-                assert!(self.is_turned_on, "Logic error. Self update should be canceled for VPA.");
+                assert!(
+                    self.is_turned_on,
+                    "Logic error. Self update should be canceled for VPA."
+                );
 
                 // Scale up/down groups managed by VPA
                 self.make_decisions();
 
                 // Emit Self-Update
-                self.ctx.emit_self(
-                    EventSelfUpdate {},
-                    self.init_config.borrow().vpa.self_update_period
-                );
+                self.ctx
+                    .emit_self(EventSelfUpdate {}, self.init_config.borrow().vpa.self_update_period);
             }
 
-            EventVPAPodMetricsPost { group_uid, pod_uid, current_phase, current_cpu, current_memory } => {
+            EventVPAPodMetricsPost {
+                group_uid,
+                pod_uid,
+                current_phase,
+                current_cpu,
+                current_memory,
+            } => {
                 dp_vpa!(
                     "{:.12} vpa EventVPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
                     self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory
@@ -204,7 +215,13 @@ impl dsc::EventHandler for VPA {
                 // Locate group info
                 let group_info = self.managed_groups.get_mut(&group_uid).unwrap();
                 // Update group info
-                group_info.update_with_pod_metrics(pod_uid, current_phase, current_cpu, current_memory, self.ctx.time());
+                group_info.update_with_pod_metrics(
+                    pod_uid,
+                    current_phase,
+                    current_cpu,
+                    current_memory,
+                    self.ctx.time(),
+                );
             }
 
             EventAddPod { pod } => {

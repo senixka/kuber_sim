@@ -2,9 +2,9 @@ use crate::my_imports::*;
 
 pub struct EvictionOrder {
     // (BestEffort) or (Burstable with usage > requests) pods
-    pub primary: BTreeSet<(i64, i64, u64)>,         // BTreeSet<(priority, memory_request - memory_usage, pod_uid)>
+    pub primary: BTreeSet<(i64, i64, u64)>, // BTreeSet<(priority, memory_request - memory_usage, pod_uid)>
     // (Guaranteed) or (Burstable with usage <= requests) pods
-    pub secondary: BTreeSet<(i64, u64)>,            // BTreeSet<(priority, pod_uid)>
+    pub secondary: BTreeSet<(i64, u64)>, // BTreeSet<(priority, pod_uid)>
 }
 
 impl EvictionOrder {
@@ -26,12 +26,12 @@ impl EvictionOrder {
     pub fn first(&self) -> Option<u64> {
         return if self.primary.is_empty() {
             match self.secondary.first() {
-                Some(&(_, pod_uid)) => { Some(pod_uid) }
-                None => { None }
+                Some(&(_, pod_uid)) => Some(pod_uid),
+                None => None,
             }
         } else {
             Some(self.primary.first().unwrap().2)
-        }
+        };
     }
 
     pub fn add(&mut self, pod: &Pod, used_memory: i64) {
@@ -41,13 +41,10 @@ impl EvictionOrder {
             newly_inserted_1 = self.primary.insert((
                 pod.spec.priority,
                 pod.spec.request_memory - used_memory,
-                pod.metadata.uid
+                pod.metadata.uid,
             ));
         } else {
-            newly_inserted_2 = self.secondary.insert((
-                pod.spec.priority,
-                pod.metadata.uid
-            ));
+            newly_inserted_2 = self.secondary.insert((pod.spec.priority, pod.metadata.uid));
         }
 
         assert!(newly_inserted_1 ^ newly_inserted_2);
@@ -60,13 +57,10 @@ impl EvictionOrder {
             was_present_1 = self.primary.remove(&(
                 pod.spec.priority,
                 pod.spec.request_memory - used_memory,
-                pod.metadata.uid
+                pod.metadata.uid,
             ));
         } else {
-            was_present_2 = self.secondary.remove(&(
-                pod.spec.priority,
-                pod.metadata.uid
-            ));
+            was_present_2 = self.secondary.remove(&(pod.spec.priority, pod.metadata.uid));
         }
 
         assert!(was_present_1 ^ was_present_2);

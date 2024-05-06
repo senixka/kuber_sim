@@ -20,7 +20,6 @@ struct ItemWrapper {
     pub exit_time: f64,
 }
 
-
 impl PartialOrd for ItemWrapper {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -29,7 +28,9 @@ impl PartialOrd for ItemWrapper {
 
 impl Ord for ItemWrapper {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.exit_time.total_cmp(&other.exit_time).then(self.pod_uid.cmp(&other.pod_uid))
+        self.exit_time
+            .total_cmp(&other.exit_time)
+            .then(self.pod_uid.cmp(&other.pod_uid))
     }
 }
 
@@ -50,7 +51,6 @@ pub struct BackOffQExponential {
     queue: BTreeSet<ItemWrapper>,
 }
 
-
 impl BackOffQExponential {
     pub fn new(initial_backoff: f64, max_backoff: f64) -> Self {
         Self {
@@ -66,7 +66,6 @@ impl BackOffQExponential {
     }
 }
 
-
 impl IBackOffQ for BackOffQExponential {
     fn push(&mut self, pod_uid: u64, backoff_attempts: u64, current_time: f64) {
         let unlimited_timeout = self.initial_backoff * 2.0f64.powf(backoff_attempts as f64);
@@ -74,7 +73,7 @@ impl IBackOffQ for BackOffQExponential {
 
         self.queue.insert(ItemWrapper {
             pod_uid,
-            exit_time: current_time + backoff_timeout
+            exit_time: current_time + backoff_timeout,
         });
         self.exit_time.insert(pod_uid, current_time + backoff_timeout);
     }
@@ -100,8 +99,8 @@ impl IBackOffQ for BackOffQExponential {
 
                 true
             }
-            None => { false }
-        }
+            None => false,
+        };
     }
 
     fn len(&self) -> usize {
@@ -113,7 +112,6 @@ impl IBackOffQ for BackOffQExponential {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub struct BackOffQConstant {
@@ -121,7 +119,6 @@ pub struct BackOffQConstant {
     exit_time: HashMap<u64, f64>,
     queue: BTreeSet<ItemWrapper>,
 }
-
 
 impl BackOffQConstant {
     pub fn new(backoff_delay: f64) -> Self {
@@ -136,7 +133,6 @@ impl BackOffQConstant {
         BackOffQConstant::new(30.0)
     }
 }
-
 
 impl IBackOffQ for BackOffQConstant {
     fn push(&mut self, pod_uid: u64, _: u64, current_time: f64) {
@@ -168,8 +164,8 @@ impl IBackOffQ for BackOffQConstant {
 
                 true
             }
-            None => { false }
-        }
+            None => false,
+        };
     }
 
     fn len(&self) -> usize {

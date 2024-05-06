@@ -1,2 +1,2 @@
-pub mod kubelet;
 pub mod eviction;
+pub mod kubelet;

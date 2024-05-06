@@ -1,13 +1,11 @@
 use crate::my_imports::*;
 
-
 pub trait TraitActiveQCmp: Ord {
     fn wrap(pod: Pod) -> Self;
     fn inner(&self) -> Pod;
 }
 
 pub type ActiveQCmpDefault = ActiveQCmpPriority;
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -25,7 +23,6 @@ impl TraitActiveQCmp for ActiveQCmpUid {
         self.0.clone()
     }
 }
-
 
 impl PartialOrd for ActiveQCmpUid {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -47,7 +44,6 @@ impl PartialEq for ActiveQCmpUid {
 
 impl Eq for ActiveQCmpUid {}
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
@@ -64,7 +60,6 @@ impl TraitActiveQCmp for ActiveQCmpPriority {
         self.0.clone()
     }
 }
-
 
 impl PartialOrd for ActiveQCmpPriority {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -85,6 +80,5 @@ impl PartialEq for ActiveQCmpPriority {
 }
 
 impl Eq for ActiveQCmpPriority {}
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

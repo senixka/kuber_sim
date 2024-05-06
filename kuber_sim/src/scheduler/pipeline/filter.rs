@@ -1,26 +1,21 @@
 use crate::my_imports::*;
 
-
-pub type FilterPluginF = fn(&HashMap<u64, Pod>,
-                            &HashMap<u64, Pod>,
-                            &HashMap<u64, Node>,
-                            &Pod,
-                            &Node) -> bool;
-
+pub type FilterPluginF = fn(&HashMap<u64, Pod>, &HashMap<u64, Pod>, &HashMap<u64, Node>, &Pod, &Node) -> bool;
 
 pub trait IFilterPlugin {
     fn name(&self) -> String;
 
-    fn filter(&self,
-              running_pods: &HashMap<u64, Pod>,
-              pending_pods: &HashMap<u64, Pod>,
-              nodes: &HashMap<u64, Node>,
-              pod: &Pod,
-              node: &Node) -> bool;
+    fn filter(
+        &self,
+        running_pods: &HashMap<u64, Pod>,
+        pending_pods: &HashMap<u64, Pod>,
+        nodes: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> bool;
 
     fn clone(&self) -> Box<dyn IFilterPlugin + Send>;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,12 +26,7 @@ impl IFilterPlugin for FilterAlwaysTrue {
         return "FilterAlwaysTrue".to_string();
     }
 
-    fn filter(&self,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Node>,
-              _: &Pod,
-              _: &Node) -> bool {
+    fn filter(&self, _: &HashMap<u64, Pod>, _: &HashMap<u64, Pod>, _: &HashMap<u64, Node>, _: &Pod, _: &Node) -> bool {
         return true;
     }
 
@@ -44,7 +34,6 @@ impl IFilterPlugin for FilterAlwaysTrue {
         return Box::new(FilterAlwaysTrue);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -55,12 +44,7 @@ impl IFilterPlugin for FilterAlwaysFalse {
         return "FilterAlwaysFalse".to_string();
     }
 
-    fn filter(&self,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Node>,
-              _: &Pod,
-              _: &Node) -> bool {
+    fn filter(&self, _: &HashMap<u64, Pod>, _: &HashMap<u64, Pod>, _: &HashMap<u64, Node>, _: &Pod, _: &Node) -> bool {
         return false;
     }
 
@@ -68,7 +52,6 @@ impl IFilterPlugin for FilterAlwaysFalse {
         return Box::new(FilterAlwaysFalse);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -79,20 +62,20 @@ impl IFilterPlugin for FilterNodeSelector {
         return "FilterNodeSelector".to_string();
     }
 
-    fn filter(&self,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Node>,
-              pod: &Pod,
-              node: &Node) -> bool {
+    fn filter(
+        &self,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> bool {
         for (key, pod_value) in &pod.spec.node_selector {
             match node.metadata.labels.get(key) {
-                None => {
-                    return false
-                }
+                None => return false,
                 Some(node_value) => {
                     if *pod_value != *node_value {
-                        return false
+                        return false;
                     }
                 }
             }
@@ -105,7 +88,6 @@ impl IFilterPlugin for FilterNodeSelector {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub struct FilterRequestedResourcesAvailable;
@@ -115,12 +97,14 @@ impl IFilterPlugin for FilterRequestedResourcesAvailable {
         return "FilterRequestedResourcesAvailable".to_string();
     }
 
-    fn filter(&self,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Node>,
-              pod: &Pod,
-              node: &Node) -> bool {
+    fn filter(
+        &self,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> bool {
         return node.is_consumable(pod.spec.request_cpu, pod.spec.request_memory);
     }
 
@@ -128,7 +112,6 @@ impl IFilterPlugin for FilterRequestedResourcesAvailable {
         return Box::new(FilterRequestedResourcesAvailable);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -139,12 +122,14 @@ impl IFilterPlugin for FilterTaintsTolerations {
         return "FilterTaintsTolerations".to_string();
     }
 
-    fn filter(&self,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Node>,
-              pod: &Pod,
-              node: &Node) -> bool {
+    fn filter(
+        &self,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> bool {
         for taint in &node.spec.taints {
             if taint.effect != TaintTolerationEffect::NoSchedule {
                 continue;
@@ -168,7 +153,6 @@ impl IFilterPlugin for FilterTaintsTolerations {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub struct FilterNodeAffinity;
@@ -178,27 +162,26 @@ impl IFilterPlugin for FilterNodeAffinity {
         return "FilterNodeAffinity".to_string();
     }
 
-    fn filter(&self,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Node>,
-              pod: &Pod,
-              node: &Node) -> bool {
+    fn filter(
+        &self,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> bool {
         return match pod.spec.node_affinity.schedule_type {
             NodeAffinityType::Required => {
                 pod.spec.node_affinity.matches(node) == pod.spec.node_affinity.node_selector_terms.len()
             }
-            NodeAffinityType::Preferred => {
-                true
-            }
-        }
+            NodeAffinityType::Preferred => true,
+        };
     }
 
     fn clone(&self) -> Box<dyn IFilterPlugin + Send> {
         return Box::new(FilterNodeAffinity);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -209,12 +192,14 @@ impl IFilterPlugin for FilterPreemption {
         return "FilterPreemption".to_string();
     }
 
-    fn filter(&self,
-              running_pods: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Pod>,
-              _: &HashMap<u64, Node>,
-              pod: &Pod,
-              node: &Node) -> bool {
+    fn filter(
+        &self,
+        running_pods: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> bool {
         let (mut cpu, mut memory) = (node.spec.available_cpu, node.spec.available_memory);
         for &tmp_uid in &node.status.pods {
             let tmp_pod = running_pods.get(&tmp_uid).unwrap();

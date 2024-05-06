@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 pub struct Kubelet {
     pub ctx: dsc::SimulationContext,
     pub api_sim_id: dsc::Id,
@@ -11,7 +10,7 @@ pub struct Kubelet {
     pub node: Node,
 
     // Pod info
-    pub pods: HashMap<u64, Pod>,                            // HashMap<pod_uid, Pod>
+    pub pods: HashMap<u64, Pod>, // HashMap<pod_uid, Pod>
     // Pod's load profiles
     pub running_loads: BTreeMap<u64, (i64, i64, LoadType)>, // BTreeMap<pod_uid, (current_cpu, current_memory, load_profile)>
     // Eviction order
@@ -22,11 +21,13 @@ pub struct Kubelet {
 }
 
 impl Kubelet {
-    pub fn new(ctx: dsc::SimulationContext,
-               init_config: Rc<RefCell<InitConfig>>,
-               monitoring: Rc<RefCell<Monitoring>>,
-               api_sim_id: dsc::Id,
-               node: Node) -> Self {
+    pub fn new(
+        ctx: dsc::SimulationContext,
+        init_config: Rc<RefCell<InitConfig>>,
+        monitoring: Rc<RefCell<Monitoring>>,
+        api_sim_id: dsc::Id,
+        node: Node,
+    ) -> Self {
         Self {
             ctx,
             api_sim_id,
@@ -54,7 +55,8 @@ impl Kubelet {
 
         // While there are pods and eviction needed
         while !self.eviction_order.is_empty()
-              && (self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0) {
+            && (self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0)
+        {
             // Get first order pod to evict
             let pod_uid = self.eviction_order.first().unwrap();
 
@@ -141,7 +143,9 @@ impl Kubelet {
 
         // Restore previous resources
         self.node.restore(*prev_cpu, *prev_memory);
-        self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
+        self.monitoring
+            .borrow_mut()
+            .kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
 
         // If pod finished -> pod Succeeded
         if is_finished {
@@ -193,20 +197,37 @@ impl Kubelet {
 
     ////////////////// Remove pod //////////////////
 
-    pub fn remove_pod_with_restoring_resources(&mut self, pod_uid: u64, end_phase: PodPhase, end_cpu: Option<i64>, end_memory: Option<i64>) {
+    pub fn remove_pod_with_restoring_resources(
+        &mut self,
+        pod_uid: u64,
+        end_phase: PodPhase,
+        end_cpu: Option<i64>,
+        end_memory: Option<i64>,
+    ) {
         let (prev_cpu, prev_memory, _) = self.running_loads.get(&pod_uid).unwrap();
 
         // Restore previous resources
         self.node.restore(*prev_cpu, *prev_memory);
-        self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
+        self.monitoring
+            .borrow_mut()
+            .kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
 
         // Restore other stuff
         self.remove_pod_without_restoring_resources(
-            pod_uid, end_phase, end_cpu.unwrap_or(*prev_cpu), end_memory.unwrap_or(*prev_memory)
+            pod_uid,
+            end_phase,
+            end_cpu.unwrap_or(*prev_cpu),
+            end_memory.unwrap_or(*prev_memory),
         );
     }
 
-    pub fn remove_pod_without_restoring_resources(&mut self, pod_uid: u64, end_phase: PodPhase, end_cpu: i64, end_memory: i64) {
+    pub fn remove_pod_without_restoring_resources(
+        &mut self,
+        pod_uid: u64,
+        end_phase: PodPhase,
+        end_cpu: i64,
+        end_memory: i64,
+    ) {
         // Pod to remove cannot be Running
         assert_ne!(end_phase, PodPhase::Running);
 
@@ -235,7 +256,9 @@ impl Kubelet {
             // Restore previous resources
             let (prev_cpu, prev_memory, _) = self.running_loads.get_mut(&pod_uid).unwrap();
             self.node.restore(*prev_cpu, *prev_memory);
-            self.monitoring.borrow_mut().kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
+            self.monitoring
+                .borrow_mut()
+                .kubelet_on_pod_unplaced(*prev_cpu, *prev_memory);
         }
 
         // All resources should be restored
@@ -251,15 +274,19 @@ impl Kubelet {
         self.running_loads.clear();
 
         // Cancel future all self-emitted events
-        self.ctx.cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
+        self.ctx
+            .cancel_heap_events(|x| x.src == self.ctx.id() && x.dst == self.ctx.id());
 
         // Turn off kubelet
         self.is_turned_on = false;
 
         // Send RemoveNode ACK
-        self.ctx.emit(EventRemoveNodeAck { node_uid: self.node.metadata.uid },
-                      self.api_sim_id,
-                      self.init_config.borrow().network_delays.kubelet2api
+        self.ctx.emit(
+            EventRemoveNodeAck {
+                node_uid: self.node.metadata.uid,
+            },
+            self.api_sim_id,
+            self.init_config.borrow().network_delays.kubelet2api,
         );
     }
 
@@ -285,7 +312,7 @@ impl Kubelet {
                 current_memory: memory as f64 / spec.request_memory as f64,
             },
             self.api_sim_id,
-            self.init_config.borrow().network_delays.kubelet2api
+            self.init_config.borrow().network_delays.kubelet2api,
         );
     }
 
@@ -298,7 +325,7 @@ impl Kubelet {
                 current_memory: 0.0,
             },
             self.api_sim_id,
-            self.init_config.borrow().network_delays.kubelet2api
+            self.init_config.borrow().network_delays.kubelet2api,
         );
     }
 }
@@ -306,13 +333,29 @@ impl Kubelet {
 impl dsc::EventHandler for Kubelet {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            EventUpdatePodFromScheduler { pod , pod_uid, preempt_uids, new_phase, node_uid } => {
-                dp_kubelet!("{:.12} node:{:?} EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} new_phase:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid, preempt_uids, new_phase);
+            EventUpdatePodFromScheduler {
+                pod,
+                pod_uid,
+                preempt_uids,
+                new_phase,
+                node_uid,
+            } => {
+                dp_kubelet!(
+                    "{:.12} node:{:?} EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} new_phase:{:?}",
+                    self.ctx.time(),
+                    self.node.metadata.uid,
+                    pod_uid,
+                    preempt_uids,
+                    new_phase
+                );
 
                 // Some invariants assertions
                 assert_eq!(node_uid, self.node.metadata.uid);
                 assert_eq!(self.running_loads.len(), self.pods.len());
-                assert!(self.is_turned_on, "Logic error. Api-server should stop routing if kubelet turned off.");
+                assert!(
+                    self.is_turned_on,
+                    "Logic error. Api-server should stop routing if kubelet turned off."
+                );
 
                 // Process PodPhase
                 match new_phase {
@@ -344,7 +387,12 @@ impl dsc::EventHandler for Kubelet {
             }
 
             EventKubeletNextChange { pod_uid } => {
-                dp_kubelet!("{:.12} node:{:?} EventKubeletNextChange pod_uid:{:?}", self.ctx.time(), self.node.metadata.uid, pod_uid);
+                dp_kubelet!(
+                    "{:.12} node:{:?} EventKubeletNextChange pod_uid:{:?}",
+                    self.ctx.time(),
+                    self.node.metadata.uid,
+                    pod_uid
+                );
 
                 assert!(self.is_turned_on, "Logic error. All self-events should be canceled.");
 
@@ -355,7 +403,11 @@ impl dsc::EventHandler for Kubelet {
             }
 
             EventRemoveNode { node_uid } => {
-                dp_kubelet!("{:.12} node:{:?} EventRemoveNode", self.ctx.time(), self.node.metadata.uid);
+                dp_kubelet!(
+                    "{:.12} node:{:?} EventRemoveNode",
+                    self.ctx.time(),
+                    self.node.metadata.uid
+                );
 
                 assert_eq!(node_uid, self.node.metadata.uid, "Api-server error. Wrong routing.");
 

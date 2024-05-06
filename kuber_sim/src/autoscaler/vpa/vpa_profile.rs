@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VPAProfile {
     pub min_allowed_cpu: i64,

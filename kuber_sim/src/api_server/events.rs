@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 /////////////////////////////////////////// API ////////////////////////////////////////////////////
 
 // [Emit]:      { Init | HPA } -> Api
@@ -17,14 +16,12 @@ pub struct EventRemovePod {
     pub pod_uid: u64,
 }
 
-
 // [Emit]:      { Init } -> Api
 // [Consume]:   Api -> {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventRemovePodGroup {
     pub group_uid: u64,
 }
-
 
 // [Emit]:      { Init | CA } -> Api
 // [Consume]:   Api -> { Scheduler }
@@ -41,14 +38,12 @@ pub struct EventRemoveNode {
     pub node_uid: u64,
 }
 
-
 // [Emit]:      { Kubelet } -> Api
 // [Consume]:   Api -> { CA }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventRemoveNodeAck {
     pub node_uid: u64,
 }
-
 
 // [Emit]:      { Scheduler } -> Api
 // [Consume]:   Api -> { Kubelet }
@@ -61,7 +56,6 @@ pub struct EventUpdatePodFromScheduler {
     pub node_uid: u64,
 }
 
-
 // [Emit]:      {} -> Api
 // [Consume]:   Api -> { Scheduler }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,7 +63,6 @@ pub struct EventPodUpdateToScheduler {
     pub pod_uid: u64,
     pub current_phase: PodPhase,
 }
-
 
 // [Emit]:      { Kubelet } -> Api
 // [Consume]:   Api -> { Scheduler }
@@ -81,27 +74,21 @@ pub struct EventPodUpdateFromKubelet {
     pub current_memory: f64,
 }
 
-
 ///////////////////////////////////////////// Common ///////////////////////////////////////////////
 
 // [Emit self]:      { CA | HPA | Scheduler | Monitoring }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventSelfUpdate {
-}
-
+pub struct EventSelfUpdate {}
 
 // [Emit]:      {} -> Api
 // [Consume]:   Api -> { CA | HPA }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventTurnOn {}
 
-
 // [Emit]:      {} -> Api
 // [Consume]:   Api -> { CA | HPA }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventTurnOff {}
-
-
 
 /////////////////////////////////////////// Kubelet ////////////////////////////////////////////////
 
@@ -110,8 +97,6 @@ pub struct EventTurnOff {}
 pub struct EventKubeletNextChange {
     pub pod_uid: u64,
 }
-
-
 
 ///////////////////////////////////////// CA ///////////////////////////////////////////////////////
 
@@ -123,7 +108,6 @@ pub struct EventGetCAMetrics {
     pub available_nodes: Vec<NodeGroup>,
 }
 
-
 // [Emit]:      { Scheduler } -> Api
 // [Consume]:   Api -> { CA }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -132,8 +116,6 @@ pub struct EventPostCAMetrics {
     pub used_nodes_utilization: Vec<(u64, f64, f64)>,
     pub may_help: Option<u64>,
 }
-
-
 
 ///////////////////////////////////////// HPA  ////////////////////////////////////////////////
 
@@ -148,10 +130,7 @@ pub struct EventHPAPodMetricsPost {
     pub current_memory: f64,
 }
 
-
-
 ///////////////////////////////////////// VPA  ////////////////////////////////////////////////
-
 
 // [Emit]:      {} -> Api
 // [Consume]:   Api -> { VPA }

@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BusyBox {
     #[serde(skip)]
@@ -15,14 +14,15 @@ pub struct BusyBox {
     pub shift_time: f64,
 }
 
-
 impl BusyBox {
     pub fn start(&mut self, current_time: f64) -> (i64, i64, f64, bool) {
         self.start_time = current_time;
-        return (self.cpu_down,
-                self.memory_down,
-                self.shift_time,
-                self.duration < dsc::EPSILON);
+        return (
+            self.cpu_down,
+            self.memory_down,
+            self.shift_time,
+            self.duration < dsc::EPSILON,
+        );
     }
 
     pub fn update(&mut self, current_time: f64) -> (i64, i64, f64, bool) {

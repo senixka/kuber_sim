@@ -1,8 +1,6 @@
 use crate::my_imports::*;
 
-
-pub struct Test ();
-
+pub struct Test();
 
 impl Test {
     pub fn test_all() {
@@ -139,10 +137,14 @@ impl Test {
         let mut p22 = Pod::default();
         let mut p3 = Pod::default();
 
-        p1.spec.priority = 1;   p1.metadata.uid = 1;
-        p2.spec.priority = 2;   p1.metadata.uid = 1;
-        p22.spec.priority = 2;  p22.metadata.uid = 22;
-        p3.spec.priority = 3;   p3.metadata.uid = 3;
+        p1.spec.priority = 1;
+        p1.metadata.uid = 1;
+        p2.spec.priority = 2;
+        p1.metadata.uid = 1;
+        p22.spec.priority = 2;
+        p22.metadata.uid = 22;
+        p3.spec.priority = 3;
+        p3.metadata.uid = 3;
 
         q.push(p2.clone());
         q.push(p3.clone());
@@ -211,10 +213,18 @@ impl Test {
         let mut node3 = Node::default();
         let mut node4 = Node::default();
 
-        node1.spec.available_cpu = 0;  node1.spec.available_memory = 0;  node1.metadata.uid = 1;
-        node2.spec.available_cpu = 10; node2.spec.available_memory = 0;  node2.metadata.uid = 2;
-        node3.spec.available_cpu = 0;  node3.spec.available_memory = 10; node3.metadata.uid = 3;
-        node4.spec.available_cpu = 10; node4.spec.available_memory = 10; node4.metadata.uid = 4;
+        node1.spec.available_cpu = 0;
+        node1.spec.available_memory = 0;
+        node1.metadata.uid = 1;
+        node2.spec.available_cpu = 10;
+        node2.spec.available_memory = 0;
+        node2.metadata.uid = 2;
+        node3.spec.available_cpu = 0;
+        node3.spec.available_memory = 10;
+        node3.metadata.uid = 3;
+        node4.spec.available_cpu = 10;
+        node4.spec.available_memory = 10;
+        node4.metadata.uid = 4;
 
         index.insert(node1);
         index.insert(node2);

@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Default)]
 pub struct HPAGroupInfo {
     // Group cpu numerator
@@ -20,7 +19,6 @@ pub struct HPAGroupInfo {
     pub pod_template: Pod,
 }
 
-
 impl HPAGroupInfo {
     pub fn update_with_new_pod(&mut self, pod: &Pod) {
         // It is truly new pod
@@ -33,7 +31,8 @@ impl HPAGroupInfo {
         }
 
         // Update last metrics
-        self.last_metrics.insert(pod.metadata.uid, (PodPhase::Pending, 0.0, 0.0));
+        self.last_metrics
+            .insert(pod.metadata.uid, (PodPhase::Pending, 0.0, 0.0));
         // Update alive uids
         let _newly_inserted = self.alive_uids.insert(pod.metadata.uid);
         assert!(_newly_inserted);
@@ -43,7 +42,13 @@ impl HPAGroupInfo {
         // Get last pod metrics
         let (last_phase, last_cpu, last_memory) = self.last_metrics.get(&pod_uid).unwrap().clone();
 
-        dp_hpa!("HPAGroupInfo update with pod_uid:{:?} new_phase:{:?} new_cpu:{:?} new_memory:{:?}", pod_uid, new_phase, new_cpu, new_memory);
+        dp_hpa!(
+            "HPAGroupInfo update with pod_uid:{:?} new_phase:{:?} new_cpu:{:?} new_memory:{:?}",
+            pod_uid,
+            new_phase,
+            new_cpu,
+            new_memory
+        );
 
         match last_phase {
             PodPhase::Running => {
@@ -110,7 +115,10 @@ impl HPAGroupInfo {
             }
             PodPhase::Succeeded | PodPhase::Failed | PodPhase::Removed => {
                 // Finished pod should not get new phase updates
-                panic!("Logic error in HPA metric update. Bad pod phase change:({:?} -> {:?})", last_phase, new_phase);
+                panic!(
+                    "Logic error in HPA metric update. Bad pod phase change:({:?} -> {:?})",
+                    last_phase, new_phase
+                );
             }
         }
 

@@ -1,26 +1,21 @@
 use crate::my_imports::*;
 
-
-pub type ScorePluginF = fn(&HashMap<u64, Pod>,
-                           &HashMap<u64, Pod>,
-                           &HashMap<u64, Node>,
-                           &Pod,
-                           &Node) -> i64;
-
+pub type ScorePluginF = fn(&HashMap<u64, Pod>, &HashMap<u64, Pod>, &HashMap<u64, Node>, &Pod, &Node) -> i64;
 
 pub trait IScorePlugin {
     fn name(&self) -> String;
 
-    fn score(&self,
-             running_pods: &HashMap<u64, Pod>,
-             pending_pods: &HashMap<u64, Pod>,
-             nodes: &HashMap<u64, Node>,
-             pod: &Pod,
-             node: &Node) -> i64;
+    fn score(
+        &self,
+        running_pods: &HashMap<u64, Pod>,
+        pending_pods: &HashMap<u64, Pod>,
+        nodes: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> i64;
 
     fn clone(&self) -> Box<dyn IScorePlugin + Send>;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,12 +26,7 @@ impl IScorePlugin for ScoreIsNodeEmpty {
         return "ScoreIsNodeEmpty".to_string();
     }
 
-    fn score(&self,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Node>,
-             _: &Pod,
-             node: &Node) -> i64 {
+    fn score(&self, _: &HashMap<u64, Pod>, _: &HashMap<u64, Pod>, _: &HashMap<u64, Node>, _: &Pod, node: &Node) -> i64 {
         return (node.status.pods.len() == 0) as i64;
     }
 
@@ -44,7 +34,6 @@ impl IScorePlugin for ScoreIsNodeEmpty {
         return Box::new(ScoreIsNodeEmpty);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -55,12 +44,7 @@ impl IScorePlugin for ScoreCountRunningPods {
         return "ScoreCountRunningPods".to_string();
     }
 
-    fn score(&self,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Node>,
-             _: &Pod,
-             node: &Node) -> i64 {
+    fn score(&self, _: &HashMap<u64, Pod>, _: &HashMap<u64, Pod>, _: &HashMap<u64, Node>, _: &Pod, node: &Node) -> i64 {
         return node.status.pods.len() as i64;
     }
 
@@ -68,7 +52,6 @@ impl IScorePlugin for ScoreCountRunningPods {
         return Box::new(ScoreCountRunningPods);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -79,12 +62,14 @@ impl IScorePlugin for ScoreTetris {
         return "ScoreTetris".to_string();
     }
 
-    fn score(&self,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Node>,
-             pod: &Pod,
-             node: &Node) -> i64 {
+    fn score(
+        &self,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> i64 {
         let n_cpu = node.spec.available_cpu;
         let n_mem = node.spec.available_memory;
         let p_cpu = pod.spec.request_cpu;
@@ -113,14 +98,13 @@ impl IScorePlugin for ScoreTetris {
             assert!(reversed >= 0.0);
 
             (reversed * scale) as i64
-        }
+        };
     }
 
     fn clone(&self) -> Box<dyn IScorePlugin + Send> {
         return Box::new(ScoreTetris);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,12 +115,14 @@ impl IScorePlugin for ScoreTaintsTolerations {
         return "ScoreTaintsTolerations".to_string();
     }
 
-    fn score(&self,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Node>,
-             pod: &Pod,
-             node: &Node) -> i64 {
+    fn score(
+        &self,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> i64 {
         let (mut no_schedule, mut prefer_no_schedule) = (false, false);
         for taint in &node.spec.taints {
             let mut matches = false;
@@ -170,7 +156,6 @@ impl IScorePlugin for ScoreTaintsTolerations {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub struct ScoreNodeAffinity;
@@ -180,26 +165,23 @@ impl IScorePlugin for ScoreNodeAffinity {
         return "ScoreNodeAffinity".to_string();
     }
 
-    fn score(&self,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Pod>,
-             _: &HashMap<u64, Node>,
-             pod: &Pod,
-             node: &Node) -> i64 {
+    fn score(
+        &self,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Pod>,
+        _: &HashMap<u64, Node>,
+        pod: &Pod,
+        node: &Node,
+    ) -> i64 {
         return match pod.spec.node_affinity.schedule_type {
-            NodeAffinityType::Preferred => {
-                pod.spec.node_affinity.matches(node) as i64
-            }
-            NodeAffinityType::Required => {
-                0
-            }
-        }
+            NodeAffinityType::Preferred => pod.spec.node_affinity.matches(node) as i64,
+            NodeAffinityType::Required => 0,
+        };
     }
 
     fn clone(&self) -> Box<dyn IScorePlugin + Send> {
         return Box::new(ScoreNodeAffinity);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

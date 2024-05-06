@@ -1,13 +1,11 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ConstantInfinite {
     #[serde(skip)]
     pub cpu: i64,
     pub memory: i64,
 }
-
 
 impl ConstantInfinite {
     pub fn start(&mut self, _: f64) -> (i64, i64, f64, bool) {

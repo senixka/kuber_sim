@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct NodeSpec {
     pub installed_cpu: i64,    // in milli-CPU (1000 milli-CPU = 1 CPU = 1 vCPU)
@@ -12,15 +11,13 @@ pub struct NodeSpec {
     pub available_memory: i64,
 
     #[serde(default)]
-    pub taints: Vec<Taint>
+    pub taints: Vec<Taint>,
 }
-
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct NodeStatus {
     pub pods: HashSet<u64>,
 }
-
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Node {
@@ -31,7 +28,6 @@ pub struct Node {
     #[serde(skip)]
     pub status: NodeStatus,
 }
-
 
 impl Node {
     pub fn prepare(&mut self, group_uid: u64) {

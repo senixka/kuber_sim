@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 pub struct Scheduler {
     ctx: dsc::SimulationContext,
     init_config: Rc<RefCell<InitConfig>>,
@@ -11,9 +10,9 @@ pub struct Scheduler {
     self_update_enabled: bool,
 
     // Cache
-    running_pods: HashMap<u64, Pod>,    // HashMap<pod_uid, Pod>
-    pending_pods: HashMap<u64, Pod>,    // HashMap<pod_uid, Pod>
-    nodes: HashMap<u64, Node>,          // HashMap<node_uid, Node>
+    running_pods: HashMap<u64, Pod>, // HashMap<pod_uid, Pod>
+    pending_pods: HashMap<u64, Pod>, // HashMap<pod_uid, Pod>
+    nodes: HashMap<u64, Node>,       // HashMap<node_uid, Node>
     node_rtree: NodeRTree,
 
     // Queues
@@ -63,7 +62,9 @@ impl Scheduler {
 
             // Queues
             active_queue,
-            unschedulable_queue: BackOffQConstant::new(init_config.borrow().scheduler.unschedulable_queue_backoff_delay),
+            unschedulable_queue: BackOffQConstant::new(
+                init_config.borrow().scheduler.unschedulable_queue_backoff_delay,
+            ),
             backoff_queue,
             failed_attempts: HashMap::new(),
 
@@ -81,7 +82,10 @@ impl Scheduler {
     pub fn self_update_on(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().scheduler.self_update_period);
+            self.ctx.emit_self(
+                EventSelfUpdate {},
+                self.init_config.borrow().scheduler.self_update_period,
+            );
         }
     }
 
@@ -112,7 +116,11 @@ impl Scheduler {
             self.init_config.borrow().scheduler.cycle_max_to_try,
         );
 
-        dp_scheduler!("{:.12} scheduler cycle activeQ:{:?}", self.ctx.time(), self.active_queue.len());
+        dp_scheduler!(
+            "{:.12} scheduler cycle activeQ:{:?}",
+            self.ctx.time(),
+            self.active_queue.len()
+        );
 
         // Main scheduling cycle
         while let Some(mut pod) = self.active_queue.try_pop() {
@@ -125,16 +133,18 @@ impl Scheduler {
             let cpu = pod.spec.request_cpu;
             let memory = pod.spec.request_memory;
 
-
             // Query all suitable nodes
             self.node_rtree.find_suitable_nodes(cpu, memory, &mut possible_nodes);
             pod.status.cluster_resource_starvation = possible_nodes.is_empty();
-            self.pending_pods.get_mut(&pod_uid).unwrap().status.cluster_resource_starvation = possible_nodes.is_empty();
+            self.pending_pods
+                .get_mut(&pod_uid)
+                .unwrap()
+                .status
+                .cluster_resource_starvation = possible_nodes.is_empty();
 
             // Prepare node description
             is_schedulable.clear();
             is_schedulable.resize(possible_nodes.len(), true);
-
 
             // Filter
             let mut suitable_count: usize = 0;
@@ -145,9 +155,8 @@ impl Scheduler {
                         break;
                     }
 
-                    is_schedulable[i] = filter_plugin.filter(
-                        &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
-                    );
+                    is_schedulable[i] =
+                        filter_plugin.filter(&self.running_pods, &self.pending_pods, &self.nodes, &pod, node);
                 }
 
                 if is_schedulable[i] {
@@ -159,9 +168,8 @@ impl Scheduler {
             if suitable_count == 0 {
                 for (i, node) in possible_nodes.iter().enumerate() {
                     for post_filter_plugin in self.post_filters.iter() {
-                        is_schedulable[i] = post_filter_plugin.filter(
-                            &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
-                        );
+                        is_schedulable[i] =
+                            post_filter_plugin.filter(&self.running_pods, &self.pending_pods, &self.nodes, &pod, node);
 
                         //  If any marks the node as Schedulable, the remaining will not be called
                         if is_schedulable[i] {
@@ -202,24 +210,25 @@ impl Scheduler {
             }
             assert_eq!(resulted_nodes.len(), suitable_count);
 
-
             // Score
             for (i, score_plugin) in self.scorers.iter().enumerate() {
                 for (j, node) in resulted_nodes.iter().enumerate() {
-                    score_matrix[i][j] = score_plugin.score(
-                        &self.running_pods, &self.pending_pods, &self.nodes, &pod, node
-                    );
+                    score_matrix[i][j] =
+                        score_plugin.score(&self.running_pods, &self.pending_pods, &self.nodes, &pod, node);
                 }
             }
-
 
             // Normalize Score
             for (i, score_normalizer) in self.score_normalizers.iter().enumerate() {
                 score_normalizer.normalize(
-                    &self.running_pods, &self.pending_pods, &self.nodes, &pod, &resulted_nodes, &mut score_matrix[i]
+                    &self.running_pods,
+                    &self.pending_pods,
+                    &self.nodes,
+                    &pod,
+                    &resulted_nodes,
+                    &mut score_matrix[i],
                 );
             }
-
 
             // Find best node
             let mut best_node_index: usize = 0;
@@ -243,7 +252,6 @@ impl Scheduler {
             // Get best node
             let node_uid = resulted_nodes[best_node_index].metadata.uid;
             let node = self.nodes.get(&node_uid).unwrap();
-
 
             // If not enough resources -> build preemption list
             let mut preempt_uids: Vec<u64> = Vec::new();
@@ -285,7 +293,12 @@ impl Scheduler {
             self.send_pod_phase_update(Some(pod), pod_uid, Some(preempt_uids), node_uid, PodPhase::Running);
             scheduled_left -= 1;
 
-            dp_scheduler!("{:.12} scheduler pod_uid:{:?} placed -> node_uid:{:?}", self.ctx.time(), pod_uid, node_uid);
+            dp_scheduler!(
+                "{:.12} scheduler pod_uid:{:?} placed -> node_uid:{:?}",
+                self.ctx.time(),
+                pod_uid,
+                node_uid
+            );
         }
     }
 
@@ -304,7 +317,8 @@ impl Scheduler {
 
         // Update node
         node.consume(cpu, memory);
-        let _not_presented = node.status.pods.insert(pod_uid); assert!(_not_presented);
+        let _not_presented = node.status.pods.insert(pod_uid);
+        assert!(_not_presented);
 
         // Add node to RTree
         self.node_rtree.insert(node.clone());
@@ -322,7 +336,8 @@ impl Scheduler {
 
         // Update node
         node.restore(cpu, memory);
-        let _was_presented = node.status.pods.remove(&pod_uid); assert!(_was_presented);
+        let _was_presented = node.status.pods.remove(&pod_uid);
+        assert!(_was_presented);
 
         // Add node to RTree
         self.node_rtree.insert(node.clone());
@@ -394,7 +409,7 @@ impl Scheduler {
         // Restore node resources if node exist
         let node_uid = pod.status.node_uid.unwrap();
         if self.nodes.contains_key(&node_uid) {
-                self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
+            self.remove_pod_from_node(pod_uid, node_uid, pod.spec.request_cpu, pod.spec.request_memory);
         }
 
         // Remove pod's failed attempts
@@ -434,8 +449,8 @@ impl Scheduler {
                 // Try remove from BackOffQ or UnschedulableQ or ActiveQ
                 let pod_uid = pod.metadata.uid;
                 let result = self.backoff_queue.try_remove(pod_uid)
-                                  || self.unschedulable_queue.try_remove(pod_uid)
-                                  || self.active_queue.try_remove(pod);
+                    || self.unschedulable_queue.try_remove(pod_uid)
+                    || self.active_queue.try_remove(pod);
                 assert!(result, "Invariant violated. Pending pod not in any queue.");
 
                 // Update monitoring
@@ -458,10 +473,24 @@ impl Scheduler {
 
     ////////////////// Export metrics //////////////////
 
-    pub fn send_pod_phase_update(&self, pod: Option<Pod>, pod_uid: u64, preempt_uids: Option<Vec<u64>>, node_uid: u64, new_phase: PodPhase) {
-        self.ctx.emit(EventUpdatePodFromScheduler { pod, pod_uid, preempt_uids, new_phase, node_uid },
-                      self.api_sim_id,
-                      self.init_config.borrow().network_delays.kubelet2api
+    pub fn send_pod_phase_update(
+        &self,
+        pod: Option<Pod>,
+        pod_uid: u64,
+        preempt_uids: Option<Vec<u64>>,
+        node_uid: u64,
+        new_phase: PodPhase,
+    ) {
+        self.ctx.emit(
+            EventUpdatePodFromScheduler {
+                pod,
+                pod_uid,
+                preempt_uids,
+                new_phase,
+                node_uid,
+            },
+            self.api_sim_id,
+            self.init_config.borrow().network_delays.kubelet2api,
         );
     }
 
@@ -472,14 +501,17 @@ impl Scheduler {
         for (_, pod) in &self.pending_pods {
             // Only pods which cannot be scheduled due to insufficient resources on nodes
             if !pod.status.cluster_resource_starvation {
-                continue
+                continue;
             }
             pending_pod_count += 1;
 
             // Try to find node which may help
             if may_help.is_none() {
                 for node_group in available_nodes {
-                    if node_group.node.is_consumable(pod.spec.request_cpu, pod.spec.request_memory) {
+                    if node_group
+                        .node
+                        .is_consumable(pod.spec.request_cpu, pod.spec.request_memory)
+                    {
                         may_help = Some(node_group.group_uid);
                         break;
                     }
@@ -494,7 +526,8 @@ impl Scheduler {
             if node.is_some() {
                 let spec = node.unwrap().spec.clone();
                 let cpu: f64 = ((spec.installed_cpu - spec.available_cpu) as f64) / (spec.installed_cpu as f64);
-                let memory: f64 = ((spec.installed_memory - spec.available_memory) as f64) / (spec.installed_memory as f64);
+                let memory: f64 =
+                    ((spec.installed_memory - spec.available_memory) as f64) / (spec.installed_memory as f64);
 
                 used_nodes_utilization.push((*node_uid, cpu, memory));
             }
@@ -502,19 +535,27 @@ impl Scheduler {
 
         // Send metrics
         self.ctx.emit(
-            EventPostCAMetrics { pending_pod_count, used_nodes_utilization, may_help },
+            EventPostCAMetrics {
+                pending_pod_count,
+                used_nodes_utilization,
+                may_help,
+            },
             self.api_sim_id,
-            self.init_config.borrow().network_delays.scheduler2api
+            self.init_config.borrow().network_delays.scheduler2api,
         );
     }
 }
-
 
 impl dsc::EventHandler for Scheduler {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             EventPodUpdateToScheduler { pod_uid, current_phase } => {
-                dp_scheduler!("{:.12} scheduler EventPodUpdateFromKubelet pod_uid:{:?} current_phase:{:?}", self.ctx.time(), pod_uid, current_phase);
+                dp_scheduler!(
+                    "{:.12} scheduler EventPodUpdateFromKubelet pod_uid:{:?} current_phase:{:?}",
+                    self.ctx.time(),
+                    pod_uid,
+                    current_phase
+                );
 
                 // If this pod was previously removed -> do nothing
                 if !self.is_pod_cached(pod_uid) {
@@ -546,7 +587,11 @@ impl dsc::EventHandler for Scheduler {
             }
 
             EventAddPod { pod } => {
-                dp_scheduler!("{:.12} scheduler EventAddPod pod_uid:{:?}", self.ctx.time(), pod.metadata.uid);
+                dp_scheduler!(
+                    "{:.12} scheduler EventAddPod pod_uid:{:?}",
+                    self.ctx.time(),
+                    pod.metadata.uid
+                );
 
                 // Update inner state
                 self.process_new_pod(pod);
@@ -571,11 +616,22 @@ impl dsc::EventHandler for Scheduler {
             }
 
             EventRemovePodGroup { group_uid: _group_uid } => {
-                dp_scheduler!("{:.12} scheduler EventRemovePodGroup group_uid:{:?}", self.ctx.time(), _group_uid);
+                dp_scheduler!(
+                    "{:.12} scheduler EventRemovePodGroup group_uid:{:?}",
+                    self.ctx.time(),
+                    _group_uid
+                );
             }
 
-            EventAddNode { kubelet_sim_id: _ , node } => {
-                dp_scheduler!("{:.12} scheduler EventAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);
+            EventAddNode {
+                kubelet_sim_id: _,
+                node,
+            } => {
+                dp_scheduler!(
+                    "{:.12} scheduler EventAddNode node_uid:{:?}",
+                    self.ctx.time(),
+                    node.metadata.uid
+                );
 
                 // Update monitoring
                 self.monitoring.borrow_mut().scheduler_on_node_added(&node);
@@ -586,7 +642,11 @@ impl dsc::EventHandler for Scheduler {
             }
 
             EventRemoveNode { node_uid } => {
-                dp_scheduler!("{:.12} scheduler EventRemoveNode node_uid:{:?}", self.ctx.time(), node_uid);
+                dp_scheduler!(
+                    "{:.12} scheduler EventRemoveNode node_uid:{:?}",
+                    self.ctx.time(),
+                    node_uid
+                );
 
                 // Update cache if necessary
                 match self.nodes.remove(&node_uid) {
@@ -613,13 +673,19 @@ impl dsc::EventHandler for Scheduler {
 
                 // If there are pending pods -> continue SelfUpdate
                 if self.pending_pods.len() > 0 {
-                    self.ctx.emit_self(EventSelfUpdate{}, self.init_config.borrow().scheduler.self_update_period);
+                    self.ctx.emit_self(
+                        EventSelfUpdate {},
+                        self.init_config.borrow().scheduler.self_update_period,
+                    );
                 } else {
                     self.self_update_off();
                 }
             }
 
-            EventGetCAMetrics { used_nodes, available_nodes } => {
+            EventGetCAMetrics {
+                used_nodes,
+                available_nodes,
+            } => {
                 dp_scheduler!("{:.12} scheduler EventGetCAMetrics", self.ctx.time());
 
                 self.count_and_send_ca_metrics(&used_nodes, &available_nodes);
@@ -627,7 +693,11 @@ impl dsc::EventHandler for Scheduler {
         });
 
         // Update monitoring
-        self.monitoring.borrow_mut().scheduler_update_pending_pod_count(self.pending_pods.len());
-        self.monitoring.borrow_mut().scheduler_update_running_pod_count(self.running_pods.len());
+        self.monitoring
+            .borrow_mut()
+            .scheduler_update_pending_pod_count(self.pending_pods.len());
+        self.monitoring
+            .borrow_mut()
+            .scheduler_update_running_pod_count(self.running_pods.len());
     }
 }

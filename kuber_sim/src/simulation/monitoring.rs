@@ -1,6 +1,5 @@
-use std::io::Write;
 use super::super::my_imports::*;
-
+use std::io::Write;
 
 pub struct Monitoring {
     pub ctx: dsc::SimulationContext,
@@ -30,10 +29,8 @@ pub struct Monitoring {
 
     // pod_unfinished_task_count: HashMap<u64, u64>,
     // pod_ideal_estimate_time: HashMap<u64, u64>,
-
     pending_pod: Vec<usize>,
     // working_pod: Vec<u64>,
-    
     pending_pod_counter: usize,
     running_pod_counter: usize,
     succeed_pod_counter: u64,
@@ -46,24 +43,30 @@ pub struct Monitoring {
 
     // max_pending_pod: u64,
     // max_running_pod: u64,
-
     out_path: String,
 }
 
 impl Monitoring {
-    pub fn new(ctx: dsc::SimulationContext,
-               init_config: Rc<RefCell<InitConfig>>,
-               out_path: &String) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, init_config: Rc<RefCell<InitConfig>>, out_path: &String) -> Self {
         Self {
             ctx,
             self_update_enabled: false,
             dynamic_update_enabled: false,
             init_config,
-            makespan_time: 0.0, total_installed_cpu: 0, total_installed_memory: 0,
-            scheduler_used_cpu: 0, scheduler_used_memory: 0,
-            kubelets_used_cpu: 0, kubelets_used_memory: 0,
-            succeed_pod_counter: 0, pending_pod_counter: 0, preempted_pod_counter: 0,
-            failed_pod_counter: 0, running_pod_counter: 0, evicted_pod_counter: 0, removed_pod_counter: 0,
+            makespan_time: 0.0,
+            total_installed_cpu: 0,
+            total_installed_memory: 0,
+            scheduler_used_cpu: 0,
+            scheduler_used_memory: 0,
+            kubelets_used_cpu: 0,
+            kubelets_used_memory: 0,
+            succeed_pod_counter: 0,
+            pending_pod_counter: 0,
+            preempted_pod_counter: 0,
+            failed_pod_counter: 0,
+            running_pod_counter: 0,
+            evicted_pod_counter: 0,
+            removed_pod_counter: 0,
             node_counter: 0,
             kubelet_utilization_cpu_numerator: Vec::new(),
             kubelet_utilization_memory_numerator: Vec::new(),
@@ -77,7 +80,10 @@ impl Monitoring {
     pub fn presimulation_init(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
-            self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().monitoring.self_update_period);
+            self.ctx.emit_self(
+                EventSelfUpdate {},
+                self.init_config.borrow().monitoring.self_update_period,
+            );
         }
     }
 
@@ -133,7 +139,7 @@ impl Monitoring {
     pub fn scheduler_on_node_removed(&mut self, node: &Node) {
         self.scheduler_on_node_restore(
             node.spec.installed_cpu - node.spec.available_cpu,
-            node.spec.installed_memory - node.spec.available_memory
+            node.spec.installed_memory - node.spec.available_memory,
         );
 
         assert!(self.total_installed_cpu >= node.spec.installed_cpu);
@@ -236,9 +242,11 @@ impl Monitoring {
 
     pub fn print_statistics(&mut self) {
         self.kubelet_utilization_cpu_numerator.push(self.kubelets_used_cpu);
-        self.kubelet_utilization_memory_numerator.push(self.kubelets_used_memory);
+        self.kubelet_utilization_memory_numerator
+            .push(self.kubelets_used_memory);
         self.scheduler_utilization_cpu_numerator.push(self.scheduler_used_cpu);
-        self.scheduler_utilization_memory_numerator.push(self.scheduler_used_memory);
+        self.scheduler_utilization_memory_numerator
+            .push(self.scheduler_used_memory);
 
         self.pending_pod.push(self.pending_pod_counter);
         print!(
@@ -257,7 +265,6 @@ impl Monitoring {
             self.evicted_pod_counter,
             self.preempted_pod_counter,
         );
-
     }
 
     pub fn dump_statistics(&self) {
@@ -266,12 +273,16 @@ impl Monitoring {
         let mut fout = BufWriter::new(file);
 
         for i in 0..self.kubelet_utilization_cpu_numerator.len() {
-            write!(fout, "{:?} {:?} {:?} {:?} {:?}\n",
-                   self.kubelet_utilization_cpu_numerator[i],
-                   self.kubelet_utilization_memory_numerator[i],
-                   self.scheduler_utilization_cpu_numerator[i],
-                   self.scheduler_utilization_memory_numerator[i],
-                   self.pending_pod[i]).unwrap();
+            write!(
+                fout,
+                "{:?} {:?} {:?} {:?} {:?}\n",
+                self.kubelet_utilization_cpu_numerator[i],
+                self.kubelet_utilization_memory_numerator[i],
+                self.scheduler_utilization_cpu_numerator[i],
+                self.scheduler_utilization_memory_numerator[i],
+                self.pending_pod[i]
+            )
+            .unwrap();
         }
     }
 }
@@ -279,11 +290,14 @@ impl Monitoring {
 impl dsc::EventHandler for Monitoring {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
-            EventSelfUpdate { } => {
+            EventSelfUpdate {} => {
                 self.print_statistics();
 
                 if self.self_update_enabled {
-                    self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().monitoring.self_update_period);
+                    self.ctx.emit_self(
+                        EventSelfUpdate {},
+                        self.init_config.borrow().monitoring.self_update_period,
+                    );
                 }
             }
         });

@@ -1,6 +1,5 @@
 use crate::my_imports::*;
 
-
 #[derive(Clone)]
 struct SimConfig {
     pub output_file_path: String,
@@ -10,7 +9,6 @@ struct SimConfig {
     pub pipeline_config: PipelineConfig,
     pub seed: u64,
 }
-
 
 pub struct Experiment {
     is_done: bool,
@@ -27,25 +25,28 @@ impl Experiment {
         }
     }
 
-    pub fn add_simulation(&mut self,
-                          output_file_path: String,
-                          init_config: &InitConfig,
-                          init_nodes: &InitNodes,
-                          init_trace: &InitTrace,
-                          pipeline_config: &PipelineConfig,
-                          seed: u64,
-                          runner: fn(&mut Simulation)) {
+    pub fn add_simulation(
+        &mut self,
+        output_file_path: String,
+        init_config: &InitConfig,
+        init_nodes: &InitNodes,
+        init_trace: &InitTrace,
+        pipeline_config: &PipelineConfig,
+        seed: u64,
+        runner: fn(&mut Simulation),
+    ) {
         assert!(!self.is_done);
 
-        self.simulations.push_back((SimConfig {
+        self.simulations.push_back((
+            SimConfig {
                 output_file_path,
                 init_config: init_config.clone(),
                 init_nodes: init_nodes.clone(),
                 init_trace: init_trace.clone(),
                 pipeline_config: pipeline_config.clone(),
-                seed
+                seed,
             },
-            runner.clone()
+            runner.clone(),
         ));
     }
 
@@ -61,7 +62,7 @@ impl Experiment {
                     sim_config.0.init_nodes,
                     sim_config.0.init_trace,
                     sim_config.0.pipeline_config,
-                    sim_config.0.seed.clone()
+                    sim_config.0.seed.clone(),
                 );
 
                 sim_config.1(&mut sim);
