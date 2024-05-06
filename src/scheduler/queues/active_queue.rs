@@ -6,6 +6,7 @@ pub trait IActiveQ {
     fn try_pop(&mut self) -> Option<Pod>;
     fn try_remove(&mut self, pod: Pod) -> bool;
     fn len(&self) -> usize;
+    fn clone(&self) -> Box<dyn IActiveQ + Send>;
 }
 
 pub type ActiveQDefault = ActiveMinQ<ActiveQCmpDefault>;
@@ -29,7 +30,7 @@ impl<PodWrapper: TraitActiveQCmp> ActiveMinQ<PodWrapper> {
     }
 }
 
-impl<PodWrapper: TraitActiveQCmp> IActiveQ for ActiveMinQ<PodWrapper> {
+impl<PodWrapper: TraitActiveQCmp + Send + 'static> IActiveQ for ActiveMinQ<PodWrapper> {
     fn push(&mut self, pod: Pod) {
         self.0.insert(PodWrapper::wrap(pod));
     }
@@ -52,6 +53,10 @@ impl<PodWrapper: TraitActiveQCmp> IActiveQ for ActiveMinQ<PodWrapper> {
     fn len(&self) -> usize {
         return self.0.len();
     }
+
+    fn clone(&self) -> Box<dyn IActiveQ + Send> {
+        return Box::new(ActiveMinQ::<PodWrapper>::new());
+    }
 }
 
 
@@ -73,7 +78,7 @@ impl<PodWrapper: TraitActiveQCmp> ActiveMaxQ<PodWrapper> {
     }
 }
 
-impl<PodWrapper: TraitActiveQCmp> IActiveQ for ActiveMaxQ<PodWrapper> {
+impl<PodWrapper: TraitActiveQCmp + Send + 'static> IActiveQ for ActiveMaxQ<PodWrapper> {
     fn push(&mut self, pod: Pod) {
         self.0.insert(PodWrapper::wrap(pod));
     }
@@ -95,6 +100,10 @@ impl<PodWrapper: TraitActiveQCmp> IActiveQ for ActiveMaxQ<PodWrapper> {
 
     fn len(&self) -> usize {
         return self.0.len();
+    }
+
+    fn clone(&self) -> Box<dyn IActiveQ + Send> {
+        return Box::new(ActiveMaxQ::<PodWrapper>::new());
     }
 }
 

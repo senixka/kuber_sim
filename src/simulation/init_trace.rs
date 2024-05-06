@@ -1,13 +1,13 @@
 use crate::my_imports::*;
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TraceEvent {
     AddPodGroup(PodGroup),
 }
 
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InitTrace {
     #[serde(default)]
     pub trace: Vec<TraceEvent>,

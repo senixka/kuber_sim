@@ -17,16 +17,16 @@ pub struct Scheduler {
     node_rtree: NodeRTree,
 
     // Queues
-    active_queue: Box<dyn IActiveQ>,
+    active_queue: Box<dyn IActiveQ + Send>,
     unschedulable_queue: BackOffQConstant,
-    backoff_queue: Box<dyn IBackOffQ>,
+    backoff_queue: Box<dyn IBackOffQ + Send>,
     failed_attempts: HashMap<u64, u64>,
 
     // Pipeline
-    filters: Vec<Box<dyn IFilterPlugin>>,
-    post_filters: Vec<Box<dyn IFilterPlugin>>,
-    scorers: Vec<Box<dyn IScorePlugin>>,
-    score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
+    filters: Vec<Box<dyn IFilterPlugin + Send>>,
+    post_filters: Vec<Box<dyn IFilterPlugin + Send>>,
+    scorers: Vec<Box<dyn IScorePlugin + Send>>,
+    score_normalizers: Vec<Box<dyn IScoreNormalizePlugin + Send>>,
     scorer_weights: Vec<i64>,
 }
 
@@ -38,14 +38,14 @@ impl Scheduler {
         api_sim_id: dsc::Id,
 
         // Queues
-        active_queue: Box<dyn IActiveQ>,
-        backoff_queue: Box<dyn IBackOffQ>,
+        active_queue: Box<dyn IActiveQ + Send>,
+        backoff_queue: Box<dyn IBackOffQ + Send>,
 
         // Pipline
-        filters: Vec<Box<dyn IFilterPlugin>>,
-        post_filters: Vec<Box<dyn IFilterPlugin>>,
-        scorers: Vec<Box<dyn IScorePlugin>>,
-        score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
+        filters: Vec<Box<dyn IFilterPlugin + Send>>,
+        post_filters: Vec<Box<dyn IFilterPlugin + Send>>,
+        scorers: Vec<Box<dyn IScorePlugin + Send>>,
+        score_normalizers: Vec<Box<dyn IScoreNormalizePlugin + Send>>,
         scorer_weights: Vec<i64>,
     ) -> Scheduler {
         Self {

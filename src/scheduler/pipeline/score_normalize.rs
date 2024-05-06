@@ -19,6 +19,8 @@ pub trait IScoreNormalizePlugin {
                  pod: &Pod, 
                  score_nodes: &Vec<Node>,
                  scores: &mut Vec<i64>);
+
+    fn clone(&self) -> Box<dyn IScoreNormalizePlugin + Send>;
 }
 
 
@@ -38,6 +40,10 @@ impl IScoreNormalizePlugin for ScoreNormalizeSkip {
                  _: &Pod,
                  _: &Vec<Node>,
                  _: &mut Vec<i64>) {
+    }
+
+    fn clone(&self) -> Box<dyn IScoreNormalizePlugin + Send> {
+        return Box::new(ScoreNormalizeSkip);
     }
 }
 
@@ -61,6 +67,10 @@ impl IScoreNormalizePlugin for ScoreNormalizeNeg {
         for score in scores {
             *score = -(*score);
         }
+    }
+
+    fn clone(&self) -> Box<dyn IScoreNormalizePlugin + Send> {
+        return Box::new(ScoreNormalizeNeg);
     }
 }
 

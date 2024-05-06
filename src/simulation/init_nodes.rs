@@ -1,7 +1,7 @@
 use crate::my_imports::*;
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitNodes {
     #[serde(default)]
     pub nodes: Vec<NodeGroup>,

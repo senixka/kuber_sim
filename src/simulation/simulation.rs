@@ -34,15 +34,8 @@ impl Simulation {
                init_config: InitConfig,
                init_nodes: InitNodes,
                init_trace: InitTrace,
-               seed: u64,
-               active_queue: Box<dyn IActiveQ>,
-               backoff_queue: Box<dyn IBackOffQ>,
-
-               filters: Vec<Box<dyn IFilterPlugin>>,
-               post_filters: Vec<Box<dyn IFilterPlugin>>,
-               scorers: Vec<Box<dyn IScorePlugin>>,
-               score_normalizers: Vec<Box<dyn IScoreNormalizePlugin>>,
-               scorer_weights: Vec<i64>) -> Self {
+               pipeline_config: PipelineConfig,
+               seed: u64) -> Self {
         // DSLab core
         let mut sim = dsc::Simulation::new(seed);
 
@@ -65,8 +58,8 @@ impl Simulation {
         ));
         let _ = sim.add_handler("monitoring", monitoring.clone());
 
-        assert_eq!(scorers.len(), score_normalizers.len());
-        assert_eq!(scorers.len(), scorer_weights.len());
+        assert_eq!(pipeline_config.scorers.len(), pipeline_config.score_normalizers.len());
+        assert_eq!(pipeline_config.scorers.len(), pipeline_config.scorer_weights.len());
 
         let scheduler = Rc::new(RefCell::new(
             Scheduler::new(
@@ -75,14 +68,14 @@ impl Simulation {
                 monitoring.clone(),
                 api_id,
 
-                active_queue,
-                backoff_queue,
+                pipeline_config.active_queue,
+                pipeline_config.backoff_queue,
 
-                filters,
-                post_filters,
-                scorers,
-                score_normalizers,
-                scorer_weights,
+                pipeline_config.filters,
+                pipeline_config.post_filters,
+                pipeline_config.scorers,
+                pipeline_config.score_normalizers,
+                pipeline_config.scorer_weights,
             )
         ));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
@@ -191,7 +184,7 @@ impl Simulation {
         self.sim.step_until_no_events();
     }
 
-    pub fn run_for_duration(&mut self, duration: f64) {
+    pub fn step_for_duration(&mut self, duration: f64) {
         assert_eq!(self.is_preparation_done, true);
         self.sim.step_for_duration(duration);
     }

@@ -17,6 +17,8 @@ pub trait IScorePlugin {
              nodes: &HashMap<u64, Node>,
              pod: &Pod,
              node: &Node) -> i64;
+
+    fn clone(&self) -> Box<dyn IScorePlugin + Send>;
 }
 
 
@@ -37,6 +39,10 @@ impl IScorePlugin for ScoreIsNodeEmpty {
              node: &Node) -> i64 {
         return (node.status.pods.len() == 0) as i64;
     }
+
+    fn clone(&self) -> Box<dyn IScorePlugin + Send> {
+        return Box::new(ScoreIsNodeEmpty);
+    }
 }
 
 
@@ -56,6 +62,10 @@ impl IScorePlugin for ScoreCountRunningPods {
              _: &Pod,
              node: &Node) -> i64 {
         return node.status.pods.len() as i64;
+    }
+
+    fn clone(&self) -> Box<dyn IScorePlugin + Send> {
+        return Box::new(ScoreCountRunningPods);
     }
 }
 
@@ -105,6 +115,10 @@ impl IScorePlugin for ScoreTetris {
             (reversed * scale) as i64
         }
     }
+
+    fn clone(&self) -> Box<dyn IScorePlugin + Send> {
+        return Box::new(ScoreTetris);
+    }
 }
 
 
@@ -150,6 +164,10 @@ impl IScorePlugin for ScoreTaintsTolerations {
         }
         return 1;
     }
+
+    fn clone(&self) -> Box<dyn IScorePlugin + Send> {
+        return Box::new(ScoreTaintsTolerations);
+    }
 }
 
 
@@ -176,6 +194,10 @@ impl IScorePlugin for ScoreNodeAffinity {
                 0
             }
         }
+    }
+
+    fn clone(&self) -> Box<dyn IScorePlugin + Send> {
+        return Box::new(ScoreNodeAffinity);
     }
 }
 

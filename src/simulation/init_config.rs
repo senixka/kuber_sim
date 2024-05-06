@@ -1,7 +1,7 @@
 use crate::my_imports::*;
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkDelays {
     // Scheduler
     pub api2scheduler: f64,
@@ -40,7 +40,7 @@ impl NetworkDelays {
 }
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigMonitoring {
     pub self_update_period: f64,
 }
@@ -52,7 +52,7 @@ impl ConfigMonitoring {
 }
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigScheduler {
     pub unschedulable_queue_backoff_delay: f64,
     pub self_update_period: f64,
@@ -76,7 +76,7 @@ impl ConfigScheduler {
 }
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigCA {
     pub self_update_period: f64,
 
@@ -100,7 +100,7 @@ impl ConfigCA {
 }
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigHPA {
     pub self_update_period: f64,
 }
@@ -113,7 +113,7 @@ impl ConfigHPA {
 
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigVPA {
     pub self_update_period: f64,
 }
@@ -126,7 +126,7 @@ impl ConfigVPA {
 
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitConfig {
     pub network_delays: NetworkDelays,
     pub monitoring: ConfigMonitoring,

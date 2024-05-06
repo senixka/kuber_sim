@@ -7,6 +7,7 @@ pub trait IBackOffQ {
     fn try_pop(&mut self, current_time: f64) -> Option<u64>;
     fn try_remove(&mut self, pod_uid: u64) -> bool;
     fn len(&self) -> usize;
+    fn clone(&self) -> Box<dyn IBackOffQ + Send>;
 }
 
 pub type BackOffQDefault = BackOffQExponential;
@@ -106,6 +107,10 @@ impl IBackOffQ for BackOffQExponential {
     fn len(&self) -> usize {
         return self.queue.len();
     }
+
+    fn clone(&self) -> Box<dyn IBackOffQ + Send> {
+        return Box::new(BackOffQExponential::new(self.initial_backoff, self.max_backoff));
+    }
 }
 
 
@@ -169,5 +174,9 @@ impl IBackOffQ for BackOffQConstant {
 
     fn len(&self) -> usize {
         return self.queue.len();
+    }
+
+    fn clone(&self) -> Box<dyn IBackOffQ + Send> {
+        return Box::new(BackOffQConstant::new(self.backoff_delay));
     }
 }

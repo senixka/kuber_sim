@@ -17,6 +17,8 @@ pub trait IFilterPlugin {
               nodes: &HashMap<u64, Node>,
               pod: &Pod,
               node: &Node) -> bool;
+
+    fn clone(&self) -> Box<dyn IFilterPlugin + Send>;
 }
 
 
@@ -37,6 +39,10 @@ impl IFilterPlugin for FilterAlwaysTrue {
               _: &Node) -> bool {
         return true;
     }
+
+    fn clone(&self) -> Box<dyn IFilterPlugin + Send> {
+        return Box::new(FilterAlwaysTrue);
+    }
 }
 
 
@@ -56,6 +62,10 @@ impl IFilterPlugin for FilterAlwaysFalse {
               _: &Pod,
               _: &Node) -> bool {
         return false;
+    }
+
+    fn clone(&self) -> Box<dyn IFilterPlugin + Send> {
+        return Box::new(FilterAlwaysFalse);
     }
 }
 
@@ -89,6 +99,10 @@ impl IFilterPlugin for FilterNodeSelector {
         }
         return true;
     }
+
+    fn clone(&self) -> Box<dyn IFilterPlugin + Send> {
+        return Box::new(FilterNodeSelector);
+    }
 }
 
 
@@ -108,6 +122,10 @@ impl IFilterPlugin for FilterRequestedResourcesAvailable {
               pod: &Pod,
               node: &Node) -> bool {
         return node.is_consumable(pod.spec.request_cpu, pod.spec.request_memory);
+    }
+
+    fn clone(&self) -> Box<dyn IFilterPlugin + Send> {
+        return Box::new(FilterRequestedResourcesAvailable);
     }
 }
 
@@ -144,6 +162,10 @@ impl IFilterPlugin for FilterTaintsTolerations {
         }
         return true;
     }
+
+    fn clone(&self) -> Box<dyn IFilterPlugin + Send> {
+        return Box::new(FilterTaintsTolerations);
+    }
 }
 
 
@@ -170,6 +192,10 @@ impl IFilterPlugin for FilterNodeAffinity {
                 true
             }
         }
+    }
+
+    fn clone(&self) -> Box<dyn IFilterPlugin + Send> {
+        return Box::new(FilterNodeAffinity);
     }
 }
 
@@ -205,5 +231,9 @@ impl IFilterPlugin for FilterPreemption {
         }
 
         return false;
+    }
+
+    fn clone(&self) -> Box<dyn IFilterPlugin + Send> {
+        return Box::new(FilterPreemption);
     }
 }

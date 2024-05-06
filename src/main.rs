@@ -12,6 +12,8 @@ pub mod my_imports {
     pub use std::rc::Rc;
     pub use std::cell::RefCell;
 
+    pub use std::collections::LinkedList;
+    pub use std::thread;
     pub use std::ops::Neg;
     pub use std::fs;
     pub use std::fs::{File};
@@ -65,12 +67,15 @@ pub mod my_imports {
     pub use crate::simulation::init_config::*;
     pub use crate::simulation::simulation::*;
     pub use crate::simulation::monitoring::*;
+    pub use crate::simulation::experiment::*;
+    pub use crate::simulation::pipeline_config::*;
 
     pub use crate::kubelet::kubelet::*;
     pub use crate::kubelet::eviction::*;
     pub use crate::test::*;
     pub use crate::*;
 }
+
 use my_imports::*;
 
 
@@ -150,38 +155,51 @@ fn main() {
         init_nodes.prepare();
         init_trace.prepare();
 
-        let mut test = Simulation::new(
-            "./data/out/test_ca.txt".to_string(),
-            init_config,
-            init_nodes,
-            init_trace,
-            179,
+        // Prepare pipeline config
+        let mut pconf = PipelineConfig::new(
             Box::new(ActiveQDefault::default()),
             Box::new(BackOffQDefault::default()),
             vec![Box::new(FilterNodeSelector)],
             vec![Box::new(FilterAlwaysTrue)],
             vec![Box::new(ScoreTetris)],
             vec![Box::new(ScoreNormalizeSkip)],
-            vec![2]
+            vec![2]);
+
+
+
+        let mut exp = Experiment::new();
+        exp.add_simulation(
+            "./data/out/test_ca_1.txt".to_string(),
+            &init_config,
+            &init_nodes,
+            &init_trace,
+            &pconf,
+            179,
+            |sim: &mut Simulation| {
+                sim.prepare();
+                sim.step_for_duration(42.0);
+            }
         );
 
-        test.prepare();
-        test.run_for_duration(50.0);
+        // --------------------------- Change ---------------------------
+        pconf.post_filters = vec![Box::new(FilterAlwaysFalse)];
+        // --------------------------- Change ---------------------------
 
-        // test.add_ca();
-        //
-        // test.prepare();
-        // test.run_for_duration(100.0);
-        //
-        // test.enable_ca();
-        // test.run_for_duration(20.0);
-        //
-        // test.disable_ca();
-        // test.run_for_duration(100.0);
-        //
-        // test.enable_ca();
-        // test.run_for_duration(100.0);
+        exp.add_simulation(
+            "./data/out/test_ca_2.txt".to_string(),
+            &init_config,
+            &init_nodes,
+            &init_trace,
+            &pconf,
+            179,
+            |sim: &mut Simulation| {
+                sim.prepare();
+                sim.step_for_duration(23.0);
+            }
+        );
 
+        exp.spawn_all();
+        exp.join_all();
     }
 
     // // Test pod cluster autoscaler
