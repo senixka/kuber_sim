@@ -4,13 +4,44 @@ use crate::my_imports::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TraceEvent {
     AddPodGroup(PodGroup),
+    RemovePodGroup(EventRemovePodGroup),
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TraceEventWrapper {
+    submit_time: f64,
+    event: TraceEvent,
+}
+
+impl PartialOrd for TraceEventWrapper {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TraceEventWrapper {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.submit_time.total_cmp(&other.submit_time)
+    }
+}
+
+impl PartialEq for TraceEventWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        self.submit_time == other.submit_time
+    }
+}
+
+impl Eq for TraceEventWrapper {}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InitTrace {
     #[serde(default)]
-    pub trace: Vec<TraceEvent>,
+    pub trace: Vec<TraceEventWrapper>,
 }
 
 
@@ -121,10 +152,13 @@ impl InitTrace {
 
     pub fn prepare(&mut self) {
         // Prepare trace events
-        for event in self.trace.iter_mut() {
-            match event {
+        for wrapper in self.trace.iter_mut() {
+            match &mut wrapper.event {
                 TraceEvent::AddPodGroup(pod_group) => {
                     pod_group.prepare();
+                }
+                TraceEvent::RemovePodGroup(_) => {
+                    // Do nothing
                 }
             }
         }
@@ -132,11 +166,31 @@ impl InitTrace {
 
     pub fn submit(&self, emitter: &dsc::SimulationContext, api_sim_id: dsc::Id) {
         let mut last_time: f64 = 0.0;
-        // let remove_pdo_group_events: BTreeSet<(f64, u64)> = BTreeSet::new();
+        let mut delayed_events: BTreeSet<TraceEventWrapper> = BTreeSet::new();
 
         // Process trace events
-        for event in self.trace.iter() {
-            match event {
+        for wrapper in self.trace.iter() {
+            // Try to submit delayed events
+            while !delayed_events.is_empty() && delayed_events.first().unwrap().submit_time <= wrapper.submit_time {
+                let delayed = delayed_events.pop_first().unwrap();
+                match delayed.event {
+                    TraceEvent::RemovePodGroup(inner_event) => {
+                        // Emit inner event
+                        assert!(last_time <= delayed.submit_time);
+                        emitter.emit_ordered(
+                            inner_event,
+                            api_sim_id,
+                            delayed.submit_time
+                        );
+                        last_time = delayed.submit_time;
+                    }
+                    TraceEvent::AddPodGroup(_) => {
+                        panic!("Unexpected TraceEvent.")
+                    }
+                }
+            }
+
+            match &wrapper.event {
                 TraceEvent::AddPodGroup(pod_group) => {
                     for _ in 0..pod_group.pod_count {
                         // Get pod group template
@@ -145,14 +199,25 @@ impl InitTrace {
                         pod.prepare(pod_group.group_uid);
 
                         // Emit AddNode event
-                        assert!(last_time <= pod_group.submit_time);
+                        assert!(last_time <= wrapper.submit_time);
                         emitter.emit_ordered(
                             EventAddPod { pod: pod.clone() },
                             api_sim_id,
-                            pod_group.submit_time
+                            wrapper.submit_time
                         );
-                        last_time = pod_group.submit_time;
+                        last_time = wrapper.submit_time;
                     }
+
+                    // Add RemovePodGroup event to delayed if duration != 0
+                    if pod_group.group_duration != 0.0 {
+                        delayed_events.insert(TraceEventWrapper {
+                            submit_time: wrapper.submit_time + pod_group.group_duration,
+                            event: TraceEvent::RemovePodGroup(EventRemovePodGroup { group_uid: pod_group.group_uid }),
+                        });
+                    }
+                }
+                TraceEvent::RemovePodGroup(_) => {
+                    panic!("Unexpected TraceEvent.");
                 }
             }
         }

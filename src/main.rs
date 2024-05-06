@@ -182,6 +182,7 @@ fn main() {
         );
 
         // --------------------------- Change ---------------------------
+        init_config.network_delays.scheduler2api = 1.0;
         pconf.post_filters = vec![Box::new(FilterAlwaysFalse)];
         // --------------------------- Change ---------------------------
 
