@@ -221,5 +221,25 @@ impl InitTrace {
                 }
             }
         }
+
+        // Try to submit delayed events
+        while !delayed_events.is_empty() {
+            let delayed = delayed_events.pop_first().unwrap();
+            match delayed.event {
+                TraceEvent::RemovePodGroup(inner_event) => {
+                    // Emit inner event
+                    assert!(last_time <= delayed.submit_time);
+                    emitter.emit_ordered(
+                        inner_event,
+                        api_sim_id,
+                        delayed.submit_time
+                    );
+                    last_time = delayed.submit_time;
+                }
+                TraceEvent::AddPodGroup(_) => {
+                    panic!("Unexpected TraceEvent.")
+                }
+            }
+        }
     }
 }

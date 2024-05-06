@@ -570,6 +570,10 @@ impl dsc::EventHandler for Scheduler {
                 // If we get PodPhase updates for this pod later -> do nothing.
             }
 
+            EventRemovePodGroup { group_uid: _group_uid } => {
+                dp_scheduler!("{:.12} scheduler EventRemovePodGroup group_uid:{:?}", self.ctx.time(), _group_uid);
+            }
+
             EventAddNode { kubelet_sim_id: _ , node } => {
                 dp_scheduler!("{:.12} scheduler EventAddNode node_uid:{:?}", self.ctx.time(), node.metadata.uid);
 

@@ -180,6 +180,22 @@ impl dsc::EventHandler for APIServer {
                 // Here we only have to notify scheduler. Scheduler will notify kubelet.
             }
 
+            EventRemovePodGroup { group_uid } => {
+                dp_api_server!("{:.12} api_server EventRemovePodGroup group_uid:{:?}", self.ctx.time(), group_uid);
+                println!("{:.12} api_server EventRemovePodGroup group_uid:{:?}", self.ctx.time(), group_uid);
+
+                // TODO: notify VPA, HPA
+
+                // Notify scheduler
+                self.ctx.emit(
+                    EventRemovePodGroup { group_uid },
+                    self.scheduler_sim_id,
+                    self.init_config.borrow().network_delays.api2scheduler
+                );
+
+                // Here we only have to notify scheduler. Scheduler will notify kubelets.
+            }
+
             EventAddPod { pod } => {
                 dp_api_server!("{:.12} api_server EventAddPod pod:{:?}", self.ctx.time(), pod);
 

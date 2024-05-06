@@ -13,7 +13,6 @@ pub struct Simulation {
 
     api_id: dsc::Id,
 
-    scheduler: Rc<RefCell<Scheduler>>,
     scheduler_id: dsc::Id,
 
     ca: Option<Rc<RefCell<CA>>>,
@@ -88,7 +87,6 @@ impl Simulation {
             api_id,
             monitoring,
             api,
-            scheduler,
             scheduler_id,
             ca: None,
             ca_id: None,
@@ -103,11 +101,12 @@ impl Simulation {
     // pub fn add_ca(&mut self) {
     //     self.ca = Some(Rc::new(RefCell::new(
     //         CA::new(
+    //             &mut self.sim,
     //             self.sim.create_context("ca"),
-    //             self.cluster_state.clone(),
+    //             self.init_config.clone(),
+    //             self.init_nodes.clone(),
     //             self.monitoring.clone(),
-    //             self.api_id,
-    //             &mut self.sim)
+    //             self.api_id)
     //     )));
     //     self.ca_id = Some(self.sim.add_handler("ca", self.ca.clone().unwrap()));
     // }
@@ -154,30 +153,30 @@ impl Simulation {
         self.monitoring.borrow_mut().disable_dynamic_update();
     }
 
-    //
-    // pub fn enable_ca(&self) {
-    //     self.ca.clone().unwrap().borrow_mut().turn_on();
-    // }
-    //
-    // pub fn disable_ca(&self) {
-    //     self.ca.clone().unwrap().borrow_mut().turn_off();
-    // }
-    //
-    // pub fn enable_hpa(&self) {
-    //     self.hpa.clone().unwrap().borrow_mut().turn_on();
-    // }
-    //
-    // pub fn disable_hpa(&self) {
-    //     self.hpa.clone().unwrap().borrow_mut().turn_off();
-    // }
-    //
-    // pub fn enable_vpa(&self) {
-    //     self.vpa.clone().unwrap().borrow_mut().turn_on();
-    // }
-    //
-    // pub fn disable_vpa(&self) {
-    //     self.vpa.clone().unwrap().borrow_mut().turn_off();
-    // }
+
+    pub fn enable_ca(&self) {
+        self.ca.clone().unwrap().borrow_mut().turn_on();
+    }
+
+    pub fn disable_ca(&self) {
+        self.ca.clone().unwrap().borrow_mut().turn_off();
+    }
+
+    pub fn enable_hpa(&self) {
+        self.hpa.clone().unwrap().borrow_mut().turn_on();
+    }
+
+    pub fn disable_hpa(&self) {
+        self.hpa.clone().unwrap().borrow_mut().turn_off();
+    }
+
+    pub fn enable_vpa(&self) {
+        self.vpa.clone().unwrap().borrow_mut().turn_on();
+    }
+
+    pub fn disable_vpa(&self) {
+        self.vpa.clone().unwrap().borrow_mut().turn_off();
+    }
 
     pub fn step_until_no_events(&mut self) {
         assert_eq!(self.is_preparation_done, true);
