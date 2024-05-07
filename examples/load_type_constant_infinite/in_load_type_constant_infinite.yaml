@@ -1,0 +1,32 @@
+monitoring:
+  self_update_period: 1
+
+scheduler:
+  self_update_period: 1
+  unschedulable_queue_backoff_delay: 5
+
+
+nodes:
+  - node_group:
+    amount: 1
+    node:
+      spec:
+        installed_cpu: 100
+        installed_memory: 100
+
+
+trace:
+  - submit_time: 1
+    event:
+      !AddPodGroup
+      pod_count: 1
+      pod:
+        spec:
+          request_cpu: 40
+          request_memory: 40
+          limit_cpu: 40
+          limit_memory: 40
+          load:
+            !ConstantInfinite
+            cpu: 40
+            memory: 40
