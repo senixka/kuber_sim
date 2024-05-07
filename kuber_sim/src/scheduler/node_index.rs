@@ -101,4 +101,3 @@ mod tests {
         assert_eq!(result.len(), 0);
     }
 }
-

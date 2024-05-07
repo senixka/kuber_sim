@@ -2,7 +2,7 @@ pub mod api_server;
 pub mod autoscaler;
 pub mod kubelet;
 pub mod load_types;
-pub mod my_macro;
+pub mod macros;
 pub mod objects;
 pub mod scheduler;
 pub mod simulation;
