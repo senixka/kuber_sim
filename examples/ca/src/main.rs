@@ -68,9 +68,9 @@ fn main() {
 
     // Test pod cluster autoscaler
     if value == "" {
-        let mut init_config = InitConfig::from_yaml(&"./data/cluster_state/test_ca.yaml".to_string());
-        let mut init_nodes = InitNodes::from_yaml(&"./data/cluster_state/test_ca.yaml".to_string());
-        let mut init_trace = InitTrace::from_file(&"./data/workload/test_ca.yaml".to_string());
+        let mut init_config = InitConfig::from_yaml(&"../../data/cluster_state/test_ca.yaml".to_string());
+        let mut init_nodes = InitNodes::from_yaml(&"../../data/cluster_state/test_ca.yaml".to_string());
+        let mut init_trace = InitTrace::from_file(&"../../data/workload/test_ca.yaml".to_string());
 
         // Prepare input
         init_config.prepare();

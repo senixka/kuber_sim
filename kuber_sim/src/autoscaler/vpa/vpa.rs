@@ -197,7 +197,7 @@ impl dsc::EventHandler for VPA {
                     .emit_self(EventSelfUpdate {}, self.init_config.borrow().vpa.self_update_period);
             }
 
-            EventVPAPodMetricsPost {
+            EventPodMetricsPost {
                 group_uid,
                 pod_uid,
                 current_phase,

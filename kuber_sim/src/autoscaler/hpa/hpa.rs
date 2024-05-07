@@ -167,7 +167,7 @@ impl dsc::EventHandler for HPA {
                     .emit_self(EventSelfUpdate {}, self.init_config.borrow().hpa.self_update_period);
             }
 
-            EventHPAPodMetricsPost {
+            EventPodMetricsPost {
                 group_uid,
                 pod_uid,
                 current_phase,

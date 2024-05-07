@@ -24,7 +24,7 @@ pub mod my_imports {
     pub use std::thread;
 
     pub mod dsc {
-        pub use dslab_core::{cast, Event, EventHandler, Id, Simulation, SimulationContext, EPSILON};
+        pub use dslab_core::{cast, Event, EventData, EventHandler, Id, Simulation, SimulationContext, EPSILON};
     }
 
     pub use crate::api_server::api::*;

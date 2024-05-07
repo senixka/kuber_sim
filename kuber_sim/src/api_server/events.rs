@@ -81,6 +81,17 @@ pub struct EventPodUpdateFromKubelet {
     pub current_memory: f64,
 }
 
+// [Emit]:      {} -> Api
+// [Consume]:   Api -> { HPA }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventPodMetricsPost {
+    pub group_uid: u64,
+    pub pod_uid: u64,
+    pub current_phase: PodPhase,
+    pub current_cpu: f64,
+    pub current_memory: f64,
+}
+
 ///////////////////////////////////////////// Common ///////////////////////////////////////////////
 
 // [Emit self]:      { CA | HPA | Scheduler | Monitoring }
@@ -122,30 +133,4 @@ pub struct EventPostCAMetrics {
     pub pending_pod_count: u64,
     pub used_nodes_utilization: Vec<(u64, f64, f64)>,
     pub may_help: Option<u64>,
-}
-
-///////////////////////////////////////// HPA  ////////////////////////////////////////////////
-
-// [Emit]:      {} -> Api
-// [Consume]:   Api -> { HPA }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventHPAPodMetricsPost {
-    pub group_uid: u64,
-    pub pod_uid: u64,
-    pub current_phase: PodPhase,
-    pub current_cpu: f64,
-    pub current_memory: f64,
-}
-
-///////////////////////////////////////// VPA  ////////////////////////////////////////////////
-
-// [Emit]:      {} -> Api
-// [Consume]:   Api -> { VPA }
-#[derive(Clone, Serialize, Deserialize)]
-pub struct EventVPAPodMetricsPost {
-    pub group_uid: u64,
-    pub pod_uid: u64,
-    pub current_phase: PodPhase,
-    pub current_cpu: f64,
-    pub current_memory: f64,
 }
