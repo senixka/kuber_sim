@@ -212,13 +212,24 @@ impl dsc::EventHandler for APIServer {
                     self.ctx.time(),
                     group_uid
                 );
-                println!(
-                    "{:.12} api_server EventRemovePodGroup group_uid:{:?}",
-                    self.ctx.time(),
-                    group_uid
-                );
 
-                // TODO: notify VPA, HPA
+                // Notify HPA
+                if self.is_hpa_enabled {
+                    self.ctx.emit(
+                        EventRemovePodGroup { group_uid },
+                        self.hpa_sim_id,
+                        self.init_config.borrow().network_delays.api2hpa,
+                    );
+                }
+
+                // Notify VPA
+                if self.is_vpa_enabled {
+                    self.ctx.emit(
+                        EventRemovePodGroup { group_uid },
+                        self.vpa_sim_id,
+                        self.init_config.borrow().network_delays.api2vpa,
+                    );
+                }
 
                 // Notify scheduler
                 self.ctx.emit(
@@ -226,8 +237,51 @@ impl dsc::EventHandler for APIServer {
                     self.scheduler_sim_id,
                     self.init_config.borrow().network_delays.api2scheduler,
                 );
-
                 // Here we only have to notify scheduler. Scheduler will notify kubelets.
+
+                // Notify scheduler again with delay
+                self.ctx.emit(
+                    EventRemovePodGroup { group_uid },
+                    self.scheduler_sim_id,
+                    self.init_config.borrow().network_delays.api2scheduler
+                        + self.init_config.borrow().network_delays.max_delay * 4.0,
+                );
+            }
+
+            EvenAddPodGroup { pod_group } => {
+                // Update local caches
+
+                // Notify HPA
+                if self.is_hpa_enabled && pod_group.hpa_profile.is_some() {
+                    self.ctx.emit(
+                        EvenAddPodGroup {
+                            pod_group: pod_group.clone(),
+                        },
+                        self.hpa_sim_id,
+                        self.init_config.borrow().network_delays.api2hpa,
+                    );
+                }
+
+                // Notify VPA
+                if self.is_vpa_enabled && pod_group.vpa_profile.is_some() {
+                    self.ctx.emit(
+                        EvenAddPodGroup {
+                            pod_group: pod_group.clone(),
+                        },
+                        self.vpa_sim_id,
+                        self.init_config.borrow().network_delays.api2vpa,
+                    );
+                }
+
+                // Emit AddPod events
+                for _ in 0..pod_group.pod_count {
+                    // Get pod group template
+                    let mut pod = pod_group.pod.clone();
+                    // Prepare pod group from template
+                    pod.prepare(pod_group.group_uid);
+
+                    self.ctx.emit_self_now(EventAddPod { pod: pod.clone() });
+                }
             }
 
             EventAddPod { pod } => {
@@ -241,7 +295,7 @@ impl dsc::EventHandler for APIServer {
                 self.pod2group.insert(pod.metadata.uid, pod.metadata.group_uid);
 
                 // Notify HPA if HPA enabled and pod contains HPA profile
-                if self.is_hpa_enabled && pod.hpa_profile.is_some() {
+                if self.is_hpa_enabled {
                     self.ctx.emit(
                         EventAddPod { pod: pod.clone() },
                         self.hpa_sim_id,
@@ -250,7 +304,7 @@ impl dsc::EventHandler for APIServer {
                 }
 
                 // Notify VPA if VPA enabled and pod contains VPA profile
-                if self.is_vpa_enabled && pod.vpa_profile.is_some() {
+                if self.is_vpa_enabled {
                     self.ctx.emit(
                         EventAddPod { pod: pod.clone() },
                         self.vpa_sim_id,

@@ -93,11 +93,6 @@ pub struct Pod {
     pub metadata: ObjectMeta,
     #[serde(skip)]
     pub status: PodStatus,
-
-    #[serde(default)]
-    pub hpa_profile: Option<HPAProfile>,
-    #[serde(default)]
-    pub vpa_profile: Option<VPAProfile>,
 }
 
 impl Pod {

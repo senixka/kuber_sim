@@ -600,6 +600,39 @@ impl dsc::EventHandler for Scheduler {
                 self.self_update_on();
             }
 
+            EventRemovePodGroup { group_uid } => {
+                dp_scheduler!(
+                    "{:.12} scheduler EventRemovePodGroup group_uid:{:?}",
+                    self.ctx.time(),
+                    group_uid
+                );
+
+                // Find all pods with current group_uid
+                let mut pod2remove: Vec<u64> = Vec::new();
+                // Search in pending pods
+                for (&pod_uid, pod) in self.pending_pods.iter() {
+                    if pod.metadata.group_uid == group_uid {
+                        pod2remove.push(pod_uid);
+                    }
+                }
+                // Search in running pods
+                for (&pod_uid, pod) in self.running_pods.iter() {
+                    if pod.metadata.group_uid == group_uid {
+                        pod2remove.push(pod_uid);
+
+                        //Notify kubelet to remove this pod
+                        let node_uid = pod.status.node_uid.unwrap();
+                        self.send_pod_phase_update(None, pod_uid, None, node_uid, PodPhase::Removed);
+                    }
+                }
+
+                // Remove all found pods
+                for pod_uid in pod2remove {
+                    self.process_removed_pod(pod_uid);
+                }
+                // If we get PodPhase updates for these pods later -> do nothing.
+            }
+
             EventRemovePod { pod_uid } => {
                 dp_scheduler!("{:.12} scheduler EventRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
 

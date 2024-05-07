@@ -17,18 +17,28 @@ pub struct HPAGroupInfo {
 
     // Submitted with EventAddPod
     pub pod_template: Pod,
+
+    // Local HPA profile
+    pub hpa_profile: HPAProfile,
 }
 
 impl HPAGroupInfo {
+    pub fn update_with_new_group(&mut self, pod_group: &PodGroup) {
+        // It is truly new group
+        assert!(self.alive_uids.is_empty());
+
+        // Update pod template
+        self.pod_template = pod_group.pod.clone();
+        // Prepare pod template
+        self.pod_template.prepare(pod_group.group_uid);
+
+        // Update group HPA profile
+        self.hpa_profile = pod_group.hpa_profile.clone().unwrap();
+    }
+
     pub fn update_with_new_pod(&mut self, pod: &Pod) {
         // It is truly new pod
         assert!(!self.alive_uids.contains(&pod.metadata.uid));
-
-        // Update pod template
-        if self.pod_template.hpa_profile.is_none() {
-            assert!(pod.hpa_profile.is_some());
-            self.pod_template = pod.clone();
-        }
 
         // Update last metrics
         self.last_metrics

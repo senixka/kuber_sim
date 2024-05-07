@@ -3,7 +3,7 @@ use crate::my_imports::*;
 /////////////////////////////////////////// API ////////////////////////////////////////////////////
 
 // [Emit]:      { Init | HPA } -> Api
-// [Consume]:   Api -> { Scheduler }
+// [Consume]:   Api -> { Scheduler | HPA | VPA }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventAddPod {
     pub pod: Pod,
@@ -14,6 +14,13 @@ pub struct EventAddPod {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventRemovePod {
     pub pod_uid: u64,
+}
+
+// [Emit]:      { Init } -> Api
+// [Consume]:   Api -> {}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvenAddPodGroup {
+    pub pod_group: PodGroup,
 }
 
 // [Emit]:      { Init } -> Api

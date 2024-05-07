@@ -10,6 +10,11 @@ pub struct PodGroup {
 
     #[serde(skip)]
     pub group_uid: u64,
+
+    #[serde(default)]
+    pub hpa_profile: Option<HPAProfile>,
+    #[serde(default)]
+    pub vpa_profile: Option<VPAProfile>,
 }
 
 impl PodGroup {

@@ -44,7 +44,7 @@ impl VPAPodInfo {
 
     pub fn update_with_metrics(
         &mut self,
-        profile: &VPAProfile,
+        init_config: &InitConfig,
         current_time: f64,
         current_phase: PodPhase,
         current_cpu: f64,
@@ -57,7 +57,8 @@ impl VPAPodInfo {
                         // Changing: Running -> Running
 
                         // Count past number of hist updates
-                        let past = ((current_time - self.last_time) / profile.histogram_update_frequency) as u64;
+                        let past =
+                            ((current_time - self.last_time) / init_config.vpa.histogram_update_frequency) as u64;
 
                         // Update cpu hist
                         self.hist_cpu.add(self.last_cpu as u64, past).unwrap();
@@ -105,10 +106,10 @@ impl VPAPodInfo {
         self.last_memory = current_memory;
     }
 
-    pub fn update_with_time(&mut self, profile: &VPAProfile, current_time: f64) {
+    pub fn update_with_time(&mut self, init_config: &InitConfig, current_time: f64) {
         if self.last_phase == PodPhase::Running {
             // Count past number of hist updates
-            let past = ((current_time - self.last_time) / profile.histogram_update_frequency) as u64;
+            let past = ((current_time - self.last_time) / init_config.vpa.histogram_update_frequency) as u64;
 
             // Update cpu hist
             self.hist_cpu.add(self.last_cpu as u64, past).unwrap();
@@ -130,25 +131,28 @@ impl VPAPodInfo {
             || self.last_phase == PodPhase::Removed;
     }
 
-    pub fn suggest(&self, profile: &VPAProfile) -> (i64, i64, i64, i64) {
+    pub fn suggest(&self, init_config: &InitConfig, profile: &VPAProfile) -> (i64, i64, i64, i64) {
         // Get cpu percentiles
         let cpu_data = self.hist_cpu.percentiles(&[50.0, 90.0, 95.0]).unwrap();
         assert_eq!(cpu_data.len(), 3);
         dp_vpa!("VPA Suggest cpu percentiles: {:?}", cpu_data);
 
         // Count cpu absolute values from baseline and given percent
-        let _lower_bound_cpu =
-            ((self.baseline_request_cpu as f64 * cpu_data[0].0 * profile.recommendation_margin_fraction) as i64)
-                .max(profile.min_allowed_cpu)
-                .min(profile.max_allowed_cpu);
-        let target_cpu = ((self.baseline_request_cpu as f64 * cpu_data[1].0 * profile.recommendation_margin_fraction)
-            as i64)
+        let _lower_bound_cpu = ((self.baseline_request_cpu as f64
+            * cpu_data[0].0
+            * init_config.vpa.recommendation_margin_fraction) as i64)
             .max(profile.min_allowed_cpu)
             .min(profile.max_allowed_cpu);
-        let _upper_bound_cpu =
-            ((self.baseline_request_cpu as f64 * cpu_data[2].0 * profile.recommendation_margin_fraction) as i64)
-                .max(profile.min_allowed_cpu)
-                .min(profile.max_allowed_cpu);
+        let target_cpu = ((self.baseline_request_cpu as f64
+            * cpu_data[1].0
+            * init_config.vpa.recommendation_margin_fraction) as i64)
+            .max(profile.min_allowed_cpu)
+            .min(profile.max_allowed_cpu);
+        let _upper_bound_cpu = ((self.baseline_request_cpu as f64
+            * cpu_data[2].0
+            * init_config.vpa.recommendation_margin_fraction) as i64)
+            .max(profile.min_allowed_cpu)
+            .min(profile.max_allowed_cpu);
 
         // Get memory percentiles
         let memory_data = self.hist_memory.percentiles(&[50.0, 90.0, 95.0]).unwrap();
@@ -156,18 +160,21 @@ impl VPAPodInfo {
         dp_vpa!("VPA Suggest memory percentiles: {:?}", memory_data);
 
         // Count memory absolute values from baseline and given percent
-        let _lower_bound_memory =
-            ((self.baseline_request_memory as f64 * memory_data[0].0 * profile.recommendation_margin_fraction) as i64)
-                .max(profile.min_allowed_memory)
-                .min(profile.max_allowed_memory);
-        let target_memory =
-            ((self.baseline_request_memory as f64 * memory_data[1].0 * profile.recommendation_margin_fraction) as i64)
-                .max(profile.min_allowed_memory)
-                .min(profile.max_allowed_memory);
-        let _upper_bound_memory =
-            ((self.baseline_request_memory as f64 * memory_data[2].0 * profile.recommendation_margin_fraction) as i64)
-                .max(profile.min_allowed_memory)
-                .min(profile.max_allowed_memory);
+        let _lower_bound_memory = ((self.baseline_request_memory as f64
+            * memory_data[0].0
+            * init_config.vpa.recommendation_margin_fraction) as i64)
+            .max(profile.min_allowed_memory)
+            .min(profile.max_allowed_memory);
+        let target_memory = ((self.baseline_request_memory as f64
+            * memory_data[1].0
+            * init_config.vpa.recommendation_margin_fraction) as i64)
+            .max(profile.min_allowed_memory)
+            .min(profile.max_allowed_memory);
+        let _upper_bound_memory = ((self.baseline_request_memory as f64
+            * memory_data[2].0
+            * init_config.vpa.recommendation_margin_fraction) as i64)
+            .max(profile.min_allowed_memory)
+            .min(profile.max_allowed_memory);
 
         dp_vpa!("########### VPA Suggests #########");
         dp_vpa!("# Lower CPU:     {:<15} #", _lower_bound_cpu);
@@ -183,23 +190,23 @@ impl VPAPodInfo {
         return (
             target_cpu,
             target_memory,
-            (target_cpu as f64 * profile.limit_margin_fraction) as i64,
-            (target_memory as f64 * profile.limit_margin_fraction) as i64,
+            (target_cpu as f64 * init_config.vpa.limit_margin_fraction) as i64,
+            (target_memory as f64 * init_config.vpa.limit_margin_fraction) as i64,
         );
     }
 
-    pub fn need_reschedule(&self, profile: &VPAProfile, current_time: f64) -> bool {
-        if current_time - self.start_time <= profile.reschedule_delay {
+    pub fn need_reschedule(&self, init_config: &InitConfig, profile: &VPAProfile, current_time: f64) -> bool {
+        if current_time - self.start_time <= init_config.vpa.reschedule_delay {
             return false;
         }
 
         // Get suggested spec resources
-        let (request_cpu, request_memory, _, _) = self.suggest(profile);
+        let (request_cpu, request_memory, _, _) = self.suggest(init_config, profile);
 
         // Compare suggested with current requested resources
         let d_cpu: f64 = ((request_cpu as f64 / self.baseline_request_cpu as f64) - 1.0).abs();
         let d_memory: f64 = ((request_memory as f64 / self.baseline_request_memory as f64) - 1.0).abs();
 
-        return d_cpu >= profile.gap_cpu || d_memory >= profile.gap_memory;
+        return d_cpu >= init_config.vpa.gap_cpu || d_memory >= init_config.vpa.gap_memory;
     }
 }

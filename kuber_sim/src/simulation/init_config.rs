@@ -21,6 +21,9 @@ pub struct NetworkDelays {
     // VPA
     pub api2vpa: f64,
     pub vpa2api: f64,
+
+    #[serde(skip)]
+    pub max_delay: f64,
 }
 
 impl NetworkDelays {
@@ -35,6 +38,18 @@ impl NetworkDelays {
         assert!(self.hpa2api >= 0.0, "NetworkDelays.hpa2api must be >= 0.0");
         assert!(self.api2vpa >= 0.0, "NetworkDelays.api2vpa must be >= 0.0");
         assert!(self.vpa2api >= 0.0, "NetworkDelays.vpa2api must be >= 0.0");
+
+        self.max_delay = self
+            .api2scheduler
+            .max(self.scheduler2api)
+            .max(self.api2kubelet)
+            .max(self.kubelet2api)
+            .max(self.api2ca)
+            .max(self.ca2api)
+            .max(self.api2hpa)
+            .max(self.hpa2api)
+            .max(self.api2vpa)
+            .max(self.vpa2api);
     }
 }
 
@@ -133,6 +148,15 @@ impl ConfigHPA {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigVPA {
     pub self_update_period: f64,
+
+    pub reschedule_delay: f64,
+    pub histogram_update_frequency: f64,
+
+    pub gap_cpu: f64,
+    pub gap_memory: f64,
+
+    pub recommendation_margin_fraction: f64,
+    pub limit_margin_fraction: f64,
 }
 
 impl ConfigVPA {
@@ -140,6 +164,21 @@ impl ConfigVPA {
         assert!(
             self.self_update_period > 0.0,
             "ConfigVPA.self_update_period must be > 0.0"
+        );
+        assert!(self.reschedule_delay > 0.0, "ConfigVPA.reschedule_delay must be > 0.0");
+        assert!(
+            self.histogram_update_frequency > 0.0,
+            "ConfigVPA.histogram_update_frequency must be > 0.0"
+        );
+        assert!(self.gap_cpu >= 0.0, "ConfigVPA.gap_cpu must be > 0.0");
+        assert!(self.gap_memory >= 0.0, "ConfigVPA.gap_memory must be > 0.0");
+        assert!(
+            self.recommendation_margin_fraction >= 0.0,
+            "ConfigVPA.recommendation_margin_fraction must be > 0.0"
+        );
+        assert!(
+            self.limit_margin_fraction >= 0.0,
+            "ConfigVPA.limit_margin_fraction must be > 0.0"
         );
     }
 }

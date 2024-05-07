@@ -185,17 +185,14 @@ impl InitTrace {
 
             match &wrapper.event {
                 TraceEvent::AddPodGroup(pod_group) => {
-                    for _ in 0..pod_group.pod_count {
-                        // Get pod group template
-                        let mut pod = pod_group.pod.clone();
-                        // Prepare pod group from template
-                        pod.prepare(pod_group.group_uid);
-
-                        // Emit AddNode event
-                        assert!(last_time <= wrapper.submit_time);
-                        emitter.emit_ordered(EventAddPod { pod: pod.clone() }, api_sim_id, wrapper.submit_time);
-                        last_time = wrapper.submit_time;
-                    }
+                    // Emit AddPodGroup event
+                    emitter.emit_ordered(
+                        EvenAddPodGroup {
+                            pod_group: pod_group.clone(),
+                        },
+                        api_sim_id,
+                        wrapper.submit_time,
+                    );
 
                     // Add RemovePodGroup event to delayed if duration != 0
                     if pod_group.group_duration != 0.0 {

@@ -58,7 +58,7 @@ impl HPA {
             let memory = info.numerator_memory / (info.running_pod_count as f64);
 
             // Locate current HPA profile
-            let profile = info.pod_template.clone().hpa_profile.unwrap();
+            let profile = &info.hpa_profile;
 
             // If group is too small -> AddPod
             if profile.min_size > group_size {
@@ -194,7 +194,7 @@ impl dsc::EventHandler for HPA {
                 dp_hpa!("{:.12} hpa EventAddPod pod:{:?}", self.ctx.time(), pod);
 
                 // If this pod should not be managed by HPA -> return
-                if pod.hpa_profile.is_none() {
+                if !self.managed_groups.contains_key(&pod.metadata.group_uid) {
                     return;
                 }
 
@@ -202,6 +202,32 @@ impl dsc::EventHandler for HPA {
                 let group_info = self.managed_groups.entry(pod.metadata.group_uid).or_default();
                 // Update group info
                 group_info.update_with_new_pod(&pod);
+            }
+
+            EvenAddPodGroup { pod_group } => {
+                dp_hpa!("{:.12} hpa EvenAddPodGroup pod_group:{:?}", self.ctx.time(), pod_group);
+                assert!(!self.managed_groups.contains_key(&pod_group.group_uid));
+
+                // If this group should not be managed by HPA -> return
+                if pod_group.hpa_profile.is_none() {
+                    return;
+                }
+
+                // Locate pod's group info
+                let group_info = self.managed_groups.entry(pod_group.group_uid).or_default();
+                // Update group info
+                group_info.update_with_new_group(&pod_group);
+            }
+
+            EventRemovePodGroup { group_uid } => {
+                dp_hpa!(
+                    "{:.12} hpa EventRemovePodGroup group_uid:{:?}",
+                    self.ctx.time(),
+                    group_uid
+                );
+
+                // Remove managed group
+                self.managed_groups.remove(&group_uid);
             }
         });
     }

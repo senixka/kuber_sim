@@ -51,7 +51,7 @@ impl VPA {
         // Look for all managed pod groups
         for (group_uid, group_info) in self.managed_groups.iter_mut() {
             // Get VPA profile
-            let profile = &group_info.pod_template.vpa_profile.clone().unwrap();
+            let profile = group_info.vpa_profile.clone();
 
             // Remove and store all finished uids from group
             let finished = group_info.remove_all_finished();
@@ -64,7 +64,8 @@ impl VPA {
                 // If finished pod failed -> reschedule it with new suggested resources
 
                 // Get suggested spec resources
-                let (request_cpu, request_memory, limit_cpu, limit_memory) = pod_info.suggest(profile);
+                let (request_cpu, request_memory, limit_cpu, limit_memory) =
+                    pod_info.suggest(&self.init_config.borrow(), &profile);
                 dp_vpa!(
                     "VPA reschedule failed pod_uid:{:?} with r_cpu:{:?} r_mem:{:?} l_cpu:{:?} l_mem:{:?}",
                     _pod_uid,
@@ -96,7 +97,7 @@ impl VPA {
             }
 
             // Update all remained uids in group with current time
-            group_info.update_all_with_time(profile, self.ctx.time());
+            group_info.update_all_with_time(&self.init_config.borrow(), self.ctx.time());
 
             // If pod's consumption very differs from its request -> reschedule pod with new spec
             for (&pod_uid, pod_info) in group_info.uids.iter_mut() {
@@ -106,7 +107,7 @@ impl VPA {
                 }
 
                 // If request and usage differs not too much -> skip
-                if !pod_info.need_reschedule(profile, self.ctx.time()) {
+                if !pod_info.need_reschedule(&self.init_config.borrow(), &profile, self.ctx.time()) {
                     continue;
                 }
 
@@ -118,7 +119,8 @@ impl VPA {
                 );
 
                 // Get suggested spec resources
-                let (request_cpu, request_memory, limit_cpu, limit_memory) = pod_info.suggest(profile);
+                let (request_cpu, request_memory, limit_cpu, limit_memory) =
+                    pod_info.suggest(&self.init_config.borrow(), &profile);
 
                 // Locate pod template
                 let mut pod = group_info.pod_template.clone();
@@ -216,6 +218,7 @@ impl dsc::EventHandler for VPA {
                 let group_info = self.managed_groups.get_mut(&group_uid).unwrap();
                 // Update group info
                 group_info.update_with_pod_metrics(
+                    &self.init_config.borrow(),
                     pod_uid,
                     current_phase,
                     current_cpu,
@@ -228,7 +231,7 @@ impl dsc::EventHandler for VPA {
                 dp_vpa!("{:.12} vpa EventAddPod pod:{:?}", self.ctx.time(), pod);
 
                 // If this pod should not be managed by VPA -> return
-                if pod.vpa_profile.is_none() {
+                if !self.managed_groups.contains_key(&pod.metadata.group_uid) {
                     return;
                 }
 
@@ -236,6 +239,32 @@ impl dsc::EventHandler for VPA {
                 let group_info = self.managed_groups.entry(pod.metadata.group_uid).or_default();
                 // Update group info
                 group_info.update_with_new_pod(&pod, self.ctx.time());
+            }
+
+            EvenAddPodGroup { pod_group } => {
+                dp_vpa!("{:.12} vpa EvenAddPodGroup pod_group:{:?}", self.ctx.time(), pod_group);
+                assert!(!self.managed_groups.contains_key(&pod_group.group_uid));
+
+                // If this group should not be managed by VPA -> return
+                if pod_group.vpa_profile.is_none() {
+                    return;
+                }
+
+                // Locate pod's group info
+                let group_info = self.managed_groups.entry(pod_group.group_uid).or_default();
+                // Update group info
+                group_info.update_with_new_group(&pod_group);
+            }
+
+            EventRemovePodGroup { group_uid } => {
+                dp_vpa!(
+                    "{:.12} vpa EventRemovePodGroup group_uid:{:?}",
+                    self.ctx.time(),
+                    group_uid
+                );
+
+                // Remove managed group
+                self.managed_groups.remove(&group_uid);
             }
         });
     }

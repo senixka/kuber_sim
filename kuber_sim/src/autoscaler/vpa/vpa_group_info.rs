@@ -5,20 +5,29 @@ pub struct VPAGroupInfo {
     // Pods VPA info
     pub uids: HashMap<u64, VPAPodInfo>,
 
-    // Submitted with EventAddPod
+    // Pod template to Recreate
     pub pod_template: Pod,
+    // Local VPA profile
+    pub vpa_profile: VPAProfile,
 }
 
 impl VPAGroupInfo {
+    pub fn update_with_new_group(&mut self, pod_group: &PodGroup) {
+        // It is truly new group
+        assert!(self.uids.is_empty());
+
+        // Set pod template if necessary
+        self.pod_template = pod_group.pod.clone();
+        // Prepare template
+        self.pod_template.prepare(pod_group.group_uid);
+
+        // Set local VPA profile
+        self.vpa_profile = pod_group.vpa_profile.clone().unwrap();
+    }
+
     pub fn update_with_new_pod(&mut self, pod: &Pod, current_time: f64) {
         // It is truly new pod
         assert!(!self.uids.contains_key(&pod.metadata.uid));
-
-        // Update pod template if necessary
-        if self.pod_template.vpa_profile.is_none() {
-            assert!(pod.vpa_profile.is_some());
-            self.pod_template = pod.clone();
-        }
 
         // Add info to uids
         assert!(!self.uids.contains_key(&pod.metadata.uid));
@@ -27,6 +36,7 @@ impl VPAGroupInfo {
 
     pub fn update_with_pod_metrics(
         &mut self,
+        init_config: &InitConfig,
         pod_uid: u64,
         current_phase: PodPhase,
         current_cpu: f64,
@@ -36,13 +46,7 @@ impl VPAGroupInfo {
         // Locate pod info
         let pod_info = self.uids.get_mut(&pod_uid).unwrap();
         // Update pod info
-        pod_info.update_with_metrics(
-            &self.pod_template.vpa_profile.clone().unwrap(),
-            current_time,
-            current_phase,
-            current_cpu,
-            current_memory,
-        );
+        pod_info.update_with_metrics(init_config, current_time, current_phase, current_cpu, current_memory);
     }
 
     pub fn remove_all_finished(&mut self) -> Vec<(u64, VPAPodInfo)> {
@@ -64,9 +68,9 @@ impl VPAGroupInfo {
         return finished;
     }
 
-    pub fn update_all_with_time(&mut self, profile: &VPAProfile, current_time: f64) {
+    pub fn update_all_with_time(&mut self, init_config: &InitConfig, current_time: f64) {
         for (_, info) in self.uids.iter_mut() {
-            info.update_with_time(profile, current_time);
+            info.update_with_time(init_config, current_time);
         }
     }
 }
