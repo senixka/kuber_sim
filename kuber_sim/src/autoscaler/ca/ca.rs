@@ -147,7 +147,7 @@ impl CA {
         }
 
         // If it's not enough pending pods -> return
-        if pending_pod_count < self.init_config.borrow().ca.add_node_min_pending {
+        if pending_pod_count <= self.init_config.borrow().ca.add_node_pending_threshold {
             return;
         }
 

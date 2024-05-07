@@ -7,8 +7,6 @@ pub struct Monitoring {
     pub dynamic_update_enabled: bool,
     pub init_config: Rc<RefCell<InitConfig>>,
 
-    makespan_time: f64,
-
     total_installed_cpu: i64,
     total_installed_memory: i64,
 
@@ -53,7 +51,6 @@ impl Monitoring {
             self_update_enabled: false,
             dynamic_update_enabled: false,
             init_config,
-            makespan_time: 0.0,
             total_installed_cpu: 0,
             total_installed_memory: 0,
             scheduler_used_cpu: 0,
@@ -233,12 +230,6 @@ impl Monitoring {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    pub fn end_sim(&mut self) {
-        self.self_update_enabled = false;
-        self.makespan_time = self.ctx.time();
-        self.dump_statistics();
-    }
 
     pub fn print_statistics(&mut self) {
         self.kubelet_utilization_cpu_numerator.push(self.kubelets_used_cpu);

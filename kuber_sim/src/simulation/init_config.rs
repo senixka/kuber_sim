@@ -1,25 +1,37 @@
 use crate::my_imports::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/////////////////////////////////////////// NetworkDelays //////////////////////////////////////////
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NetworkDelays {
     // Scheduler
+    #[serde(default)]
     pub api2scheduler: f64,
+    #[serde(default)]
     pub scheduler2api: f64,
 
     // Kubelet
+    #[serde(default)]
     pub api2kubelet: f64,
+    #[serde(default)]
     pub kubelet2api: f64,
 
     // CA
+    #[serde(default)]
     pub api2ca: f64,
+    #[serde(default)]
     pub ca2api: f64,
 
     // HPA
+    #[serde(default)]
     pub api2hpa: f64,
+    #[serde(default)]
     pub hpa2api: f64,
 
     // VPA
+    #[serde(default)]
     pub api2vpa: f64,
+    #[serde(default)]
     pub vpa2api: f64,
 
     #[serde(skip)]
@@ -53,6 +65,8 @@ impl NetworkDelays {
     }
 }
 
+///////////////////////////////////////// ConfigMonitoring /////////////////////////////////////////
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigMonitoring {
     pub self_update_period: f64,
@@ -67,11 +81,15 @@ impl ConfigMonitoring {
     }
 }
 
+///////////////////////////////////////// ConfigScheduler //////////////////////////////////////////
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigScheduler {
     pub unschedulable_queue_backoff_delay: f64,
     pub self_update_period: f64,
+    #[serde(default)]
     pub cycle_max_scheduled: u64,
+    #[serde(default)]
     pub cycle_max_to_try: u64,
 }
 
@@ -96,18 +114,48 @@ impl ConfigScheduler {
     }
 }
 
+//////////////////////////////////////////// ConfigCA //////////////////////////////////////////////
+
+/// Analog of --scan-interval
+fn ca_self_update_period() -> f64 { 10.0 }
+/// Analog of scale-down-utilization-threshold
+fn ca_remove_node_cpu_fraction_default() -> f64 { 0.5 }
+/// Analog of scale-down-utilization-threshold
+fn ca_remove_node_memory_fraction_default() -> f64 { 0.5 }
+/// Analog of scale-down-unneeded-time
+fn ca_remove_node_cycle_delay_default() -> u64 { 3 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigCA {
+    #[serde(default = "ca_self_update_period")]
     pub self_update_period: f64,
 
     // Scale up config
+    #[serde(default)]
     pub add_node_isp_delay: f64,
-    pub add_node_min_pending: u64,
+    #[serde(default)]
+    pub add_node_pending_threshold: u64,
 
     // Scale down config
+    #[serde(default = "ca_remove_node_cpu_fraction_default")]
     pub remove_node_cpu_fraction: f64,
+    #[serde(default = "ca_remove_node_memory_fraction_default")]
     pub remove_node_memory_fraction: f64,
+    #[serde(default = "ca_remove_node_cycle_delay_default")]
     pub remove_node_cycle_delay: u64,
+}
+
+impl Default for ConfigCA {
+    fn default() -> Self {
+        Self {
+            self_update_period: ca_self_update_period(),
+            add_node_isp_delay: 0.0,
+            add_node_pending_threshold: 0,
+            remove_node_cpu_fraction: ca_remove_node_cpu_fraction_default(),
+            remove_node_memory_fraction: ca_remove_node_memory_fraction_default(),
+            remove_node_cycle_delay: ca_remove_node_cycle_delay_default(),
+        }
+    }
 }
 
 impl ConfigCA {
@@ -131,9 +179,23 @@ impl ConfigCA {
     }
 }
 
+//////////////////////////////////////////// ConfigHPA /////////////////////////////////////////////
+
+/// Analog of --horizontal-pod-autoscaler-sync-period
+fn hpa_self_update_period() -> f64 { 15.0 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigHPA {
+    #[serde(default = "hpa_self_update_period")]
     pub self_update_period: f64,
+}
+
+impl Default for ConfigHPA {
+    fn default() -> Self {
+        Self {
+            self_update_period: hpa_self_update_period(),
+        }
+    }
 }
 
 impl ConfigHPA {
@@ -145,18 +207,56 @@ impl ConfigHPA {
     }
 }
 
+//////////////////////////////////////////// ConfigVPA /////////////////////////////////////////////
+
+/// Analog of VPA updater period
+fn vpa_self_update_period() -> f64 { 60.0 }
+/// Analog of
+fn vpa_reschedule_delay() -> f64 { 5.0 * 60.0 }
+/// Maybe some analogs
+fn vpa_histogram_update_frequency() -> f64 { 1.0 }
+/// Analog of
+fn vpa_gap_cpu() -> f64 { 0.15 }
+/// Analog of
+fn vpa_gap_memory() -> f64 { 0.15 }
+/// Analog of recommendation-margin-fraction
+fn vpa_recommendation_margin_fraction() -> f64 { 0.15 }
+/// Analog of
+fn vpa_limit_margin_fraction() -> f64 { 1.1 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigVPA {
+    #[serde(default = "vpa_self_update_period")]
     pub self_update_period: f64,
 
+    #[serde(default = "vpa_reschedule_delay")]
     pub reschedule_delay: f64,
+    #[serde(default = "vpa_histogram_update_frequency")]
     pub histogram_update_frequency: f64,
 
+    #[serde(default = "vpa_gap_cpu")]
     pub gap_cpu: f64,
+    #[serde(default = "vpa_gap_memory")]
     pub gap_memory: f64,
 
+    #[serde(default = "vpa_recommendation_margin_fraction")]
     pub recommendation_margin_fraction: f64,
+    #[serde(default = "vpa_limit_margin_fraction")]
     pub limit_margin_fraction: f64,
+}
+
+impl Default for ConfigVPA {
+    fn default() -> Self {
+        Self {
+            self_update_period: vpa_self_update_period(),
+            reschedule_delay: vpa_reschedule_delay(),
+            histogram_update_frequency: vpa_histogram_update_frequency(),
+            gap_cpu: vpa_gap_cpu(),
+            gap_memory: vpa_gap_memory(),
+            recommendation_margin_fraction: vpa_recommendation_margin_fraction(),
+            limit_margin_fraction: vpa_limit_margin_fraction(),
+        }
+    }
 }
 
 impl ConfigVPA {
@@ -183,13 +283,21 @@ impl ConfigVPA {
     }
 }
 
+//////////////////////////////////////////// InitConfig ////////////////////////////////////////////
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitConfig {
+    #[serde(default)]
     pub network_delays: NetworkDelays,
+
     pub monitoring: ConfigMonitoring,
     pub scheduler: ConfigScheduler,
+
+    #[serde(default)]
     pub ca: ConfigCA,
+    #[serde(default)]
     pub hpa: ConfigHPA,
+    #[serde(default)]
     pub vpa: ConfigVPA,
 }
 

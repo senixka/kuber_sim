@@ -148,6 +148,10 @@ impl Simulation {
         self.is_preparation_done = true;
     }
 
+    pub fn dump_stats(&self) {
+        self.monitoring.borrow().dump_statistics();
+    }
+
     pub fn enable_dynamic_update(&self) {
         self.monitoring.borrow_mut().enable_dynamic_update();
     }
