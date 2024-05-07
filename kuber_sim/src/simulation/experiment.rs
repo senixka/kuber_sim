@@ -8,6 +8,9 @@ struct SimConfig {
     pub init_trace: InitTrace,
     pub pipeline_config: PipelineConfig,
     pub seed: u64,
+    pub flag_add_ca: bool,
+    pub flag_add_hpa: bool,
+    pub flag_add_vpa: bool,
 }
 
 pub struct Experiment {
@@ -33,6 +36,9 @@ impl Experiment {
         init_trace: &InitTrace,
         pipeline_config: &PipelineConfig,
         seed: u64,
+        flag_add_ca: bool,
+        flag_add_hpa: bool,
+        flag_add_vpa: bool,
         runner: fn(&mut Simulation),
     ) {
         assert!(!self.is_done);
@@ -45,6 +51,9 @@ impl Experiment {
                 init_trace: init_trace.clone(),
                 pipeline_config: pipeline_config.clone(),
                 seed,
+                flag_add_ca,
+                flag_add_hpa,
+                flag_add_vpa,
             },
             runner.clone(),
         ));
@@ -58,11 +67,14 @@ impl Experiment {
             self.pids.push_back(thread::spawn(move || {
                 let mut sim = Simulation::new(
                     sim_config.0.output_file_path,
-                    sim_config.0.init_config,
-                    sim_config.0.init_nodes,
-                    sim_config.0.init_trace,
-                    sim_config.0.pipeline_config,
+                    &sim_config.0.init_config,
+                    &sim_config.0.init_nodes,
+                    &sim_config.0.init_trace,
+                    &sim_config.0.pipeline_config,
                     sim_config.0.seed.clone(),
+                    sim_config.0.flag_add_ca,
+                    sim_config.0.flag_add_hpa,
+                    sim_config.0.flag_add_vpa,
                 );
 
                 sim_config.1(&mut sim);

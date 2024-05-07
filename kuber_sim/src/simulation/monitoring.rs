@@ -74,7 +74,7 @@ impl Monitoring {
         }
     }
 
-    pub fn presimulation_init(&mut self) {
+    pub fn prepare(&mut self) {
         if !self.self_update_enabled {
             self.self_update_enabled = true;
             self.ctx.emit_self(

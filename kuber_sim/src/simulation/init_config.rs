@@ -117,13 +117,21 @@ impl ConfigScheduler {
 //////////////////////////////////////////// ConfigCA //////////////////////////////////////////////
 
 /// Analog of --scan-interval
-fn ca_self_update_period() -> f64 { 10.0 }
+fn ca_self_update_period() -> f64 {
+    10.0
+}
 /// Analog of scale-down-utilization-threshold
-fn ca_remove_node_cpu_fraction_default() -> f64 { 0.5 }
+fn ca_remove_node_cpu_fraction_default() -> f64 {
+    0.5
+}
 /// Analog of scale-down-utilization-threshold
-fn ca_remove_node_memory_fraction_default() -> f64 { 0.5 }
+fn ca_remove_node_memory_fraction_default() -> f64 {
+    0.5
+}
 /// Analog of scale-down-unneeded-time
-fn ca_remove_node_cycle_delay_default() -> u64 { 3 }
+fn ca_remove_node_cycle_delay_default() -> u64 {
+    3
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigCA {
@@ -182,7 +190,9 @@ impl ConfigCA {
 //////////////////////////////////////////// ConfigHPA /////////////////////////////////////////////
 
 /// Analog of --horizontal-pod-autoscaler-sync-period
-fn hpa_self_update_period() -> f64 { 15.0 }
+fn hpa_self_update_period() -> f64 {
+    15.0
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigHPA {
@@ -210,19 +220,33 @@ impl ConfigHPA {
 //////////////////////////////////////////// ConfigVPA /////////////////////////////////////////////
 
 /// Analog of VPA updater period
-fn vpa_self_update_period() -> f64 { 60.0 }
+fn vpa_self_update_period() -> f64 {
+    60.0
+}
 /// Analog of
-fn vpa_reschedule_delay() -> f64 { 5.0 * 60.0 }
+fn vpa_reschedule_delay() -> f64 {
+    5.0 * 60.0
+}
 /// Maybe some analogs
-fn vpa_histogram_update_frequency() -> f64 { 1.0 }
+fn vpa_histogram_update_frequency() -> f64 {
+    1.0
+}
 /// Analog of
-fn vpa_gap_cpu() -> f64 { 0.15 }
+fn vpa_gap_cpu() -> f64 {
+    0.15
+}
 /// Analog of
-fn vpa_gap_memory() -> f64 { 0.15 }
+fn vpa_gap_memory() -> f64 {
+    0.15
+}
 /// Analog of recommendation-margin-fraction
-fn vpa_recommendation_margin_fraction() -> f64 { 0.15 }
+fn vpa_recommendation_margin_fraction() -> f64 {
+    0.15
+}
 /// Analog of
-fn vpa_limit_margin_fraction() -> f64 { 1.1 }
+fn vpa_limit_margin_fraction() -> f64 {
+    1.1
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigVPA {
