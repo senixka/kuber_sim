@@ -37,3 +37,68 @@ impl NodeRTree {
         return self.0.remove(node).unwrap();
     }
 }
+
+///////////////////////////////////////////// Test /////////////////////////////////////////////////
+
+#[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_node_rtree_many_times() {
+        for _ in 0..10 {
+            test_node_rtree();
+        }
+    }
+
+    pub fn test_node_rtree() {
+        let mut index = NodeRTree::new();
+
+        let mut node1 = Node::default();
+        let mut node2 = Node::default();
+        let mut node3 = Node::default();
+        let mut node4 = Node::default();
+
+        node1.spec.available_cpu = 0;
+        node1.spec.available_memory = 0;
+        node1.metadata.uid = 1;
+        node2.spec.available_cpu = 10;
+        node2.spec.available_memory = 0;
+        node2.metadata.uid = 2;
+        node3.spec.available_cpu = 0;
+        node3.spec.available_memory = 10;
+        node3.metadata.uid = 3;
+        node4.spec.available_cpu = 10;
+        node4.spec.available_memory = 10;
+        node4.metadata.uid = 4;
+
+        index.insert(node1);
+        index.insert(node2);
+        index.insert(node3);
+        index.insert(node4);
+
+        let mut result = Vec::<Node>::new();
+
+        index.find_suitable_nodes(0, 0, &mut result);
+        assert_eq!(result.len(), 4);
+
+        index.find_suitable_nodes(10, 0, &mut result);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].is_consumable(10, 0), true);
+        assert_eq!(result[1].is_consumable(10, 0), true);
+
+        index.find_suitable_nodes(0, 10, &mut result);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].is_consumable(0, 10), true);
+        assert_eq!(result[1].is_consumable(0, 10), true);
+
+        index.find_suitable_nodes(10, 10, &mut result);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].is_consumable(10, 10), true);
+
+        index.find_suitable_nodes(11, 0, &mut result);
+        assert_eq!(result.len(), 0);
+    }
+}
+

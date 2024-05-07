@@ -1,5 +1,6 @@
 use kuber_sim::my_imports::*;
 
+/// This example shows how to create a basic simulation and run it for 50 seconds
 fn main() {
     // Read input
     let mut init_config = InitConfig::from_yaml(&"./in_basic.yaml".to_string());

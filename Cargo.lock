@@ -379,6 +379,7 @@ dependencies = [
  "dslab-core",
  "histogram",
  "impl-enum",
+ "rand",
  "rstar",
  "serde",
  "serde_yaml",

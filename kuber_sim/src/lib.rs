@@ -6,7 +6,6 @@ pub mod my_macro;
 pub mod objects;
 pub mod scheduler;
 pub mod simulation;
-pub mod test;
 
 pub mod my_imports {
     pub use std::cell::RefCell;
@@ -72,6 +71,5 @@ pub mod my_imports {
 
     pub use crate::kubelet::eviction::*;
     pub use crate::kubelet::kubelet::*;
-    pub use crate::test::*;
     pub use crate::*;
 }

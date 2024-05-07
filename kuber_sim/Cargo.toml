@@ -13,6 +13,7 @@ dslab-core = { git = "https://github.com/osukhoroslov/dslab/", branch = "main"}
 rstar = "0.12.0"
 histogram = "0.10.1"
 impl-enum = "0.3.1"
+rand = "0.8.5"
 
 [features]
 dp_all = ["dp_api_server", "dp_kubelet", "dp_scheduler", "dp_ca", "dp_hpa", "dp_vpa"]

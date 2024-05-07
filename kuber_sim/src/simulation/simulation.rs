@@ -2,9 +2,9 @@ use crate::my_imports::*;
 
 pub struct Simulation {
     sim: dsc::Simulation,
-    init_config: Rc<RefCell<InitConfig>>,
+    // init_config: Rc<RefCell<InitConfig>>,
     monitoring: Rc<RefCell<Monitoring>>,
-    api: Rc<RefCell<APIServer>>,
+    // api: Rc<RefCell<APIServer>>,
     ca: Option<Rc<RefCell<CA>>>,
     hpa: Option<Rc<RefCell<HPA>>>,
     vpa: Option<Rc<RefCell<VPA>>>,
@@ -25,12 +25,10 @@ impl Simulation {
         // DSLab core
         let mut sim = dsc::Simulation::new(seed);
 
-
         // Init config to shared_ptr
         let init_config_ptr = Rc::new(RefCell::new(init_config.clone()));
         // Init nodes to shared_ptr
         let init_nodes_ptr = Rc::new(RefCell::new(init_nodes.clone()));
-
 
         // Api-server component
         let api = Rc::new(RefCell::new(APIServer::new(
@@ -39,7 +37,6 @@ impl Simulation {
         )));
         let api_id = sim.add_handler("api_server", api.clone());
 
-
         // Monitoring component
         let monitoring = Rc::new(RefCell::new(Monitoring::new(
             sim.create_context("monitoring"),
@@ -47,7 +44,6 @@ impl Simulation {
             &output_file_path,
         )));
         let _ = sim.add_handler("monitoring", monitoring.clone());
-
 
         // Copy scheduler pipeline config
         let pconf = pipeline_config.clone();
@@ -70,7 +66,6 @@ impl Simulation {
         )));
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
 
-
         // Add CA if needed
         let mut ca = None;
         let mut ca_id = None;
@@ -87,7 +82,6 @@ impl Simulation {
             ca_id = Some(sim.add_handler("ca", ca.clone().unwrap()));
         }
 
-
         // Add HPA if needed
         let mut hpa = None;
         let mut hpa_id = None;
@@ -99,7 +93,6 @@ impl Simulation {
             ))));
             hpa_id = Some(sim.add_handler("hpa", hpa.clone().unwrap()));
         }
-
 
         // Add VPA if needed
         let mut vpa = None;
@@ -130,9 +123,9 @@ impl Simulation {
 
         Self {
             sim,
-            init_config: init_config_ptr.clone(),
+            // init_config: init_config_ptr.clone(),
             monitoring,
-            api,
+            // api,
             ca,
             hpa,
             vpa,

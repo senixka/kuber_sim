@@ -153,3 +153,36 @@ impl Pod {
         return cpu <= self.spec.request_cpu && memory <= self.spec.request_memory;
     }
 }
+
+///////////////////////////////////////////// Test /////////////////////////////////////////////////
+
+
+#[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pod_many_times() {
+        for _ in 0..10 {
+            test_pod_qos_class();
+        }
+    }
+
+    pub fn test_pod_qos_class() {
+        let mut q: BTreeSet<(QoSClass, i64, u64)> = BTreeSet::new();
+        q.insert((QoSClass::Guaranteed, 2, 2));
+        q.insert((QoSClass::BestEffort, 0, 1));
+        q.insert((QoSClass::Guaranteed, 1, 0));
+        q.insert((QoSClass::BestEffort, 0, 0));
+        q.insert((QoSClass::Burstable, 0, 0));
+
+        assert_eq!(q.pop_first(), Some((QoSClass::BestEffort, 0, 0)));
+        assert_eq!(q.pop_first(), Some((QoSClass::BestEffort, 0, 1)));
+        assert_eq!(q.pop_first(), Some((QoSClass::Burstable, 0, 0)));
+        assert_eq!(q.pop_first(), Some((QoSClass::Guaranteed, 1, 0)));
+        assert_eq!(q.pop_first(), Some((QoSClass::Guaranteed, 2, 2)));
+        assert_eq!(q.pop_first(), None);
+    }
+}
+
