@@ -127,7 +127,6 @@ impl Kubelet {
         }
 
         // Inner invariants
-        assert!(self.node.spec.available_cpu >= 0);
         assert!(self.node.spec.available_memory >= 0);
         assert!(self.node.spec.available_cpu <= self.node.spec.installed_cpu);
         assert!(self.node.spec.available_memory <= self.node.spec.installed_memory);
@@ -186,7 +185,6 @@ impl Kubelet {
         }
 
         // Inner invariants
-        assert!(self.node.spec.available_cpu >= 0);
         assert!(self.node.spec.available_memory >= 0);
         assert!(self.node.spec.available_cpu <= self.node.spec.installed_cpu);
         assert!(self.node.spec.available_memory <= self.node.spec.installed_memory);
