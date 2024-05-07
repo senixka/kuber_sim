@@ -48,15 +48,13 @@ impl Kubelet {
     ////////////////// Eviction  //////////////////
 
     pub fn do_eviction(&mut self) {
-        // Do eviction should be called only in case of resource overuse
-        assert!(self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0);
+        // Do eviction should be called only in case of memory overuse
+        assert!(self.node.spec.available_memory < 0);
         // Inner invariant
         assert_eq!(self.pods.len(), self.eviction_order.len());
 
         // While there are pods and eviction needed
-        while !self.eviction_order.is_empty()
-            && (self.node.spec.available_cpu < 0 || self.node.spec.available_memory < 0)
-        {
+        while !self.eviction_order.is_empty() && self.node.spec.available_memory < 0 {
             // Get first order pod to evict
             let pod_uid = self.eviction_order.first().unwrap();
 
@@ -65,7 +63,7 @@ impl Kubelet {
         }
 
         // Assert (Purpose of eviction achieved)
-        assert!(self.node.spec.available_cpu >= 0 && self.node.spec.available_memory >= 0);
+        assert!(self.node.spec.available_memory >= 0);
         // Inner invariant
         assert_eq!(self.pods.len(), self.eviction_order.len());
     }
@@ -103,8 +101,8 @@ impl Kubelet {
             return;
         }
 
-        // If there are insufficient resources on the node -> place pod anyway and trigger eviction
-        let need_eviction = !self.node.is_consumable(cpu, memory);
+        // If there are insufficient memory resources on the node -> place pod anyway and trigger eviction
+        let need_eviction = !self.node.is_memory_consumable(memory);
 
         // Consume node resources
         self.node.consume(cpu, memory);
@@ -162,8 +160,8 @@ impl Kubelet {
             return;
         }
 
-        // If there are insufficient resources on the node -> place pod anyway and trigger eviction
-        let need_eviction = !self.node.is_consumable(new_cpu, new_memory);
+        // If there are insufficient memory resources on the node -> place pod anyway and trigger eviction
+        let need_eviction = !self.node.is_memory_consumable(new_memory);
 
         // Consume node resources
         self.node.consume(new_cpu, new_memory);

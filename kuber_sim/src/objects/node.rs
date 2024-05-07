@@ -44,8 +44,12 @@ impl Node {
         assert!(self.spec.installed_memory > 0);
     }
 
-    pub fn is_consumable(&self, cpu: i64, memory: i64) -> bool {
+    pub fn is_both_consumable(&self, cpu: i64, memory: i64) -> bool {
         return self.spec.available_cpu >= cpu && self.spec.available_memory >= memory;
+    }
+
+    pub fn is_memory_consumable(&self, memory: i64) -> bool {
+        return self.spec.available_memory >= memory;
     }
 
     pub fn consume(&mut self, cpu: i64, memory: i64) {

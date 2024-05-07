@@ -1,0 +1,54 @@
+monitoring:
+  self_update_period: 1
+
+scheduler:
+  self_update_period: 1
+  unschedulable_queue_backoff_delay: 5
+
+
+nodes:
+  - node_group:
+    amount: 1
+    node:
+      spec:
+        installed_cpu: 100
+        installed_memory: 100
+
+
+trace:
+  - submit_time: 1
+    event:
+      !AddPodGroup
+      pod_count: 2
+      pod:
+        spec:
+          request_cpu: 40
+          request_memory: 40
+          limit_cpu: 40
+          limit_memory: 40
+          load:
+            !BusyBox
+            cpu_down: 20
+            memory_down: 20
+            cpu_up: 40
+            memory_up: 45
+            duration: 10
+            shift_time: 5
+  - submit_time: 10
+    event:
+      !AddPodGroup
+      pod_count: 2
+      pod:
+        spec:
+          request_cpu: 40
+          request_memory: 40
+          limit_cpu: 40
+          limit_memory: 40
+          load:
+            !BusyBox
+            cpu_down: 20
+            memory_down: 20
+            cpu_up: 45
+            memory_up: 40
+            duration: 10
+            shift_time: 5

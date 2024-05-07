@@ -85,17 +85,17 @@ mod tests {
 
         index.find_suitable_nodes(10, 0, &mut result);
         assert_eq!(result.len(), 2);
-        assert_eq!(result[0].is_consumable(10, 0), true);
-        assert_eq!(result[1].is_consumable(10, 0), true);
+        assert_eq!(result[0].is_both_consumable(10, 0), true);
+        assert_eq!(result[1].is_both_consumable(10, 0), true);
 
         index.find_suitable_nodes(0, 10, &mut result);
         assert_eq!(result.len(), 2);
-        assert_eq!(result[0].is_consumable(0, 10), true);
-        assert_eq!(result[1].is_consumable(0, 10), true);
+        assert_eq!(result[0].is_both_consumable(0, 10), true);
+        assert_eq!(result[1].is_both_consumable(0, 10), true);
 
         index.find_suitable_nodes(10, 10, &mut result);
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].is_consumable(10, 10), true);
+        assert_eq!(result[0].is_both_consumable(10, 10), true);
 
         index.find_suitable_nodes(11, 0, &mut result);
         assert_eq!(result.len(), 0);

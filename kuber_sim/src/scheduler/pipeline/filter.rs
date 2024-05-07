@@ -105,7 +105,7 @@ impl IFilterPlugin for FilterRequestedResourcesAvailable {
         pod: &Pod,
         node: &Node,
     ) -> bool {
-        return node.is_consumable(pod.spec.request_cpu, pod.spec.request_memory);
+        return node.is_both_consumable(pod.spec.request_cpu, pod.spec.request_memory);
     }
 
     fn clone(&self) -> Box<dyn IFilterPlugin + Send> {

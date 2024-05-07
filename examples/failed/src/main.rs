@@ -1,11 +1,11 @@
 use kuber_sim::my_imports::*;
 
-/// This example shows how to create a basic simulation and run it for 50 seconds
+/// This example shows that pod fails when it tries to consume more cpu or memory than its limits
 fn main() {
     // Read input
-    let mut init_config = InitConfig::from_yaml(&"./in_basic.yaml".to_string());
-    let mut init_nodes = InitNodes::from_yaml(&"./in_basic.yaml".to_string());
-    let mut init_trace = InitTrace::from_file(&"./in_basic.yaml".to_string());
+    let mut init_config = InitConfig::from_yaml(&"./in_failed.yaml".to_string());
+    let mut init_nodes = InitNodes::from_yaml(&"./in_failed.yaml".to_string());
+    let mut init_trace = InitTrace::from_file(&"./in_failed.yaml".to_string());
 
     // Prepare input
     init_config.prepare();
@@ -25,7 +25,7 @@ fn main() {
 
     // Create simulation
     let mut sim = Simulation::new(
-        "./out_basic.txt".to_string(),
+        "./out_failed.txt".to_string(),
         &init_config,
         &init_nodes,
         &init_trace,

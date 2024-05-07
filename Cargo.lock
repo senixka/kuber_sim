@@ -184,6 +184,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "example_eviction"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "kuber_sim",
+ "log",
+]
+
+[[package]]
+name = "example_failed"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "kuber_sim",
+ "log",
+]
+
+[[package]]
 name = "futures"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"

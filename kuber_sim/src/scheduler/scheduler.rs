@@ -255,7 +255,7 @@ impl Scheduler {
 
             // If not enough resources -> build preemption list
             let mut preempt_uids: Vec<u64> = Vec::new();
-            if !node.is_consumable(cpu, memory) {
+            if !node.is_both_consumable(cpu, memory) {
                 let (mut cpu, mut memory) = (node.spec.available_cpu, node.spec.available_memory);
                 for &tmp_uid in &node.status.pods {
                     let tmp_pod = self.running_pods.get(&tmp_uid).unwrap();
@@ -396,7 +396,6 @@ impl Scheduler {
                 panic!("Logic error. This fn can be called only with phase Pending, Evicted or Preempted.");
             }
         }
-        self.monitoring.borrow_mut().scheduler_on_pod_evicted();
     }
 
     pub fn process_finished_pod(&mut self, pod_uid: u64, phase: PodPhase) {
@@ -510,7 +509,7 @@ impl Scheduler {
                 for node_group in available_nodes {
                     if node_group
                         .node
-                        .is_consumable(pod.spec.request_cpu, pod.spec.request_memory)
+                        .is_both_consumable(pod.spec.request_cpu, pod.spec.request_memory)
                     {
                         may_help = Some(node_group.group_uid);
                         break;
