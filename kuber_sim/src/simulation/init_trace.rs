@@ -157,11 +157,36 @@ impl InitTrace {
                     // Check HPA invariants
                     if pod_group.hpa_profile.is_some() {
                         let profile = pod_group.hpa_profile.clone().unwrap();
-                        assert!(profile.min_size <= profile.max_size, "ConfigHPA.min_size must be <= ConfigHPA.max_size");
-                        assert!(profile.scale_down_mean_cpu_fraction >= 0.0, "ConfigHPA.scale_down_mean_cpu_fraction must be >= 0");
-                        assert!(profile.scale_down_mean_memory_fraction >= 0.0, "ConfigHPA.scale_down_mean_memory_fraction must be >= 0");
-                        assert!(profile.scale_down_mean_cpu_fraction <= profile.scale_up_mean_cpu_fraction, "ConfigHPA.scale_down_mean_cpu_fraction must be <= ConfigHPA.scale_up_mean_cpu_fraction");
+                        assert!(
+                            profile.min_size <= profile.max_size,
+                            "ConfigHPA.min_size must be <= ConfigHPA.max_size"
+                        );
+                        assert!(
+                            profile.scale_down_mean_cpu_fraction >= 0.0,
+                            "ConfigHPA.scale_down_mean_cpu_fraction must be >= 0"
+                        );
+                        assert!(
+                            profile.scale_down_mean_memory_fraction >= 0.0,
+                            "ConfigHPA.scale_down_mean_memory_fraction must be >= 0"
+                        );
+                        assert!(
+                            profile.scale_down_mean_cpu_fraction <= profile.scale_up_mean_cpu_fraction,
+                            "ConfigHPA.scale_down_mean_cpu_fraction must be <= ConfigHPA.scale_up_mean_cpu_fraction"
+                        );
                         assert!(profile.scale_down_mean_memory_fraction <= profile.scale_up_mean_memory_fraction, "ConfigHPA.scale_down_mean_memory_fraction must be <= ConfigHPA.scale_up_mean_memory_fraction");
+                    }
+
+                    // Check VPA invariants
+                    if pod_group.vpa_profile.is_some() {
+                        let profile = pod_group.vpa_profile.clone().unwrap();
+                        assert!(
+                            profile.min_allowed_cpu <= profile.max_allowed_cpu,
+                            "ConfigVPA.min_allowed_cpu must be <= ConfigVPA.max_allowed_cpu"
+                        );
+                        assert!(
+                            profile.min_allowed_memory <= profile.max_allowed_memory,
+                            "ConfigVPA.min_allowed_memory must be <= ConfigVPA.max_allowed_memory"
+                        );
                     }
                 }
                 TraceEvent::RemovePodGroup(_) => {
