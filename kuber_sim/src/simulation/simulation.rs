@@ -80,6 +80,9 @@ impl Simulation {
                 api_id,
             ))));
             ca_id = Some(sim.add_handler("ca", ca.clone().unwrap()));
+
+            // Turn on CA
+            ca.clone().unwrap().borrow_mut().turn_on();
         }
 
         // Add HPA if needed
@@ -92,6 +95,9 @@ impl Simulation {
                 api_id,
             ))));
             hpa_id = Some(sim.add_handler("hpa", hpa.clone().unwrap()));
+
+            // Turn on HPA
+            hpa.clone().unwrap().borrow_mut().turn_on();
         }
 
         // Add VPA if needed
@@ -104,6 +110,9 @@ impl Simulation {
                 api_id,
             ))));
             vpa_id = Some(sim.add_handler("vpa", vpa.clone().unwrap()));
+
+            // Turn on VPA
+            vpa.clone().unwrap().borrow_mut().turn_on();
         }
 
         // Prepare components

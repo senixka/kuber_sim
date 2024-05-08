@@ -1,24 +1,24 @@
 use crate::my_imports::*;
 
+/// The component of the Kubernetes responsible for cluster autoscaling.
 pub struct CA {
+    /// DSLab-Core simulation context of CA.
     ctx: dsc::SimulationContext,
+    /// Configuration constants of components in simulation.
     init_config: Rc<RefCell<InitConfig>>,
-
+    /// API-Server simulation DSlab-Core Id.
     api_sim_id: dsc::Id,
 
-    // Is CA turned on
+    /// Is CA turned on
     is_turned_on: bool,
 
-    // Pool of free kubelets
+    /// Pool of free kubelets
     kubelet_pool: Vec<(dsc::Id, Rc<RefCell<Kubelet>>)>, // Vec<(kubelet_sim_id, kubelet)>
-
-    // Free nodes in each group_uid
+    /// Free nodes in each node group
     free_nodes_by_group: BTreeMap<u64, NodeGroup>, // BTreeMap<group_uid, node_group>
-
-    // Currently used nodes
+    /// Currently used nodes
     used_nodes: BTreeMap<u64, (dsc::Id, Rc<RefCell<Kubelet>>, u64)>, // BTreeMap<node_uid, (kubelet_sim_id, kubelet, group_uid)>
-
-    // Node candidates on removal
+    /// Node candidates on removal
     low_utilization: BTreeMap<u64, u64>, // BTreeMap<node_uid, cycle_counter>
 }
 
@@ -46,7 +46,7 @@ impl CA {
             low_utilization: BTreeMap::new(),
         };
 
-        // Prepare kubelet pool from cluster state
+        // Prepare kubelet pool from nodes_config ca nodes
         let mut uid_counter = 0;
         for group in &init_nodes.borrow().ca_nodes {
             // Process node group
@@ -121,7 +121,7 @@ impl CA {
                 continue;
             }
 
-            // If node is not used -> remove its cycle count and skip
+            // If node is not in used -> remove its cycle count and skip
             if !self.used_nodes.contains_key(&node_uid) {
                 self.low_utilization.remove(&node_uid);
                 continue;
@@ -146,7 +146,7 @@ impl CA {
             }
         }
 
-        // If it's not enough pending pods -> return
+        // If it's not enough pending pods to start up-scaling-> return
         if pending_pod_count <= self.init_config.borrow().ca.add_node_pending_threshold {
             return;
         }

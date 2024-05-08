@@ -39,7 +39,7 @@ fn main() {
         false,
         |sim: &mut Simulation| {
             sim.step_for_duration(40.0);
-        }
+        },
     );
 
     // You can make arbitrary changes to the configs
@@ -54,7 +54,7 @@ fn main() {
     // Change cluster node resources
     init_nodes.nodes[0].node.spec.installed_cpu = 200;
 
-    // After any changes to the init_config, init_node or init_traces it is important to prepare changed again
+    // After any changes to the init_config, init_nodes or init_trace it is important to prepare changed again
     init_config.prepare();
     init_nodes.prepare();
     // pipeline_config does not need to be prepared again.
@@ -72,7 +72,7 @@ fn main() {
         false,
         |sim: &mut Simulation| {
             sim.step_for_duration(20.0);
-        }
+        },
     );
 
     // Now start all simulations
