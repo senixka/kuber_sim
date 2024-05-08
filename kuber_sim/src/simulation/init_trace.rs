@@ -153,6 +153,16 @@ impl InitTrace {
             match &mut wrapper.event {
                 TraceEvent::AddPodGroup(pod_group) => {
                     pod_group.prepare();
+
+                    // Check HPA invariants
+                    if pod_group.hpa_profile.is_some() {
+                        let profile = pod_group.hpa_profile.clone().unwrap();
+                        assert!(profile.min_size <= profile.max_size, "ConfigHPA.min_size must be <= ConfigHPA.max_size");
+                        assert!(profile.scale_down_mean_cpu_fraction >= 0.0, "ConfigHPA.scale_down_mean_cpu_fraction must be >= 0");
+                        assert!(profile.scale_down_mean_memory_fraction >= 0.0, "ConfigHPA.scale_down_mean_memory_fraction must be >= 0");
+                        assert!(profile.scale_down_mean_cpu_fraction <= profile.scale_up_mean_cpu_fraction, "ConfigHPA.scale_down_mean_cpu_fraction must be <= ConfigHPA.scale_up_mean_cpu_fraction");
+                        assert!(profile.scale_down_mean_memory_fraction <= profile.scale_up_mean_memory_fraction, "ConfigHPA.scale_down_mean_memory_fraction must be <= ConfigHPA.scale_up_mean_memory_fraction");
+                    }
                 }
                 TraceEvent::RemovePodGroup(_) => {
                     // Do nothing

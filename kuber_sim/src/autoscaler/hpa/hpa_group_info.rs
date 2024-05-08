@@ -2,23 +2,21 @@ use crate::my_imports::*;
 
 #[derive(Debug, Default)]
 pub struct HPAGroupInfo {
-    // Group cpu numerator
+    /// Group cpu numerator
     pub numerator_cpu: f64,
-    // Group memory numerator
+    /// Group memory numerator
     pub numerator_memory: f64,
 
-    // Counts currently running pods
+    /// Currently running pods counter
     pub running_pod_count: u64,
-    // Contains all not finished pods
+    /// All not finished pods counter
     pub alive_uids: BTreeSet<u64>,
-
-    // Never removes its uids
+    /// Last known pod metrics
     pub last_metrics: HashMap<u64, (PodPhase, f64, f64)>,
 
-    // Submitted with EventAddPod
+    /// Pod to add when upscale
     pub pod_template: Pod,
-
-    // Local HPA profile
+    /// Group HPA profile
     pub hpa_profile: HPAProfile,
 }
 

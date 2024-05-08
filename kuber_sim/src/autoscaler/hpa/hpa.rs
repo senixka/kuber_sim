@@ -1,15 +1,18 @@
 use crate::my_imports::*;
 
+/// The component of the Kubernetes responsible for horizontal pod autoscaling.
 pub struct HPA {
+    /// DSLab-Core simulation context of HPA.
     ctx: dsc::SimulationContext,
+    /// Configuration constants of components in simulation.
     init_config: Rc<RefCell<InitConfig>>,
-
+    /// API-Server simulation DSlab-Core Id.
     api_sim_id: dsc::Id,
 
-    // Is HPA turned on
+    /// Is HPA turned on
     is_turned_on: bool,
 
-    // Managed pod groups and their metrics
+    /// Managed pod groups and their metrics
     managed_groups: HashMap<u64, HPAGroupInfo>,
 }
 
@@ -87,7 +90,7 @@ impl HPA {
             }
             // If group utilization is low and group size allows -> RemovePod
             else if profile.min_size < group_size
-                && (cpu <= profile.min_group_cpu_fraction && memory <= profile.min_group_memory_fraction)
+                && (cpu <= profile.scale_down_mean_cpu_fraction && memory <= profile.scale_down_mean_memory_fraction)
             {
                 dp_hpa!(
                     "{:.12} hpa pod(group_uid:{:?}) remove <- cluster (resources)",
@@ -99,7 +102,7 @@ impl HPA {
             }
             // If group utilization is high and group size allows -> AddPod
             else if profile.max_size > group_size
-                && (cpu >= profile.max_group_cpu_fraction || memory >= profile.max_group_memory_fraction)
+                && (cpu >= profile.scale_up_mean_cpu_fraction || memory >= profile.scale_up_mean_memory_fraction)
             {
                 dp_hpa!(
                     "{:.12} hpa pod(group_uid:{:?}) add -> cluster (resources)",
@@ -198,7 +201,7 @@ impl dsc::EventHandler for HPA {
                     return;
                 }
 
-                // Locate pod's group info
+                // Locate group info
                 let group_info = self.managed_groups.entry(pod.metadata.group_uid).or_default();
                 // Update group info
                 group_info.update_with_new_pod(&pod);
@@ -213,7 +216,7 @@ impl dsc::EventHandler for HPA {
                     return;
                 }
 
-                // Locate pod's group info
+                // Locate group info
                 let group_info = self.managed_groups.entry(pod_group.group_uid).or_default();
                 // Update group info
                 group_info.update_with_new_group(&pod_group);
@@ -226,7 +229,7 @@ impl dsc::EventHandler for HPA {
                     group_uid
                 );
 
-                // Remove managed group
+                // Remove group from managed
                 self.managed_groups.remove(&group_uid);
             }
         });
