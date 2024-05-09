@@ -1,0 +1,46 @@
+monitoring:
+  self_update_period: 1
+
+scheduler:
+  self_update_period: 1
+  unschedulable_queue_backoff_delay: 5
+
+hpa:
+  self_update_period: 1
+
+
+nodes:
+  - node_group:
+    amount: 2
+    node:
+      spec:
+        installed_cpu: 100
+        installed_memory: 100
+
+
+trace:
+  - submit_time: 1
+    event:
+      !AddPodGroup
+      pod_count: 2
+      group_duration: 40
+      pod:
+        spec:
+          request_cpu: 20
+          request_memory: 20
+          limit_cpu: 40
+          limit_memory: 40
+          load:
+            !BusyBoxInfinite
+            cpu_down: 5
+            memory_down: 5
+            cpu_up: 25
+            memory_up: 25
+            shift_time: 10
+      hpa_profile:
+        min_size: 1
+        max_size: 4
+        scale_down_mean_cpu_fraction: 0.4
+        scale_down_mean_memory_fraction: 0.4
+        scale_up_mean_cpu_fraction: 1.1
+        scale_up_mean_memory_fraction: 1.1
