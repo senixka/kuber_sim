@@ -59,9 +59,16 @@ impl VPA {
 
             // Remove and store all finished uids from group
             let finished = group_info.remove_all_finished();
-            dp_vpa!("VPA removed finished:{:?}", finished.iter().map(|x| x.0).collect::<Vec<_>>());
+            dp_vpa!(
+                "VPA removed finished:{:?}",
+                finished.iter().map(|x| x.0).collect::<Vec<_>>()
+            );
             for (_pod_uid, pod_info) in finished {
-                dp_vpa!("-----> VPA watch pod_uid:{:?} is_finished:{:?}", _pod_uid, pod_info.is_finished());
+                dp_vpa!(
+                    "-----> VPA watch pod_uid:{:?} is_finished:{:?}",
+                    _pod_uid,
+                    pod_info.is_finished()
+                );
                 // Process only Failed pods
                 if !pod_info.is_failed() {
                     continue;

@@ -1,5 +1,5 @@
 use crate::my_imports::*;
-use histogram::{Histogram};
+use histogram::Histogram;
 
 const F64_HIST_SCALE: f64 = 100.0;
 
@@ -115,11 +115,23 @@ impl VPAPodInfo {
             let past = ((current_time - self.last_time) / init_config.vpa.histogram_update_frequency) as u64;
 
             // Update cpu hist
-            dp_vpa!("VPA Add cpu hist last_cpu:{:?} past:{:?}", self.last_cpu * F64_HIST_SCALE, past);
-            dp_vpa!("VPA Add memory hist last_cpu:{:?} past:{:?}", self.last_memory * F64_HIST_SCALE, past);
-            self.hist_cpu.add((self.last_cpu * F64_HIST_SCALE) as u64, past).unwrap();
+            dp_vpa!(
+                "VPA Add cpu hist last_cpu:{:?} past:{:?}",
+                self.last_cpu * F64_HIST_SCALE,
+                past
+            );
+            dp_vpa!(
+                "VPA Add memory hist last_cpu:{:?} past:{:?}",
+                self.last_memory * F64_HIST_SCALE,
+                past
+            );
+            self.hist_cpu
+                .add((self.last_cpu * F64_HIST_SCALE) as u64, past)
+                .unwrap();
             // Update memory hist
-            self.hist_memory.add((self.last_memory * F64_HIST_SCALE) as u64, past).unwrap();
+            self.hist_memory
+                .add((self.last_memory * F64_HIST_SCALE) as u64, past)
+                .unwrap();
         }
 
         // Update last time
@@ -138,31 +150,50 @@ impl VPAPodInfo {
 
     pub fn suggest(&self, init_config: &InitConfig, profile: &VPAProfile) -> (i64, i64, i64, i64) {
         // Get cpu percentiles
-        let cpu_data: Vec<f64> = self.hist_cpu.percentiles(&[50.0, 90.0, 95.0]).unwrap().iter().map(|x| x.1.end() as f64 / F64_HIST_SCALE).collect();
+        let mut cpu_data: Vec<f64> = self
+            .hist_cpu
+            .percentiles(&[50.0, 90.0, 95.0])
+            .unwrap()
+            .iter()
+            .map(|x| x.1.end() as f64 / F64_HIST_SCALE)
+            .collect();
         assert_eq!(cpu_data.len(), 3);
         dp_vpa!("VPA Suggest cpu percentiles: {:?}", cpu_data);
 
+        // If pod was failed use special rules
+        if self.is_failed() {
+            cpu_data[1] = cpu_data[1].max(self.last_cpu);
+        }
+
         // Count cpu absolute values from baseline and given percent
-        let _lower_bound_cpu = ((self.baseline_request_cpu as f64
-            * cpu_data[0]
-            * init_config.vpa.recommendation_margin_fraction) as i64)
-            .max(profile.min_allowed_cpu)
-            .min(profile.max_allowed_cpu);
-        let target_cpu = ((self.baseline_request_cpu as f64
-            * cpu_data[1]
-            * init_config.vpa.recommendation_margin_fraction) as i64)
-            .max(profile.min_allowed_cpu)
-            .min(profile.max_allowed_cpu);
-        let _upper_bound_cpu = ((self.baseline_request_cpu as f64
-            * cpu_data[2]
-            * init_config.vpa.recommendation_margin_fraction) as i64)
-            .max(profile.min_allowed_cpu)
-            .min(profile.max_allowed_cpu);
+        let _lower_bound_cpu =
+            ((self.baseline_request_cpu as f64 * cpu_data[0] * init_config.vpa.recommendation_margin_fraction) as i64)
+                .max(profile.min_allowed_cpu)
+                .min(profile.max_allowed_cpu);
+        let target_cpu =
+            ((self.baseline_request_cpu as f64 * cpu_data[1] * init_config.vpa.recommendation_margin_fraction) as i64)
+                .max(profile.min_allowed_cpu)
+                .min(profile.max_allowed_cpu);
+        let _upper_bound_cpu =
+            ((self.baseline_request_cpu as f64 * cpu_data[2] * init_config.vpa.recommendation_margin_fraction) as i64)
+                .max(profile.min_allowed_cpu)
+                .min(profile.max_allowed_cpu);
 
         // Get memory percentiles
-        let memory_data: Vec<f64> = self.hist_memory.percentiles(&[50.0, 90.0, 95.0]).unwrap().iter().map(|x| x.1.end() as f64 / F64_HIST_SCALE).collect();
+        let mut memory_data: Vec<f64> = self
+            .hist_memory
+            .percentiles(&[50.0, 90.0, 95.0])
+            .unwrap()
+            .iter()
+            .map(|x| x.1.end() as f64 / F64_HIST_SCALE)
+            .collect();
         assert_eq!(memory_data.len(), 3);
         dp_vpa!("VPA Suggest memory percentiles: {:?}", memory_data);
+
+        // If pod was failed use special rules
+        if self.is_failed() {
+            memory_data[1] = memory_data[1].max(self.last_memory);
+        }
 
         // Count memory absolute values from baseline and given percent
         let _lower_bound_memory = ((self.baseline_request_memory as f64
@@ -191,6 +222,17 @@ impl VPAPodInfo {
         dp_vpa!("# Upper CPU:     {:<15} #", _upper_bound_cpu);
         dp_vpa!("# Upper Memory:  {:<15} #", _upper_bound_memory);
         dp_vpa!("##################################");
+
+        // println!("########### VPA Suggests #########");
+        // println!("# Lower CPU:     {:<15} #", _lower_bound_cpu);
+        // println!("# Lower Memory:  {:<15} #", _lower_bound_memory);
+        // println!("# ------------------------------ #");
+        // println!("# Target CPU:    {:<15} #", target_cpu);
+        // println!("# Target Memory: {:<15} #", target_memory);
+        // println!("# ------------------------------ #");
+        // println!("# Upper CPU:     {:<15} #", _upper_bound_cpu);
+        // println!("# Upper Memory:  {:<15} #", _upper_bound_memory);
+        // println!("##################################");
 
         return (
             target_cpu,
