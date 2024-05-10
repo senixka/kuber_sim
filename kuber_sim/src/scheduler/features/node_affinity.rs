@@ -81,7 +81,7 @@ pub struct NodeAffinityPreferredTerm {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct NodeAffinitySelectorTerm {
+pub struct NodeAffinityRequiredTerm {
     /// A list of node selector requirements by node's labels.
     /// The terms are ANDed.
     pub node_selector_term: Vec<NodeAffinityMatchExpression>,
@@ -94,7 +94,7 @@ pub struct NodeAffinity {
     pub preferred_terms: Vec<NodeAffinityPreferredTerm>,
     /// Analog of requiredDuringSchedulingIgnoredDuringExecution.
     /// The terms are ORed.
-    pub required_terms: Vec<NodeAffinitySelectorTerm>,
+    pub required_terms: Vec<NodeAffinityRequiredTerm>,
 }
 
 impl NodeAffinity {
@@ -132,5 +132,230 @@ impl NodeAffinity {
         }
 
         return match_sum;
+    }
+}
+
+/////////////////////////////////////////////// Test ///////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_node_affinity() {
+        // Create Node
+        let mut node = Node::default();
+        node.spec.installed_cpu = 100;
+        node.spec.installed_memory = 100;
+        node.metadata.labels = BTreeMap::from([
+            ("env".to_string(), "product".to_string()),
+            ("gpu".to_string(), "amd".to_string()),
+            ("value".to_string(), "23".to_string()),
+        ]);
+        node.prepare(123);
+
+        // Create NodeAffinity rules
+        let mut nf: NodeAffinity = NodeAffinity::default();
+
+        // Check empty rules
+        assert!(nf.is_required_matches(&node));
+        assert_eq!(nf.preferred_sum(&node), 0);
+
+        /////////////////////////// Check required with non-existing key ///////////////////////////
+
+        // Test Exist operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "apple".to_string(),
+                operator: NodeAffinityOperator::Exists,
+                values: vec![],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), false);
+
+        // Test DoesNotExist operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "apple".to_string(),
+                operator: NodeAffinityOperator::DoesNotExist,
+                values: vec![],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), true);
+
+        // Test In operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "apple".to_string(),
+                operator: NodeAffinityOperator::In,
+                values: vec!["amd".to_string(), "product".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), false);
+
+        // Test NotIn operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "apple".to_string(),
+                operator: NodeAffinityOperator::NotIn,
+                values: vec!["amd".to_string(), "product".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), true);
+
+        // Test Gt operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "apple".to_string(),
+                operator: NodeAffinityOperator::Gt,
+                values: vec!["1".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), false);
+
+        // Test Lt operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "apple".to_string(),
+                operator: NodeAffinityOperator::Lt,
+                values: vec!["1".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), false);
+
+        /////////////////////////// Check required with existing key ///////////////////////////
+
+        // Test Exist operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "env".to_string(),
+                operator: NodeAffinityOperator::Exists,
+                values: vec![],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), true);
+
+        // Test DoesNotExist operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "env".to_string(),
+                operator: NodeAffinityOperator::DoesNotExist,
+                values: vec![],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), false);
+
+        // Test In operator 1
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "env".to_string(),
+                operator: NodeAffinityOperator::In,
+                values: vec!["123".to_string(), "product".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), true);
+
+        // Test In operator 2
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "env".to_string(),
+                operator: NodeAffinityOperator::In,
+                values: vec!["123".to_string(), "no-product".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), false);
+
+        // Test In operator 1
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "env".to_string(),
+                operator: NodeAffinityOperator::NotIn,
+                values: vec!["123".to_string(), "product".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), false);
+
+        // Test In operator 2
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "env".to_string(),
+                operator: NodeAffinityOperator::NotIn,
+                values: vec!["123".to_string(), "no-product".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), true);
+
+        // Test Gt operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "value".to_string(),
+                operator: NodeAffinityOperator::Gt,
+                values: vec!["1".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), true);
+
+        // Test Lt operator
+        nf.required_terms = vec![NodeAffinityRequiredTerm {
+            node_selector_term: vec![NodeAffinityMatchExpression {
+                key: "value".to_string(),
+                operator: NodeAffinityOperator::Lt,
+                values: vec!["1".to_string()],
+            }],
+        }];
+        assert_eq!(nf.is_required_matches(&node), false);
+
+        ////////////////////////// Check preferred with non-existing key ///////////////////////////
+
+        nf.preferred_terms = vec![
+            NodeAffinityPreferredTerm {
+                weight: 1,
+                node_selector_term: vec![NodeAffinityMatchExpression {
+                    key: "apple".to_string(),
+                    operator: NodeAffinityOperator::Exists,
+                    values: vec![],
+                }],
+            },
+            NodeAffinityPreferredTerm {
+                weight: 2,
+                node_selector_term: vec![NodeAffinityMatchExpression {
+                    key: "env".to_string(),
+                    operator: NodeAffinityOperator::Exists,
+                    values: vec![],
+                }],
+            },
+            NodeAffinityPreferredTerm {
+                weight: 4,
+                node_selector_term: vec![
+                    NodeAffinityMatchExpression {
+                        key: "env".to_string(),
+                        operator: NodeAffinityOperator::Exists,
+                        values: vec![],
+                    },
+                    NodeAffinityMatchExpression {
+                        key: "apple".to_string(),
+                        operator: NodeAffinityOperator::Exists,
+                        values: vec![],
+                    },
+                ],
+            },
+            NodeAffinityPreferredTerm {
+                weight: 8,
+                node_selector_term: vec![
+                    NodeAffinityMatchExpression {
+                        key: "env".to_string(),
+                        operator: NodeAffinityOperator::Exists,
+                        values: vec![],
+                    },
+                    NodeAffinityMatchExpression {
+                        key: "apple".to_string(),
+                        operator: NodeAffinityOperator::DoesNotExist,
+                        values: vec![],
+                    },
+                ],
+            },
+        ];
+        // Test sum
+        assert_eq!(nf.preferred_sum(&node), 10);
     }
 }
