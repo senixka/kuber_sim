@@ -1,5 +1,5 @@
 [package]
-name = "example_in_vpa_basic"
+name = "example_vpa_basic"
 version = "0.1.0"
 edition = "2021"
 
