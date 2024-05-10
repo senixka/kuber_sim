@@ -170,12 +170,7 @@ impl IFilterPlugin for FilterNodeAffinity {
         pod: &Pod,
         node: &Node,
     ) -> bool {
-        return match pod.spec.node_affinity.schedule_type {
-            NodeAffinityType::Required => {
-                pod.spec.node_affinity.matches(node) == pod.spec.node_affinity.node_selector_terms.len()
-            }
-            NodeAffinityType::Preferred => true,
-        };
+        return pod.spec.node_affinity.is_required_matches(&node);
     }
 
     fn clone(&self) -> Box<dyn IFilterPlugin + Send> {

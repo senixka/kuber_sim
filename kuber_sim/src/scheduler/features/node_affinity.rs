@@ -1,43 +1,41 @@
 use crate::my_imports::*;
 
-// https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub enum NodeAffinityType {
-    #[default]
-    Required = 0, // Analog of requiredDuringSchedulingIgnoredDuringExecution
-    Preferred = 1, // Analog of preferredDuringSchedulingIgnoredDuringExecution
-}
-
 // https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#operators
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum NodeAffinityOperator {
+    /// In = The label value is present in the supplied set of strings.
     #[default]
-    In = 0, // The label value is present in the supplied set of strings
-    NotIn = 1,        // The label value is not contained in the supplied set of strings
-    Exists = 2,       // A label with this key exists on the object
-    DoesNotExist = 3, // No label with this key exists on the object
-    Gt = 4, // The supplied value will be parsed as an integer. True if the specified value is LESS than the value on the node
-    Lt = 5, // The supplied value will be parsed as an integer. True if the specified value is GRATER than the value on the node
+    In = 0,
+    /// NotIn = The label value is not contained in the supplied set of strings.
+    NotIn = 1,
+    /// Exists = A label with this key exists on the object.
+    Exists = 2,
+    /// DoNotExist = No label with this key exists on the object.
+    DoesNotExist = 3,
+    /// Gt = True if the specified value is LESS than the value on the node.
+    /// The supplied value will be parsed as an integer.
+    Gt = 4,
+    /// Lt = True if the specified value is GRATER than the value on the node.
+    /// The supplied value will be parsed as an integer.
+    Lt = 5,
 }
 
-// https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub enum NodeAffinityExpressionType {
-    #[default]
-    MatchExpression = 0, // Scheduled only if ALL rules are satisfied
-    NodeSelectorTerms = 1, // Scheduled to a node if ANY defined conditions match
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct NodeAffinityExpression {
+pub struct NodeAffinityMatchExpression {
+    /// The label key that the selector applies to.
     pub key: String,
+    /// Represents a key's relationship to a set of values.
+    /// Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
     pub operator: NodeAffinityOperator,
-
+    /// An array of string values.
+    /// If the operator is In or NotIn, the values array must be non-empty.
+    /// If the operator is Exists or DoesNotExist, the values array must be empty.
+    /// If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer.
     #[serde(default)]
     pub values: Vec<String>,
 }
 
-impl NodeAffinityExpression {
+impl NodeAffinityMatchExpression {
     pub fn matches(&self, node: &Node) -> bool {
         let value = node.metadata.labels.get(&self.key);
 
@@ -74,35 +72,65 @@ impl NodeAffinityExpression {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct MatchExpression {
-    pub match_expression: Vec<NodeAffinityExpression>,
-    // TODO: weight
+pub struct NodeAffinityPreferredTerm {
+    /// A list of node selector preferences by node's labels.
+    /// The terms are ANDed.
+    pub node_selector_term: Vec<NodeAffinityMatchExpression>,
+    /// Weight associated with matching the corresponding node_selector_term, in the range 1-100.
+    pub weight: i64,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
-pub struct NodeAffinity {
-    // NodeSelectorTerms contains multiple MatchExpression, while each MatchExpression contains multiple Expressions.
-    // Entries in NodeSelectorTerms use OR (scheduled to a node if ANY defined MatchExpression match).
-    // Entries in MatchExpression use AND (MatchExpression matches if ALL inner expressions are match).
-    pub node_selector_terms: Vec<MatchExpression>, // NodeSelectorTerms<MatchExpression<NodeAffinityExpression>>
+pub struct NodeAffinitySelectorTerm {
+    /// A list of node selector requirements by node's labels.
+    /// The terms are ANDed.
+    pub node_selector_term: Vec<NodeAffinityMatchExpression>,
+}
 
-    // Required or Preferred
-    pub schedule_type: NodeAffinityType,
+// https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct NodeAffinity {
+    /// Analog of preferredDuringSchedulingIgnoredDuringExecution.
+    pub preferred_terms: Vec<NodeAffinityPreferredTerm>,
+    /// Analog of requiredDuringSchedulingIgnoredDuringExecution.
+    /// The terms are ORed.
+    pub required_terms: Vec<NodeAffinitySelectorTerm>,
 }
 
 impl NodeAffinity {
-    pub fn matches(&self, node: &Node) -> usize {
-        let mut match_count = 0;
-        for match_expression in &self.node_selector_terms {
-            match_count += 1;
-            for expression in &match_expression.match_expression {
+    /// Is required NodeAffinitySelectorTerms matches node.
+    pub fn is_required_matches(&self, node: &Node) -> bool {
+        for match_expression in &self.required_terms {
+            let mut flag = true;
+            for expression in &match_expression.node_selector_term {
                 if !expression.matches(node) {
-                    match_count -= 1;
+                    flag = false;
                     break;
                 }
             }
+
+            if flag {
+                return true;
+            }
         }
 
-        return match_count;
+        return self.required_terms.len() == 0;
+    }
+
+    /// Counts weighted sum of preferred NodeAffinitySelectorTerms that matches node.
+    pub fn preferred_sum(&self, node: &Node) -> i64 {
+        let mut match_sum = 0;
+        for match_expression in &self.preferred_terms {
+            let mut flag = 1;
+            for expression in &match_expression.node_selector_term {
+                if !expression.matches(node) {
+                    flag = 0;
+                    break;
+                }
+            }
+            match_sum += flag * match_expression.weight;
+        }
+
+        return match_sum;
     }
 }

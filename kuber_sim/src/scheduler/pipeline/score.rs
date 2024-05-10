@@ -173,10 +173,7 @@ impl IScorePlugin for ScoreNodeAffinity {
         pod: &Pod,
         node: &Node,
     ) -> i64 {
-        return match pod.spec.node_affinity.schedule_type {
-            NodeAffinityType::Preferred => pod.spec.node_affinity.matches(node) as i64,
-            NodeAffinityType::Required => 0,
-        };
+        return pod.spec.node_affinity.preferred_sum(&node);
     }
 
     fn clone(&self) -> Box<dyn IScorePlugin + Send> {
