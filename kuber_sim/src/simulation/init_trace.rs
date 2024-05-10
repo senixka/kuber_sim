@@ -187,6 +187,14 @@ impl InitTrace {
                             profile.min_allowed_memory <= profile.max_allowed_memory,
                             "ConfigVPA.min_allowed_memory must be <= ConfigVPA.max_allowed_memory"
                         );
+                        assert!(
+                            profile.min_allowed_cpu > 0,
+                            "ConfigVPA.min_allowed_cpu must be > 0"
+                        );
+                        assert!(
+                            profile.min_allowed_memory > 0,
+                            "ConfigVPA.min_allowed_memory must be > 0"
+                        );
                     }
                 }
                 TraceEvent::RemovePodGroup(_) => {

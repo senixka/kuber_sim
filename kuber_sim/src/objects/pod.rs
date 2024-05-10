@@ -141,6 +141,8 @@ impl Pod {
 
         assert!(self.spec.limit_cpu >= self.spec.request_cpu);
         assert!(self.spec.limit_memory >= self.spec.request_memory);
+        assert!(self.spec.request_cpu > 0);
+        assert!(self.spec.request_memory > 0);
         assert!(self.spec.request_cpu >= 0);
         assert!(self.spec.request_memory >= 0);
     }

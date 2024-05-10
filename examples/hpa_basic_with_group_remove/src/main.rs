@@ -1,6 +1,6 @@
 use kuber_sim::my_imports::*;
 
-/// This example shows how HPA scales pods horizontal.
+/// This example shows that HPA reacts on group remove event.
 fn main() {
     // Read input
     let mut init_config = InitConfig::from_yaml(&"./in_hpa_basic_with_group_remove.yaml".to_string());

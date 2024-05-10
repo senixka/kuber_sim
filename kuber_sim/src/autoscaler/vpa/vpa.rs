@@ -1,14 +1,18 @@
 use crate::my_imports::*;
 
+/// The component of the Kubernetes responsible for vertical pod autoscaling.
 pub struct VPA {
+    /// DSLab-Core simulation context of VPA.
     ctx: dsc::SimulationContext,
+    /// Configuration constants of components in simulation.
     init_config: Rc<RefCell<InitConfig>>,
+    /// API-Server simulation DSlab-Core Id.
     api_sim_id: dsc::Id,
 
-    // Is VPA turned on
+    /// Is VPA turned on
     is_turned_on: bool,
 
-    // Managed pod groups and their metrics
+    /// Managed pod groups and their metrics
     managed_groups: HashMap<u64, VPAGroupInfo>,
 }
 
@@ -55,8 +59,9 @@ impl VPA {
 
             // Remove and store all finished uids from group
             let finished = group_info.remove_all_finished();
-            dp_vpa!("VPA removed finished:{:?}", finished);
+            dp_vpa!("VPA removed finished:{:?}", finished.iter().map(|x| x.0).collect::<Vec<_>>());
             for (_pod_uid, pod_info) in finished {
+                dp_vpa!("-----> VPA watch pod_uid:{:?} is_finished:{:?}", _pod_uid, pod_info.is_finished());
                 // Process only Failed pods
                 if !pod_info.is_failed() {
                     continue;
@@ -112,6 +117,7 @@ impl VPA {
                 }
 
                 // Emit RemovePod event
+                dp_vpa!("VPA emit RemovePod pod_uid:{:?}", pod_uid);
                 self.ctx.emit(
                     EventRemovePod { pod_uid },
                     self.api_sim_id,
@@ -135,6 +141,7 @@ impl VPA {
                 pod.prepare(*group_uid);
 
                 // Emit AddPod event
+                dp_vpa!("VPA emit AddPod pod:{:?}", pod);
                 self.ctx.emit(
                     EventAddPod { pod },
                     self.api_sim_id,

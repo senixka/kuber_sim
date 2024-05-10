@@ -2,12 +2,12 @@ use crate::my_imports::*;
 
 #[derive(Debug, Default)]
 pub struct VPAGroupInfo {
-    // Pods VPA info
+    /// Known pods of this group and their VPA info
     pub uids: HashMap<u64, VPAPodInfo>,
 
-    // Pod template to Recreate
+    /// Pod to add when reschedule
     pub pod_template: Pod,
-    // Local VPA profile
+    /// Group VPA profile
     pub vpa_profile: VPAProfile,
 }
 

@@ -1,5 +1,7 @@
 use crate::my_imports::*;
-use histogram::Histogram;
+use histogram::{Histogram};
+
+const F64_HIST_SCALE: f64 = 100.0;
 
 #[derive(Debug, Clone)]
 pub struct VPAPodInfo {
@@ -35,8 +37,8 @@ impl VPAPodInfo {
             baseline_limit_cpu: pod.spec.limit_cpu,
             baseline_limit_memory: pod.spec.limit_memory,
 
-            hist_cpu: Histogram::new(7, 8).unwrap(),
-            hist_memory: Histogram::new(7, 8).unwrap(),
+            hist_cpu: Histogram::new(7, 10).unwrap(),
+            hist_memory: Histogram::new(7, 10).unwrap(),
 
             is_rescheduled: false,
         }
@@ -79,6 +81,7 @@ impl VPAPodInfo {
                 match current_phase {
                     PodPhase::Running => {
                         // Changing: OnReschedule -> Running
+                        self.start_time = current_time;
                         // TODO: maybe clear hists?
                     }
                     PodPhase::Succeeded | PodPhase::Failed | PodPhase::Removed => {
@@ -112,9 +115,11 @@ impl VPAPodInfo {
             let past = ((current_time - self.last_time) / init_config.vpa.histogram_update_frequency) as u64;
 
             // Update cpu hist
-            self.hist_cpu.add(self.last_cpu as u64, past).unwrap();
+            dp_vpa!("VPA Add cpu hist last_cpu:{:?} past:{:?}", self.last_cpu * F64_HIST_SCALE, past);
+            dp_vpa!("VPA Add memory hist last_cpu:{:?} past:{:?}", self.last_memory * F64_HIST_SCALE, past);
+            self.hist_cpu.add((self.last_cpu * F64_HIST_SCALE) as u64, past).unwrap();
             // Update memory hist
-            self.hist_memory.add(self.last_memory as u64, past).unwrap();
+            self.hist_memory.add((self.last_memory * F64_HIST_SCALE) as u64, past).unwrap();
         }
 
         // Update last time
@@ -133,45 +138,45 @@ impl VPAPodInfo {
 
     pub fn suggest(&self, init_config: &InitConfig, profile: &VPAProfile) -> (i64, i64, i64, i64) {
         // Get cpu percentiles
-        let cpu_data = self.hist_cpu.percentiles(&[50.0, 90.0, 95.0]).unwrap();
+        let cpu_data: Vec<f64> = self.hist_cpu.percentiles(&[50.0, 90.0, 95.0]).unwrap().iter().map(|x| x.1.end() as f64 / F64_HIST_SCALE).collect();
         assert_eq!(cpu_data.len(), 3);
         dp_vpa!("VPA Suggest cpu percentiles: {:?}", cpu_data);
 
         // Count cpu absolute values from baseline and given percent
         let _lower_bound_cpu = ((self.baseline_request_cpu as f64
-            * cpu_data[0].0
+            * cpu_data[0]
             * init_config.vpa.recommendation_margin_fraction) as i64)
             .max(profile.min_allowed_cpu)
             .min(profile.max_allowed_cpu);
         let target_cpu = ((self.baseline_request_cpu as f64
-            * cpu_data[1].0
+            * cpu_data[1]
             * init_config.vpa.recommendation_margin_fraction) as i64)
             .max(profile.min_allowed_cpu)
             .min(profile.max_allowed_cpu);
         let _upper_bound_cpu = ((self.baseline_request_cpu as f64
-            * cpu_data[2].0
+            * cpu_data[2]
             * init_config.vpa.recommendation_margin_fraction) as i64)
             .max(profile.min_allowed_cpu)
             .min(profile.max_allowed_cpu);
 
         // Get memory percentiles
-        let memory_data = self.hist_memory.percentiles(&[50.0, 90.0, 95.0]).unwrap();
+        let memory_data: Vec<f64> = self.hist_memory.percentiles(&[50.0, 90.0, 95.0]).unwrap().iter().map(|x| x.1.end() as f64 / F64_HIST_SCALE).collect();
         assert_eq!(memory_data.len(), 3);
         dp_vpa!("VPA Suggest memory percentiles: {:?}", memory_data);
 
         // Count memory absolute values from baseline and given percent
         let _lower_bound_memory = ((self.baseline_request_memory as f64
-            * memory_data[0].0
+            * memory_data[0]
             * init_config.vpa.recommendation_margin_fraction) as i64)
             .max(profile.min_allowed_memory)
             .min(profile.max_allowed_memory);
         let target_memory = ((self.baseline_request_memory as f64
-            * memory_data[1].0
+            * memory_data[1]
             * init_config.vpa.recommendation_margin_fraction) as i64)
             .max(profile.min_allowed_memory)
             .min(profile.max_allowed_memory);
         let _upper_bound_memory = ((self.baseline_request_memory as f64
-            * memory_data[2].0
+            * memory_data[2]
             * init_config.vpa.recommendation_margin_fraction) as i64)
             .max(profile.min_allowed_memory)
             .min(profile.max_allowed_memory);

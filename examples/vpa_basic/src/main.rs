@@ -1,11 +1,11 @@
 use kuber_sim::my_imports::*;
 
-/// This example shows that CA reacts on group remove event.
+/// This example shows how VPA scales pods vertically.
 fn main() {
     // Read input
-    let mut init_config = InitConfig::from_yaml(&"./in_ca_basic_with_group_remove.yaml".to_string());
-    let mut init_nodes = InitNodes::from_yaml(&"./in_ca_basic_with_group_remove.yaml".to_string());
-    let mut init_trace = InitTrace::from_file(&"./in_ca_basic_with_group_remove.yaml".to_string());
+    let mut init_config = InitConfig::from_yaml(&"./in_vpa_basic.yaml".to_string());
+    let mut init_nodes = InitNodes::from_yaml(&"./in_vpa_basic.yaml".to_string());
+    let mut init_trace = InitTrace::from_file(&"./in_vpa_basic.yaml".to_string());
 
     // Prepare input
     init_config.prepare();
@@ -25,15 +25,15 @@ fn main() {
 
     // Create simulation
     let mut sim = Simulation::new(
-        "./out_ca_basic_with_group_remove.txt".to_string(),
+        "./out_vpa_basic.txt".to_string(),
         &init_config,
         &init_nodes,
         &init_trace,
         &pipeline_config,
         123,
+        false,
+        false,
         true,
-        false,
-        false,
     );
 
     // Work with simulation

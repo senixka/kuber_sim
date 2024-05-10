@@ -1,0 +1,46 @@
+monitoring:
+  self_update_period: 1
+
+scheduler:
+  self_update_period: 1
+  unschedulable_queue_backoff_delay: 5
+
+vpa:
+  self_update_period: 1
+  reschedule_delay: 10
+  histogram_update_frequency: 1
+  gap_cpu: 0.1
+  gap_memory: 0.1
+  recommendation_margin_fraction: 1.15
+  limit_margin_fraction: 1.1
+
+
+nodes:
+  - node_group:
+    amount: 1
+    node:
+      spec:
+        installed_cpu: 100
+        installed_memory: 100
+
+
+trace:
+  - submit_time: 1
+    event:
+      !AddPodGroup
+      pod_count: 1
+      pod:
+        spec:
+          request_cpu: 20
+          request_memory: 20
+          limit_cpu: 40
+          limit_memory: 40
+          load:
+            !ConstantInfinite
+            cpu: 40
+            memory: 40
+      vpa_profile:
+        min_allowed_cpu: 1
+        min_allowed_memory: 1
+        max_allowed_cpu: 100
+        max_allowed_memory: 100
