@@ -1,0 +1,50 @@
+monitoring:
+  self_update_period: 1
+
+scheduler:
+  self_update_period: 1
+  unschedulable_queue_backoff_delay: 5
+
+
+nodes:
+  - node_group:
+    amount: 1
+    node:
+      metadata:
+        labels:
+          env: dev
+          gpu: amd
+      spec:
+        installed_cpu: 100
+        installed_memory: 100
+
+
+trace:
+  - submit_time: 1
+    event:
+      !AddPodGroup
+      pod_count: 1
+      pod:
+        spec:
+          request_cpu: 10
+          request_memory: 10
+          limit_cpu: 10
+          limit_memory: 10
+          load:
+            !ConstantInfinite
+            cpu: 10
+            memory: 10
+          node_affinity:
+            required_terms:
+              - node_selector_term:
+                - key: env
+                  operator: !In
+                  values:
+                    - test
+                    - dev
+                    - prod
+                - key: gpu
+                  operator: !Exists
+              - node_selector_term:
+                  - key: super-node
+                    operator: !Exists

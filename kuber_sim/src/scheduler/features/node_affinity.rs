@@ -91,9 +91,11 @@ pub struct NodeAffinityRequiredTerm {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct NodeAffinity {
     /// Analog of preferredDuringSchedulingIgnoredDuringExecution.
+    #[serde(default)]
     pub preferred_terms: Vec<NodeAffinityPreferredTerm>,
     /// Analog of requiredDuringSchedulingIgnoredDuringExecution.
     /// The terms are ORed.
+    #[serde(default)]
     pub required_terms: Vec<NodeAffinityRequiredTerm>,
 }
 

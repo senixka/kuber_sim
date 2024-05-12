@@ -129,7 +129,7 @@ impl IScorePlugin for ScoreTaintsTolerations {
             for tol in &pod.spec.tolerations {
                 matches |= taint.matches(tol);
                 if matches {
-                    break
+                    break;
                 }
             }
 
