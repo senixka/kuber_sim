@@ -265,7 +265,7 @@ mod tests {
         }];
         assert_eq!(nf.is_required_matches(&node), false);
 
-        // Test In operator 1
+        // Test NotIn operator 1
         nf.required_terms = vec![NodeAffinityRequiredTerm {
             node_selector_term: vec![NodeAffinityMatchExpression {
                 key: "env".to_string(),
@@ -275,7 +275,7 @@ mod tests {
         }];
         assert_eq!(nf.is_required_matches(&node), false);
 
-        // Test In operator 2
+        // Test NotIn operator 2
         nf.required_terms = vec![NodeAffinityRequiredTerm {
             node_selector_term: vec![NodeAffinityMatchExpression {
                 key: "env".to_string(),

@@ -135,10 +135,13 @@ impl IFilterPlugin for FilterTaintsTolerations {
                 continue;
             }
 
-            // Hear only taints with NoSchedule
+            // Hear only taints with NoSchedule effect
             let mut matches = false;
             for tol in &pod.spec.tolerations {
                 matches |= taint.matches(tol);
+                if matches {
+                    break;
+                }
             }
 
             if !matches {
