@@ -124,9 +124,9 @@ impl IScorePlugin for ScoreTaintsTolerations {
         node: &Node,
     ) -> i64 {
         let (mut no_schedule, mut prefer_no_schedule) = (false, false);
-        for taint in &node.spec.taints {
+        for taint in node.spec.taints.iter() {
             let mut matches = false;
-            for tol in &pod.spec.tolerations {
+            for tol in pod.spec.tolerations.iter() {
                 matches |= taint.matches(tol);
                 if matches {
                     break;

@@ -70,7 +70,7 @@ impl IFilterPlugin for FilterNodeSelector {
         pod: &Pod,
         node: &Node,
     ) -> bool {
-        for (key, pod_value) in &pod.spec.node_selector {
+        for (key, pod_value) in pod.spec.node_selector.iter() {
             match node.metadata.labels.get(key) {
                 None => return false,
                 Some(node_value) => {
@@ -130,14 +130,14 @@ impl IFilterPlugin for FilterTaintsTolerations {
         pod: &Pod,
         node: &Node,
     ) -> bool {
-        for taint in &node.spec.taints {
+        for taint in node.spec.taints.iter() {
             if taint.effect != TaintTolerationEffect::NoSchedule {
                 continue;
             }
 
             // Hear only taints with NoSchedule effect
             let mut matches = false;
-            for tol in &pod.spec.tolerations {
+            for tol in pod.spec.tolerations.iter() {
                 matches |= taint.matches(tol);
                 if matches {
                     break;
@@ -199,7 +199,7 @@ impl IFilterPlugin for FilterPreemption {
         node: &Node,
     ) -> bool {
         let (mut cpu, mut memory) = (node.spec.available_cpu, node.spec.available_memory);
-        for &tmp_uid in &node.status.pods {
+        for &tmp_uid in node.status.pods.iter() {
             let tmp_pod = running_pods.get(&tmp_uid).unwrap();
             if tmp_pod.spec.priority >= pod.spec.priority {
                 continue;

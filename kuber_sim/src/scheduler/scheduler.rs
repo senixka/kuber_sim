@@ -257,7 +257,7 @@ impl Scheduler {
             let mut preempt_uids: Vec<u64> = Vec::new();
             if !node.is_both_consumable(cpu, memory) {
                 let (mut cpu, mut memory) = (node.spec.available_cpu, node.spec.available_memory);
-                for &tmp_uid in &node.status.pods {
+                for &tmp_uid in node.status.pods.iter() {
                     let tmp_pod = self.running_pods.get(&tmp_uid).unwrap();
                     if tmp_pod.spec.priority >= pod.spec.priority {
                         continue;
@@ -497,7 +497,7 @@ impl Scheduler {
         // For pending pods look available node which may help
         let mut may_help: Option<u64> = None;
         let mut pending_pod_count = 0;
-        for (_, pod) in &self.pending_pods {
+        for (_, pod) in self.pending_pods.iter() {
             // Only pods which cannot be scheduled due to insufficient resources on nodes
             if !pod.status.cluster_resource_starvation {
                 continue;

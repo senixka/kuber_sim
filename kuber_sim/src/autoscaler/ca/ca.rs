@@ -48,7 +48,7 @@ impl CA {
 
         // Prepare kubelet pool from nodes_config ca nodes
         let mut uid_counter = 0;
-        for group in &init_nodes.borrow().ca_nodes {
+        for group in init_nodes.borrow().ca_nodes.iter() {
             // Process node group
             for _ in 0..group.amount {
                 // Create kubelet unique name

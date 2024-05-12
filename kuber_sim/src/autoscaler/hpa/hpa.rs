@@ -52,7 +52,7 @@ impl HPA {
     ////////////////// Process metrics //////////////////
 
     pub fn make_decisions(&mut self) {
-        for (group_uid, info) in &self.managed_groups {
+        for (group_uid, info) in self.managed_groups.iter() {
             // Get current group size
             let group_size = info.alive_uids.len() as u64;
 

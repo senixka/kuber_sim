@@ -61,8 +61,8 @@ impl VPAGroupInfo {
             .collect();
 
         // Remove all finished uids
-        for (uid, _) in &finished {
-            self.uids.remove(&uid);
+        for (uid, _) in finished.iter() {
+            self.uids.remove(uid);
         }
 
         return finished;

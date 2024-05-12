@@ -23,12 +23,12 @@ impl InitNodes {
 
     pub fn prepare(&mut self) {
         // Prepare each node group for nodes
-        for node_group in &mut self.nodes {
+        for node_group in self.nodes.iter_mut() {
             node_group.prepare();
         }
 
         // Prepare each node group for CA nodes
-        for node_group in &mut self.ca_nodes {
+        for node_group in self.ca_nodes.iter_mut() {
             node_group.prepare();
         }
     }

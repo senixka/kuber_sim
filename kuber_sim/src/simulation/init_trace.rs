@@ -202,26 +202,25 @@ impl InitTrace {
     }
 
     pub fn submit(&self, emitter: &dsc::SimulationContext, api_sim_id: dsc::Id) {
-        let mut last_time: f64 = 0.0;
         let mut delayed_events: BTreeSet<TraceEventWrapper> = BTreeSet::new();
-
-        // Process trace events
-        for wrapper in self.trace.iter() {
-            // Try to submit delayed events
-            while !delayed_events.is_empty() && delayed_events.first().unwrap().submit_time <= wrapper.submit_time {
-                let delayed = delayed_events.pop_first().unwrap();
+        let submit_delayed_up_to_time = |delayed: &mut BTreeSet<TraceEventWrapper>, current_time: f64| {
+            while !delayed.is_empty() && delayed.first().unwrap().submit_time <= current_time {
+                let delayed = delayed.pop_first().unwrap();
                 match delayed.event {
                     TraceEvent::RemovePodGroup(inner_event) => {
-                        // Emit inner event
-                        assert!(last_time <= delayed.submit_time);
                         emitter.emit_ordered(inner_event, api_sim_id, delayed.submit_time);
-                        last_time = delayed.submit_time;
                     }
                     TraceEvent::AddPodGroup(_) => {
                         panic!("Unexpected TraceEvent.")
                     }
                 }
             }
+        };
+
+        // Process trace events
+        for wrapper in self.trace.iter() {
+            // Try to submit delayed events
+            submit_delayed_up_to_time(&mut delayed_events, wrapper.submit_time);
 
             match &wrapper.event {
                 TraceEvent::AddPodGroup(pod_group) => {
@@ -249,21 +248,7 @@ impl InitTrace {
                 }
             }
         }
-
-        // Try to submit delayed events
-        while !delayed_events.is_empty() {
-            let delayed = delayed_events.pop_first().unwrap();
-            match delayed.event {
-                TraceEvent::RemovePodGroup(inner_event) => {
-                    // Emit inner event
-                    assert!(last_time <= delayed.submit_time);
-                    emitter.emit_ordered(inner_event, api_sim_id, delayed.submit_time);
-                    last_time = delayed.submit_time;
-                }
-                TraceEvent::AddPodGroup(_) => {
-                    panic!("Unexpected TraceEvent.")
-                }
-            }
-        }
+        // Submit all delayed events
+        submit_delayed_up_to_time(&mut delayed_events, f64::MAX);
     }
 }

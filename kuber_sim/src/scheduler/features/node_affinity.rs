@@ -102,9 +102,9 @@ pub struct NodeAffinity {
 impl NodeAffinity {
     /// Is required NodeAffinitySelectorTerms matches node.
     pub fn is_required_matches(&self, node: &Node) -> bool {
-        for match_expression in &self.required_terms {
+        for match_expression in self.required_terms.iter() {
             let mut flag = true;
-            for expression in &match_expression.node_selector_term {
+            for expression in match_expression.node_selector_term.iter() {
                 if !expression.matches(node) {
                     flag = false;
                     break;
@@ -122,9 +122,9 @@ impl NodeAffinity {
     /// Counts weighted sum of preferred NodeAffinitySelectorTerms that matches node.
     pub fn preferred_sum(&self, node: &Node) -> i64 {
         let mut match_sum = 0;
-        for match_expression in &self.preferred_terms {
+        for match_expression in self.preferred_terms.iter() {
             let mut flag = 1;
-            for expression in &match_expression.node_selector_term {
+            for expression in match_expression.node_selector_term.iter() {
                 if !expression.matches(node) {
                     flag = 0;
                     break;
