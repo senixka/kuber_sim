@@ -16,4 +16,23 @@ pub struct HPAProfile {
     pub scale_up_mean_memory_fraction: f64,
 }
 
+impl FromStr for HPAProfile {
+    type Err = ();
+
+    /// Expects "<u64>,<u64>,<f64>,<f64>,<f64>,<f64>"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let data: Vec<&str> = s.split(';').collect();
+        assert_eq!(data.len(), 6);
+
+        Ok(Self {
+            min_size: str::parse(data[0]).unwrap(),
+            max_size: str::parse(data[1]).unwrap(),
+            scale_down_mean_cpu_fraction: str::parse(data[2]).unwrap(),
+            scale_down_mean_memory_fraction: str::parse(data[3]).unwrap(),
+            scale_up_mean_cpu_fraction: str::parse(data[4]).unwrap(),
+            scale_up_mean_memory_fraction: str::parse(data[5]).unwrap(),
+        })
+    }
+}
+
 impl Eq for HPAProfile {}

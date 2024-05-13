@@ -3,8 +3,6 @@ use crate::my_imports::*;
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PodSpec {
-    pub load: LoadType,
-
     #[serde(default)]
     pub request_cpu: i64,
     #[serde(default)]
@@ -18,12 +16,97 @@ pub struct PodSpec {
     #[serde(default)]
     pub priority: i64,
 
+    pub load: LoadType,
+
     #[serde(default)]
     pub node_selector: BTreeMap<String, String>,
     #[serde(default)]
     pub tolerations: Vec<Toleration>,
     #[serde(default)]
     pub node_affinity: NodeAffinity,
+}
+
+impl FromStr for PodSpec {
+    type Err = ();
+
+    /// Expects "<i64>;<i64>;<i64>;<i64>;<i64>;{<LoadType>};{<node_selector>};{<tolerations>};{<NodeAffinity>}"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (request_cpu_str, other) = s.split_once(';').unwrap();
+        let (request_memory_str, other) = other.split_once(';').unwrap();
+        let (limit_cpu_str, other) = other.split_once(';').unwrap();
+        let (limit_memory_str, other) = other.split_once(';').unwrap();
+        let (priority_str, other) = other.split_once(';').unwrap();
+
+        let mut request_cpu = 0;
+        if !request_cpu_str.is_empty() {
+            request_cpu = str::parse(request_cpu_str).unwrap();
+        }
+
+        let mut request_memory = 0;
+        if !request_memory_str.is_empty() {
+            request_memory = str::parse(request_memory_str).unwrap();
+        }
+
+        let mut limit_cpu = 0;
+        if !limit_cpu_str.is_empty() {
+            limit_cpu = str::parse(limit_cpu_str).unwrap();
+        }
+
+        let mut limit_memory = 0;
+        if !limit_memory_str.is_empty() {
+            limit_memory = str::parse(limit_memory_str).unwrap();
+        }
+
+        let mut priority = 0;
+        if !priority_str.is_empty() {
+            priority = str::parse(priority_str).unwrap();
+        }
+
+        let load_end = InitTrace::find_matching_bracket(other, 0).unwrap();
+        let load_str = &other[1..load_end];
+
+        let node_selector_end = InitTrace::find_matching_bracket(other, load_end + 2).unwrap();
+        let node_selector_str = &other[load_end + 3..node_selector_end];
+
+        let tolerations_end = InitTrace::find_matching_bracket(other, node_selector_end + 2).unwrap();
+        let tolerations_str = &other[node_selector_end + 3..tolerations_end];
+
+        let node_affinity_end = InitTrace::find_matching_bracket(other, tolerations_end + 2).unwrap();
+        let node_affinity_str = &other[tolerations_end + 3..node_affinity_end];
+        assert_eq!(node_affinity_end + 1, other.len());
+
+        let mut node_selector = BTreeMap::<String, String>::new();
+        if !node_selector_str.is_empty() {
+            for key_value in node_selector_str.split(',') {
+                let (key, value) = key_value.split_once(':').unwrap();
+                node_selector.insert(key.to_string(), value.to_string());
+            }
+        }
+
+        let mut node_affinity = NodeAffinity::default();
+        if !node_affinity_str.is_empty() {
+            node_affinity = str::parse(node_affinity_str).unwrap();
+        }
+
+        let mut tolerations: Vec<Toleration> = Vec::new();
+        if !tolerations_str.is_empty() {
+            for toleration_str in tolerations_str.split(';') {
+                tolerations.push(str::parse(toleration_str).unwrap());
+            }
+        }
+
+        Ok(Self {
+            request_cpu,
+            request_memory,
+            limit_cpu,
+            limit_memory,
+            priority,
+            load: str::parse(load_str).unwrap(),
+            node_selector,
+            tolerations,
+            node_affinity,
+        })
+    }
 }
 
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
@@ -93,6 +176,29 @@ pub struct Pod {
     pub metadata: ObjectMeta,
     #[serde(skip)]
     pub status: PodStatus,
+}
+
+impl FromStr for Pod {
+    type Err = ();
+
+    /// Expects "{<ObjectMeta>};{<PodSpec>}"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let metadata_end = InitTrace::find_matching_bracket(s, 0).unwrap();
+
+        let metadata_str = &s[1..metadata_end];
+        let spec_str = &s[metadata_end + 3..s.len() - 1];
+
+        let mut metadata = ObjectMeta::default();
+        if !metadata_str.is_empty() {
+            metadata = str::parse(metadata_str).unwrap();
+        }
+
+        Ok(Self {
+            spec: str::parse(spec_str).unwrap(),
+            metadata,
+            status: PodStatus::default(),
+        })
+    }
 }
 
 impl Pod {

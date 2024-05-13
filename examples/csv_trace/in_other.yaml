@@ -1,0 +1,15 @@
+monitoring:
+  self_update_period: 1
+
+scheduler:
+  self_update_period: 1
+  unschedulable_queue_backoff_delay: 5
+
+
+nodes:
+  - node_group:
+    amount: 1
+    node:
+      spec:
+        installed_cpu: 100
+        installed_memory: 100

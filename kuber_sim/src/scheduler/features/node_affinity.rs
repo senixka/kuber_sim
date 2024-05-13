@@ -99,6 +99,16 @@ pub struct NodeAffinity {
     pub required_terms: Vec<NodeAffinityRequiredTerm>,
 }
 
+impl FromStr for NodeAffinity {
+    type Err = ();
+
+    /// Expects "{Vec<NodeAffinityPreferredTerm>};{Vec<NodeAffinityRequiredTerm>}"
+    fn from_str(_: &str) -> Result<Self, Self::Err> {
+        // TODO: impl
+        return Ok(Self::default());
+    }
+}
+
 impl NodeAffinity {
     /// Is required NodeAffinitySelectorTerms matches node.
     pub fn is_required_matches(&self, node: &Node) -> bool {

@@ -10,3 +10,24 @@ pub struct ObjectMeta {
     #[serde(skip)]
     pub group_uid: u64,
 }
+
+impl FromStr for ObjectMeta {
+    type Err = ();
+
+    /// Expects "key_1:value_1,key_2:value_2,..."
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let data: Vec<&str> = s.split(',').collect();
+        let mut labels: BTreeMap<String, String> = BTreeMap::new();
+
+        for key_value in data {
+            let (key, value) = key_value.split_once(':').unwrap();
+            labels.insert(key.to_string(), value.to_string());
+        }
+
+        Ok(Self {
+            labels,
+            uid: 0,
+            group_uid: 0,
+        })
+    }
+}

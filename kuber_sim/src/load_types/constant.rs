@@ -5,9 +5,9 @@ pub struct Constant {
     #[serde(skip)]
     pub start_time: f64,
 
-    pub duration: f64,
     pub cpu: i64,
     pub memory: i64,
+    pub duration: f64,
 }
 
 impl Constant {
@@ -28,6 +28,23 @@ impl Constant {
             next_change,
             current_time - self.start_time + dsc::EPSILON > self.duration,
         );
+    }
+}
+
+impl FromStr for Constant {
+    type Err = ();
+
+    /// Expects "i64;i64;f64"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (cpu_str, other) = s.split_once(';').unwrap();
+        let (memory_str, duration_str) = other.split_once(';').unwrap();
+
+        Ok(Self {
+            cpu: str::parse(cpu_str).unwrap(),
+            memory: str::parse(memory_str).unwrap(),
+            duration: str::parse(duration_str).unwrap(),
+            start_time: 0.0,
+        })
     }
 }
 

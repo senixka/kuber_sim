@@ -16,4 +16,18 @@ impl ConstantInfinite {
     }
 }
 
+impl FromStr for ConstantInfinite {
+    type Err = ();
+
+    /// Expects "i64;i64"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (cpu_str, memory_str) = s.split_once(';').unwrap();
+
+        Ok(Self {
+            cpu: str::parse(cpu_str).unwrap(),
+            memory: str::parse(memory_str).unwrap(),
+        })
+    }
+}
+
 impl Eq for ConstantInfinite {}

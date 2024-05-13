@@ -19,6 +19,7 @@ pub mod my_imports {
     pub use std::fs::File;
     pub use std::io::{stdin, BufRead, BufReader, BufWriter};
     pub use std::ops::Neg;
+    pub use std::str::FromStr;
     pub use std::sync::atomic::{AtomicU64, Ordering};
     pub use std::thread;
 

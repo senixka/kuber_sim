@@ -33,4 +33,25 @@ impl BusyBoxInfinite {
     }
 }
 
+impl FromStr for BusyBoxInfinite {
+    type Err = ();
+
+    /// Expects "i64;i64;64;i64;f64"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (cpu_down_str, other) = s.split_once(';').unwrap();
+        let (memory_down_str, other) = other.split_once(';').unwrap();
+        let (cpu_up_str, other) = other.split_once(';').unwrap();
+        let (memory_up_str, shift_time_str) = other.split_once(';').unwrap();
+
+        Ok(Self {
+            cpu_down: str::parse(cpu_down_str).unwrap(),
+            memory_down: str::parse(memory_down_str).unwrap(),
+            cpu_up: str::parse(cpu_up_str).unwrap(),
+            memory_up: str::parse(memory_up_str).unwrap(),
+            shift_time: str::parse(shift_time_str).unwrap(),
+            start_time: 0.0,
+        })
+    }
+}
+
 impl Eq for BusyBoxInfinite {}

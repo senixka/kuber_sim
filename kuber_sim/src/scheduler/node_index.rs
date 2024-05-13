@@ -52,6 +52,7 @@ mod tests {
         }
     }
 
+    #[test]
     pub fn test_node_rtree() {
         let mut index = NodeRTree::new();
 

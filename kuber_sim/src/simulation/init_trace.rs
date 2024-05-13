@@ -6,12 +6,42 @@ pub enum TraceEvent {
     RemovePodGroup(EventRemovePodGroup),
 }
 
+impl FromStr for TraceEvent {
+    type Err = ();
+
+    /// Expects "<enum_index: u8>;<enum_payload: { PodGroup }>"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (enum_index, enum_inner) = s.split_once(';').unwrap();
+        let enum_inner = enum_inner.trim();
+
+        match enum_index {
+            "0" => Ok(Self::AddPodGroup(str::parse(enum_inner).unwrap())),
+            _ => panic!("Unexpected enum_index: '{:?}'", enum_index),
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraceEventWrapper {
     submit_time: f64,
     event: TraceEvent,
+}
+
+impl FromStr for TraceEventWrapper {
+    type Err = ();
+
+    /// Expects "<submit_time: f64>;<TraceEvent>"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (submit_time, event) = s.split_once(';').unwrap();
+        let event = event.trim();
+
+        Ok(Self {
+            submit_time: str::parse(submit_time).unwrap(),
+            event: str::parse(event).unwrap(),
+        })
+    }
 }
 
 impl PartialOrd for TraceEventWrapper {
@@ -46,8 +76,8 @@ impl InitTrace {
     pub fn from_file(path: &String) -> Self {
         if path.ends_with(".yaml") {
             return InitTrace::from_yaml(path);
-        // } else if path.ends_with(".csv") {
-        //     return InitTrace::from_csv(path);
+        } else if path.ends_with(".csv") {
+            return InitTrace::from_csv(path);
         } else {
             panic!("File format and extension must be '.yaml' or '.csv'")
         }
@@ -61,91 +91,27 @@ impl InitTrace {
         trace.prepare();
         return trace;
     }
-    //
-    // // TODO: update format, prepare for hpa, add taints and other...
-    // pub fn from_csv(path: &String) -> Self {
-    //     let file = std::fs::File::open(path).unwrap();
-    //     let reader = BufReader::new(file);
-    //
-    //     let mut workload = InitTrace::default();
-    //
-    //     for line in reader.lines() {
-    //         let s = line.unwrap().trim().to_string();
-    //         let data: Vec<&str> = s.split(",").collect();
-    //
-    //         let mut pod = Pod::default();
-    //
-    //         pod.spec.request_cpu = data[2].parse().unwrap();
-    //         pod.spec.request_memory = data[3].parse().unwrap();
-    //         pod.spec.limit_cpu = data[4].parse().unwrap_or(i64::MAX);
-    //         pod.spec.limit_memory = data[5].parse().unwrap_or(i64::MAX);
-    //         pod.spec.priority = data[6].parse().unwrap_or(0);
-    //
-    //         let pod_labels: Vec<&str> = data[7].split(";").collect();
-    //         for label in pod_labels {
-    //             if label.is_empty() {
-    //                 continue;
-    //             }
-    //
-    //             let key_value: Vec<&str> = label.split(":").collect();
-    //             assert_eq!(key_value.len(), 2);
-    //
-    //             pod.metadata.labels.insert(key_value[0].to_string(), key_value[1].to_string());
-    //         }
-    //
-    //         let node_selector_data: Vec<&str> = data[8].split(";").collect();
-    //         for selector in node_selector_data {
-    //             if selector.is_empty() {
-    //                 continue;
-    //             }
-    //
-    //             let key_value: Vec<&str> = selector.split(":").collect();
-    //             assert_eq!(key_value.len(), 2);
-    //
-    //             pod.spec.node_selector.insert(key_value[0].to_string(), key_value[1].to_string());
-    //         }
-    //
-    //         let load_data: Vec<&str> = data[9].split(";").collect();
-    //         match load_data[0] {
-    //             "constant" => {
-    //                 assert_eq!(load_data.len(), 4);
-    //
-    //                 let mut constant = Constant::default();
-    //                 constant.cpu = load_data[1].parse().unwrap();
-    //                 constant.memory = load_data[2].parse().unwrap();
-    //                 constant.duration = load_data[3].parse().unwrap();
-    //
-    //                 pod.spec.load = LoadType::Constant(constant);
-    //             }
-    //             "busybox" => {
-    //                 assert_eq!(load_data.len(), 7);
-    //
-    //                 let mut busybox = BusyBox::default();
-    //                 busybox.cpu_down = load_data[1].parse().unwrap();
-    //                 busybox.memory_down = load_data[2].parse().unwrap();
-    //                 busybox.cpu_up = load_data[3].parse().unwrap();
-    //                 busybox.memory_up = load_data[4].parse().unwrap();
-    //                 busybox.duration = load_data[5].parse().unwrap();
-    //                 busybox.shift_time = load_data[6].parse().unwrap();
-    //
-    //                 pod.spec.load = LoadType::BusyBox(busybox);
-    //             }
-    //             _ => {
-    //                 panic!("Unknown load type");
-    //             }
-    //         }
-    //
-    //         let mut pod_group = PodGroup::default();
-    //         pod_group.pod_count = data[0].parse().unwrap();
-    //         pod_group.submit_time = data[1].parse().unwrap();
-    //         pod_group.pod = pod;
-    //
-    //         pod_group.prepare();
-    //         workload.pods.push(pod_group);
-    //     }
-    //
-    //     return workload;
-    // }
+
+    pub fn from_csv(path: &String) -> Self {
+        // Open file
+        let file = std::fs::File::open(path).unwrap();
+        // Create file reader
+        let reader = BufReader::new(file);
+        // Create empty trace
+        let mut init_trace = InitTrace::default();
+
+        // Read trace
+        for line in reader.lines() {
+            let s = line.unwrap().trim().to_string();
+            if s.is_empty() {
+                continue;
+            }
+
+            init_trace.trace.push(str::parse::<TraceEventWrapper>(&s).unwrap());
+        }
+
+        return init_trace;
+    }
 
     pub fn prepare(&mut self) {
         // Prepare trace events
@@ -250,5 +216,49 @@ impl InitTrace {
         }
         // Submit all delayed events
         submit_delayed_up_to_time(&mut delayed_events, f64::MAX);
+    }
+
+    pub fn find_matching_bracket(s: &str, start_index: usize) -> Option<usize> {
+        let mut count = 0;
+        for (i, c) in s[start_index..].char_indices() {
+            match c {
+                '{' => count += 1,
+                '}' => {
+                    count -= 1;
+                    if count == 0 {
+                        return Some(start_index + i);
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+}
+
+///////////////////////////////////////////// Test /////////////////////////////////////////////////
+
+#[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_matching_bracket() {
+        assert_eq!(InitTrace::find_matching_bracket("{}", 0), Some(1));
+        assert_eq!(InitTrace::find_matching_bracket("{1}", 0), Some(2));
+        assert_eq!(InitTrace::find_matching_bracket("{1,{2},3}", 0), Some(8));
+        assert_eq!(InitTrace::find_matching_bracket("{1,{2},3}", 3), Some(5));
+        assert_eq!(InitTrace::find_matching_bracket("{{{}{}}{}}", 0), Some(9));
+        assert_eq!(InitTrace::find_matching_bracket("{{{}{}}{}}", 1), Some(6));
+        assert_eq!(InitTrace::find_matching_bracket("{{{}{}}{}}", 2), Some(3));
+    }
+
+    #[test]
+    fn test_csv() {
+        println!("{:?}", str::parse::<TraceEventWrapper>("1;0;5;30;{{};{10;10;20;20;1;{1;5;15};{};{};{}}};{};{}\n"));
+        println!("{:?}", str::parse::<TraceEventWrapper>("1;0;5;30;{{};{10;10;20;20;1;{1;5;15};{};{};{}}};{1;2;3;4;5;6};{1;2;3;4}\n"));
+        println!("{:?}", str::parse::<TraceEventWrapper>("1;0;5;;{{gpu:amd,env:test};{1;2;3;4;5;{0;5;15;30};{};{};{}}};{};{}\n"));
+        println!("{:?}", str::parse::<TraceEventWrapper>("1;0;5;;{{};{10;10;20;20;1;{2;15;16;20;21;5;45};{gpu:amd,env:test};{gpu,amd,0,1;test,,1,0};{}}};{};{}\n"));
     }
 }

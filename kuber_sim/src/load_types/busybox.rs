@@ -10,8 +10,8 @@ pub struct BusyBox {
     pub cpu_up: i64,
     pub memory_up: i64,
 
-    pub duration: f64,
     pub shift_time: f64,
+    pub duration: f64,
 }
 
 impl BusyBox {
@@ -41,6 +41,29 @@ impl BusyBox {
             return (self.cpu_down, self.memory_down, next_change, false);
         }
         return (self.cpu_up, self.memory_up, next_change, false);
+    }
+}
+
+impl FromStr for BusyBox {
+    type Err = ();
+
+    /// Expects "i64;i64;64;i64;f64;f64"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (cpu_down_str, other) = s.split_once(';').unwrap();
+        let (memory_down_str, other) = other.split_once(';').unwrap();
+        let (cpu_up_str, other) = other.split_once(';').unwrap();
+        let (memory_up_str, other) = other.split_once(';').unwrap();
+        let (shift_time_str, duration_str) = other.split_once(';').unwrap();
+
+        Ok(Self {
+            cpu_down: str::parse(cpu_down_str).unwrap(),
+            memory_down: str::parse(memory_down_str).unwrap(),
+            cpu_up: str::parse(cpu_up_str).unwrap(),
+            memory_up: str::parse(memory_up_str).unwrap(),
+            shift_time: str::parse(shift_time_str).unwrap(),
+            duration: str::parse(duration_str).unwrap(),
+            start_time: 0.0,
+        })
     }
 }
 

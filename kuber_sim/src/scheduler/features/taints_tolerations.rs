@@ -11,6 +11,19 @@ pub enum TaintTolerationEffect {
     PreferNoSchedule = 1,
 }
 
+impl FromStr for TaintTolerationEffect {
+    type Err = ();
+
+    /// Expects "u8"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "0" => Ok(TaintTolerationEffect::NoSchedule),
+            "1" => Ok(TaintTolerationEffect::PreferNoSchedule),
+            _ => Err(()),
+        }
+    }
+}
+
 // https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TaintTolerationOperator {
@@ -19,6 +32,19 @@ pub enum TaintTolerationOperator {
     Equal = 0,
     /// Exists = A label with this key exists on the object.
     Exists = 1,
+}
+
+impl FromStr for TaintTolerationOperator {
+    type Err = ();
+
+    /// Expects "u8"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "0" => Ok(TaintTolerationOperator::Equal),
+            "1" => Ok(TaintTolerationOperator::Exists),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -43,6 +69,24 @@ pub struct Toleration {
     pub operator: TaintTolerationOperator,
     /// Effect indicates the taint effect to match.
     pub effect: TaintTolerationEffect,
+}
+
+impl FromStr for Toleration {
+    type Err = ();
+
+    /// Expects "<key: String>,<value: String>,<TaintTolerationOperator>,<TaintTolerationEffect>"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (key, other) = s.split_once(',').unwrap();
+        let (value, other) = other.split_once(',').unwrap();
+        let (operator_str, effect_str) = other.split_once(',').unwrap();
+
+        Ok(Self {
+            key: key.to_string(),
+            value: value.to_string(),
+            operator: str::parse(operator_str).unwrap(),
+            effect: str::parse(effect_str).unwrap(),
+        })
+    }
 }
 
 impl Taint {
