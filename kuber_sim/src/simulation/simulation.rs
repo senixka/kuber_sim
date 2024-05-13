@@ -153,6 +153,18 @@ impl Simulation {
         self.monitoring.borrow_mut().disable_dynamic_update();
     }
 
+    pub fn enable_print(&mut self) {
+        self.monitoring.borrow_mut().print_enabled = true;
+    }
+
+    pub fn disable_print(&mut self) {
+        self.monitoring.borrow_mut().print_enabled = false;
+    }
+
+    pub fn clear_records(&mut self) {
+        self.monitoring.borrow_mut().clear_records();
+    }
+
     pub fn enable_ca(&self) {
         self.ca.clone().unwrap().borrow_mut().turn_on();
     }

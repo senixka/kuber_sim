@@ -5,30 +5,31 @@ pub struct Monitoring {
     pub ctx: dsc::SimulationContext,
     pub self_update_enabled: bool,
     pub dynamic_update_enabled: bool,
+    pub print_enabled: bool,
     pub init_config: Rc<RefCell<InitConfig>>,
+
+    time_record: Vec<f64>,
+
+    node_counter: u64,
+
+    node_counter_record: Vec<u64>,
 
     total_installed_cpu: i64,
     total_installed_memory: i64,
 
+    total_installed_cpu_record: Vec<i64>,
+    total_installed_memory_record: Vec<i64>,
+
     scheduler_used_cpu: i64,
     scheduler_used_memory: i64,
-
     kubelets_used_cpu: i64,
     kubelets_used_memory: i64,
 
-    scheduler_utilization_cpu_numerator: Vec<i64>,
-    scheduler_utilization_memory_numerator: Vec<i64>,
-    kubelet_utilization_cpu_numerator: Vec<i64>,
-    kubelet_utilization_memory_numerator: Vec<i64>,
-    // utilization_measurements_time: Vec<f64>,
+    scheduler_used_cpu_record: Vec<i64>,
+    scheduler_used_memory_record: Vec<i64>,
+    kubelets_used_cpu_record: Vec<i64>,
+    kubelets_used_memory_record: Vec<i64>,
 
-    // pod_start_time: HashMap<u64, f64>,
-    // pod_end_time: HashMap<u64, f64>,
-
-    // pod_unfinished_task_count: HashMap<u64, u64>,
-    // pod_ideal_estimate_time: HashMap<u64, u64>,
-    pending_pod: Vec<usize>,
-    // working_pod: Vec<u64>,
     pending_pod_counter: usize,
     running_pod_counter: usize,
     succeed_pod_counter: u64,
@@ -37,10 +38,14 @@ pub struct Monitoring {
     removed_pod_counter: u64,
     preempted_pod_counter: u64,
 
-    node_counter: u64,
+    pending_pod_counter_record: Vec<usize>,
+    running_pod_counter_record: Vec<usize>,
+    succeed_pod_counter_record: Vec<u64>,
+    failed_pod_counter_record: Vec<u64>,
+    evicted_pod_counter_record: Vec<u64>,
+    removed_pod_counter_record: Vec<u64>,
+    preempted_pod_counter_record: Vec<u64>,
 
-    // max_pending_pod: u64,
-    // max_running_pod: u64,
     out_path: String,
 }
 
@@ -50,27 +55,38 @@ impl Monitoring {
             ctx,
             self_update_enabled: false,
             dynamic_update_enabled: false,
+            print_enabled: true,
             init_config,
             total_installed_cpu: 0,
             total_installed_memory: 0,
+            total_installed_cpu_record: vec![],
+            total_installed_memory_record: vec![],
             scheduler_used_cpu: 0,
             scheduler_used_memory: 0,
             kubelets_used_cpu: 0,
             kubelets_used_memory: 0,
+            scheduler_used_cpu_record: vec![],
+            scheduler_used_memory_record: vec![],
+            kubelets_used_cpu_record: vec![],
             succeed_pod_counter: 0,
             pending_pod_counter: 0,
             preempted_pod_counter: 0,
+            pending_pod_counter_record: vec![],
+            running_pod_counter_record: vec![],
+            succeed_pod_counter_record: vec![],
+            failed_pod_counter_record: vec![],
+            evicted_pod_counter_record: vec![],
+            removed_pod_counter_record: vec![],
             failed_pod_counter: 0,
             running_pod_counter: 0,
             evicted_pod_counter: 0,
             removed_pod_counter: 0,
             node_counter: 0,
-            kubelet_utilization_cpu_numerator: Vec::new(),
-            kubelet_utilization_memory_numerator: Vec::new(),
-            scheduler_utilization_cpu_numerator: Vec::new(),
-            scheduler_utilization_memory_numerator: Vec::new(),
-            pending_pod: Vec::new(),
             out_path: out_path.clone(),
+            node_counter_record: vec![],
+            kubelets_used_memory_record: vec![],
+            preempted_pod_counter_record: vec![],
+            time_record: vec![],
         }
     }
 
@@ -94,6 +110,36 @@ impl Monitoring {
 
     pub fn disable_dynamic_update(&mut self) {
         self.dynamic_update_enabled = false;
+    }
+
+    pub fn enable_print(&mut self) {
+        self.print_enabled = true;
+    }
+
+    pub fn disable_print(&mut self) {
+        self.print_enabled = false;
+    }
+
+    pub fn clear_records(&mut self) {
+        self.time_record.clear();
+
+        self.node_counter_record.clear();
+
+        self.total_installed_cpu_record.clear();
+        self.total_installed_memory_record.clear();
+
+        self.scheduler_used_cpu_record.clear();
+        self.scheduler_used_memory_record.clear();
+        self.kubelets_used_cpu_record.clear();
+        self.kubelets_used_memory_record.clear();
+
+        self.pending_pod_counter_record.clear();
+        self.running_pod_counter_record.clear();
+        self.succeed_pod_counter_record.clear();
+        self.failed_pod_counter_record.clear();
+        self.evicted_pod_counter_record.clear();
+        self.removed_pod_counter_record.clear();
+        self.preempted_pod_counter_record.clear();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -232,30 +278,44 @@ impl Monitoring {
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     pub fn print_statistics(&mut self) {
-        self.kubelet_utilization_cpu_numerator.push(self.kubelets_used_cpu);
-        self.kubelet_utilization_memory_numerator
-            .push(self.kubelets_used_memory);
-        self.scheduler_utilization_cpu_numerator.push(self.scheduler_used_cpu);
-        self.scheduler_utilization_memory_numerator
-            .push(self.scheduler_used_memory);
+        self.time_record.push(self.ctx.time());
 
-        self.pending_pod.push(self.pending_pod_counter);
-        print!(
-            "{:>6.3}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9} Pending:{:<9} Running:{:<9} Succeed:{:<9} Failed:{:<9} Removed:{:<9} Evicted:{:<9} Preempted:{:<9}\n",
-            self.ctx.time(),
-            (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
-            (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
-            (self.kubelets_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
-            (self.scheduler_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
-            self.node_counter,
-            self.pending_pod_counter,
-            self.running_pod_counter,
-            self.succeed_pod_counter,
-            self.failed_pod_counter,
-            self.removed_pod_counter,
-            self.evicted_pod_counter,
-            self.preempted_pod_counter,
-        );
+        self.node_counter_record.push(self.node_counter);
+
+        self.total_installed_cpu_record.push(self.total_installed_cpu);
+        self.total_installed_memory_record.push(self.total_installed_memory);
+
+        self.scheduler_used_cpu_record.push(self.scheduler_used_cpu);
+        self.scheduler_used_memory_record.push(self.scheduler_used_memory);
+        self.kubelets_used_cpu_record.push(self.kubelets_used_cpu);
+        self.kubelets_used_memory_record.push(self.kubelets_used_memory);
+
+        self.pending_pod_counter_record.push(self.pending_pod_counter);
+        self.running_pod_counter_record.push(self.running_pod_counter);
+        self.succeed_pod_counter_record.push(self.succeed_pod_counter);
+        self.failed_pod_counter_record.push(self.failed_pod_counter);
+        self.evicted_pod_counter_record.push(self.evicted_pod_counter);
+        self.removed_pod_counter_record.push(self.removed_pod_counter);
+        self.preempted_pod_counter_record.push(self.preempted_pod_counter);
+
+        if self.print_enabled {
+            print!(
+                "{:>6.3}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9} Pending:{:<9} Running:{:<9} Succeed:{:<9} Failed:{:<9} Removed:{:<9} Evicted:{:<9} Preempted:{:<9}\n",
+                self.ctx.time(),
+                (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
+                (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
+                (self.kubelets_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
+                (self.scheduler_used_memory as f64) / (self.total_installed_memory as f64) * 100.0f64,
+                self.node_counter,
+                self.pending_pod_counter,
+                self.running_pod_counter,
+                self.succeed_pod_counter,
+                self.failed_pod_counter,
+                self.removed_pod_counter,
+                self.evicted_pod_counter,
+                self.preempted_pod_counter,
+            );
+        }
     }
 
     pub fn dump_statistics(&self) {
@@ -263,15 +323,30 @@ impl Monitoring {
         file.set_len(0).unwrap();
         let mut fout = BufWriter::new(file);
 
-        for i in 0..self.kubelet_utilization_cpu_numerator.len() {
+        write!(
+            fout,
+            "time nodes total_cpu total_memory scheduler_used_cpu scheduler_used_memory kubelets_used_cpu kubelets_used_memory pending running succeed failed evicted removed preempted\n"
+        ).unwrap();
+
+        for i in 0..self.time_record.len() {
             write!(
                 fout,
-                "{:?} {:?} {:?} {:?} {:?}\n",
-                self.kubelet_utilization_cpu_numerator[i],
-                self.kubelet_utilization_memory_numerator[i],
-                self.scheduler_utilization_cpu_numerator[i],
-                self.scheduler_utilization_memory_numerator[i],
-                self.pending_pod[i]
+                "{:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?}\n",
+                self.time_record[i],
+                self.node_counter_record[i],
+                self.total_installed_cpu_record[i],
+                self.total_installed_memory_record[i],
+                self.scheduler_used_cpu_record[i],
+                self.scheduler_used_memory_record[i],
+                self.kubelets_used_cpu_record[i],
+                self.kubelets_used_memory_record[i],
+                self.pending_pod_counter_record[i],
+                self.running_pod_counter_record[i],
+                self.succeed_pod_counter_record[i],
+                self.failed_pod_counter_record[i],
+                self.evicted_pod_counter_record[i],
+                self.removed_pod_counter_record[i],
+                self.preempted_pod_counter_record[i],
             )
             .unwrap();
         }

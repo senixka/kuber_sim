@@ -20,7 +20,7 @@ pub struct PodGroup {
 impl FromStr for PodGroup {
     type Err = ();
 
-    /// Expects "<pod_count: u64>,<group_duration: f64>,{<Pod>},{<HPAProfile>},{<VPAProfile>}"
+    /// Expects "<pod_count: u64>;<group_duration: f64>;{<Pod>};{<HPAProfile>};{<VPAProfile>}"
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (pod_count_str, other) = s.split_once(';').unwrap();
         let (group_duration_str, other) = other.trim().split_once(";").unwrap();
