@@ -117,7 +117,7 @@ impl Scheduler {
         );
 
         dp_scheduler!(
-            "{:.12} scheduler cycle activeQ:{:?}",
+            "{:.3} scheduler cycle activeQ:{:?}",
             self.ctx.time(),
             self.active_queue.len()
         );
@@ -294,7 +294,7 @@ impl Scheduler {
             scheduled_left -= 1;
 
             dp_scheduler!(
-                "{:.12} scheduler pod_uid:{:?} placed -> node_uid:{:?}",
+                "{:.3} scheduler pod_uid:{:?} placed -> node_uid:{:?}",
                 self.ctx.time(),
                 pod_uid,
                 node_uid
@@ -550,7 +550,7 @@ impl dsc::EventHandler for Scheduler {
         dsc::cast!(match event.data {
             EventPodUpdateToScheduler { pod_uid, current_phase } => {
                 dp_scheduler!(
-                    "{:.12} scheduler EventPodUpdateFromKubelet pod_uid:{:?} current_phase:{:?}",
+                    "{:.3} scheduler EventPodUpdateFromKubelet pod_uid:{:?} current_phase:{:?}",
                     self.ctx.time(),
                     pod_uid,
                     current_phase
@@ -587,7 +587,7 @@ impl dsc::EventHandler for Scheduler {
 
             EventAddPod { pod } => {
                 dp_scheduler!(
-                    "{:.12} scheduler EventAddPod pod_uid:{:?}",
+                    "{:.3} scheduler EventAddPod pod_uid:{:?}",
                     self.ctx.time(),
                     pod.metadata.uid
                 );
@@ -601,7 +601,7 @@ impl dsc::EventHandler for Scheduler {
 
             EventRemovePodGroup { group_uid } => {
                 dp_scheduler!(
-                    "{:.12} scheduler EventRemovePodGroup group_uid:{:?}",
+                    "{:.3} scheduler EventRemovePodGroup group_uid:{:?}",
                     self.ctx.time(),
                     group_uid
                 );
@@ -633,7 +633,7 @@ impl dsc::EventHandler for Scheduler {
             }
 
             EventRemovePod { pod_uid } => {
-                dp_scheduler!("{:.12} scheduler EventRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
+                dp_scheduler!("{:.3} scheduler EventRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
 
                 // If pod is running -> notify kubelet to remove this pod
                 if self.running_pods.contains_key(&pod_uid) {
@@ -649,7 +649,7 @@ impl dsc::EventHandler for Scheduler {
 
             EventRemovePodGroup { group_uid: _group_uid } => {
                 dp_scheduler!(
-                    "{:.12} scheduler EventRemovePodGroup group_uid:{:?}",
+                    "{:.3} scheduler EventRemovePodGroup group_uid:{:?}",
                     self.ctx.time(),
                     _group_uid
                 );
@@ -660,7 +660,7 @@ impl dsc::EventHandler for Scheduler {
                 node,
             } => {
                 dp_scheduler!(
-                    "{:.12} scheduler EventAddNode node_uid:{:?}",
+                    "{:.3} scheduler EventAddNode node_uid:{:?}",
                     self.ctx.time(),
                     node.metadata.uid
                 );
@@ -675,7 +675,7 @@ impl dsc::EventHandler for Scheduler {
 
             EventRemoveNode { node_uid } => {
                 dp_scheduler!(
-                    "{:.12} scheduler EventRemoveNode node_uid:{:?}",
+                    "{:.3} scheduler EventRemoveNode node_uid:{:?}",
                     self.ctx.time(),
                     node_uid
                 );
@@ -698,7 +698,7 @@ impl dsc::EventHandler for Scheduler {
             }
 
             EventSelfUpdate {} => {
-                dp_scheduler!("{:.12} scheduler EventSelfUpdate", self.ctx.time());
+                dp_scheduler!("{:.3} scheduler EventSelfUpdate", self.ctx.time());
 
                 // Main scheduling cycle
                 self.schedule();
@@ -718,7 +718,7 @@ impl dsc::EventHandler for Scheduler {
                 used_nodes,
                 available_nodes,
             } => {
-                dp_scheduler!("{:.12} scheduler EventGetCAMetrics", self.ctx.time());
+                dp_scheduler!("{:.3} scheduler EventGetCAMetrics", self.ctx.time());
 
                 self.count_and_send_ca_metrics(&used_nodes, &available_nodes);
             }

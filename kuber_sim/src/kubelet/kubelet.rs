@@ -337,7 +337,7 @@ impl dsc::EventHandler for Kubelet {
                 node_uid,
             } => {
                 dp_kubelet!(
-                    "{:.12} node:{:?} EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} new_phase:{:?}",
+                    "{:.3} node:{:?} EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} new_phase:{:?}",
                     self.ctx.time(),
                     self.node.metadata.uid,
                     pod_uid,
@@ -384,7 +384,7 @@ impl dsc::EventHandler for Kubelet {
 
             EventKubeletNextChange { pod_uid } => {
                 dp_kubelet!(
-                    "{:.12} node:{:?} EventKubeletNextChange pod_uid:{:?}",
+                    "{:.3} node:{:?} EventKubeletNextChange pod_uid:{:?}",
                     self.ctx.time(),
                     self.node.metadata.uid,
                     pod_uid
@@ -400,7 +400,7 @@ impl dsc::EventHandler for Kubelet {
 
             EventRemoveNode { node_uid } => {
                 dp_kubelet!(
-                    "{:.12} node:{:?} EventRemoveNode",
+                    "{:.3} node:{:?} EventRemoveNode",
                     self.ctx.time(),
                     self.node.metadata.uid
                 );

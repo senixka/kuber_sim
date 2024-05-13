@@ -134,7 +134,7 @@ impl CA {
             // If cycle count more than remove threshold
             if *cycles >= self.init_config.borrow().ca.remove_node_cycle_delay {
                 dp_ca!(
-                    "{:.12} ca Issues EventRemoveNode node_uid:{:?}",
+                    "{:.3} ca Issues EventRemoveNode node_uid:{:?}",
                     self.ctx.time(),
                     node_uid
                 );
@@ -181,7 +181,7 @@ impl CA {
 
                 // Emit AddNode event
                 dp_ca!(
-                    "{:.12} ca node:{:?} added -> cluster",
+                    "{:.3} ca node:{:?} added -> cluster",
                     self.ctx.time(),
                     node.metadata.uid
                 );
@@ -199,19 +199,19 @@ impl dsc::EventHandler for CA {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             EventTurnOn {} => {
-                dp_ca!("{:.12} ca EventTurnOn", self.ctx.time());
+                dp_ca!("{:.3} ca EventTurnOn", self.ctx.time());
 
                 self.turn_on();
             }
 
             EventTurnOff {} => {
-                dp_ca!("{:.12} ca EventTurnOff", self.ctx.time());
+                dp_ca!("{:.3} ca EventTurnOff", self.ctx.time());
 
                 self.turn_off();
             }
 
             EventSelfUpdate {} => {
-                dp_ca!("{:.12} ca EventSelfUpdate", self.ctx.time());
+                dp_ca!("{:.3} ca EventSelfUpdate", self.ctx.time());
 
                 assert!(self.is_turned_on, "Logic error. Self update should be canceled for CA.");
 
@@ -240,7 +240,7 @@ impl dsc::EventHandler for CA {
                 may_help,
             } => {
                 dp_ca!(
-                    "{:.12} ca EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}",
+                    "{:.3} ca EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}",
                     self.ctx.time(),
                     pending_pod_count,
                     used_nodes_utilization,
@@ -251,7 +251,7 @@ impl dsc::EventHandler for CA {
             }
 
             EventRemoveNodeAck { node_uid } => {
-                dp_ca!("{:.12} ca EventRemoveNodeAck node_uid:{:?}", self.ctx.time(), node_uid);
+                dp_ca!("{:.3} ca EventRemoveNodeAck node_uid:{:?}", self.ctx.time(), node_uid);
 
                 // Kubelet now turned off. Remove node from used
                 let (kubelet_sim_id, kubelet, group_uid) = self.used_nodes.remove(&node_uid).unwrap();

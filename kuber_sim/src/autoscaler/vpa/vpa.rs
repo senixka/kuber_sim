@@ -184,19 +184,19 @@ impl dsc::EventHandler for VPA {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             EventTurnOn {} => {
-                dp_vpa!("{:.12} vpa EventTurnOn", self.ctx.time());
+                dp_vpa!("{:.3} vpa EventTurnOn", self.ctx.time());
 
                 self.turn_on();
             }
 
             EventTurnOff {} => {
-                dp_vpa!("{:.12} vpa EventTurnOff", self.ctx.time());
+                dp_vpa!("{:.3} vpa EventTurnOff", self.ctx.time());
 
                 self.turn_off();
             }
 
             EventSelfUpdate {} => {
-                dp_vpa!("{:.12} vpa EventSelfUpdate", self.ctx.time());
+                dp_vpa!("{:.3} vpa EventSelfUpdate", self.ctx.time());
 
                 assert!(
                     self.is_turned_on,
@@ -219,7 +219,7 @@ impl dsc::EventHandler for VPA {
                 current_memory,
             } => {
                 dp_vpa!(
-                    "{:.12} vpa EventVPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
+                    "{:.3} vpa EventVPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
                     self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory
                 );
 
@@ -242,7 +242,7 @@ impl dsc::EventHandler for VPA {
             }
 
             EventAddPod { pod } => {
-                dp_vpa!("{:.12} vpa EventAddPod pod:{:?}", self.ctx.time(), pod);
+                dp_vpa!("{:.3} vpa EventAddPod pod:{:?}", self.ctx.time(), pod);
 
                 // If this pod should not be managed by VPA -> return
                 if !self.managed_groups.contains_key(&pod.metadata.group_uid) {
@@ -256,7 +256,7 @@ impl dsc::EventHandler for VPA {
             }
 
             EvenAddPodGroup { pod_group } => {
-                dp_vpa!("{:.12} vpa EvenAddPodGroup pod_group:{:?}", self.ctx.time(), pod_group);
+                dp_vpa!("{:.3} vpa EvenAddPodGroup pod_group:{:?}", self.ctx.time(), pod_group);
                 assert!(!self.managed_groups.contains_key(&pod_group.group_uid));
 
                 // If this group should not be managed by VPA -> return
@@ -272,7 +272,7 @@ impl dsc::EventHandler for VPA {
 
             EventRemovePodGroup { group_uid } => {
                 dp_vpa!(
-                    "{:.12} vpa EventRemovePodGroup group_uid:{:?}",
+                    "{:.3} vpa EventRemovePodGroup group_uid:{:?}",
                     self.ctx.time(),
                     group_uid
                 );

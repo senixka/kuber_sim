@@ -66,7 +66,7 @@ impl HPA {
             // If group is too small -> AddPod
             if profile.min_size > group_size {
                 dp_hpa!(
-                    "{:.12} hpa pod(group_uid:{:?}) add -> cluster (size)",
+                    "{:.3} hpa pod(group_uid:{:?}) add -> cluster (size)",
                     self.ctx.time(),
                     group_uid
                 );
@@ -81,7 +81,7 @@ impl HPA {
             // If group size is too big -> RemovePod
             else if profile.max_size < group_size {
                 dp_hpa!(
-                    "{:.12} hpa pod(group_uid:{:?}) remove <- cluster (size)",
+                    "{:.3} hpa pod(group_uid:{:?}) remove <- cluster (size)",
                     self.ctx.time(),
                     group_uid
                 );
@@ -93,7 +93,7 @@ impl HPA {
                 && (cpu <= profile.scale_down_mean_cpu_fraction && memory <= profile.scale_down_mean_memory_fraction)
             {
                 dp_hpa!(
-                    "{:.12} hpa pod(group_uid:{:?}) remove <- cluster (resources)",
+                    "{:.3} hpa pod(group_uid:{:?}) remove <- cluster (resources)",
                     self.ctx.time(),
                     group_uid
                 );
@@ -105,7 +105,7 @@ impl HPA {
                 && (cpu >= profile.scale_up_mean_cpu_fraction || memory >= profile.scale_up_mean_memory_fraction)
             {
                 dp_hpa!(
-                    "{:.12} hpa pod(group_uid:{:?}) add -> cluster (resources)",
+                    "{:.3} hpa pod(group_uid:{:?}) add -> cluster (resources)",
                     self.ctx.time(),
                     group_uid
                 );
@@ -143,19 +143,19 @@ impl dsc::EventHandler for HPA {
     fn on(&mut self, event: dsc::Event) {
         dsc::cast!(match event.data {
             EventTurnOn {} => {
-                dp_hpa!("{:.12} hpa EventTurnOn", self.ctx.time());
+                dp_hpa!("{:.3} hpa EventTurnOn", self.ctx.time());
 
                 self.turn_on();
             }
 
             EventTurnOff {} => {
-                dp_hpa!("{:.12} hpa EventTurnOff", self.ctx.time());
+                dp_hpa!("{:.3} hpa EventTurnOff", self.ctx.time());
 
                 self.turn_off();
             }
 
             EventSelfUpdate {} => {
-                dp_hpa!("{:.12} hpa EventSelfUpdate", self.ctx.time());
+                dp_hpa!("{:.3} hpa EventSelfUpdate", self.ctx.time());
 
                 assert!(
                     self.is_turned_on,
@@ -178,7 +178,7 @@ impl dsc::EventHandler for HPA {
                 current_memory,
             } => {
                 dp_hpa!(
-                    "{:.12} hpa EventHPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
+                    "{:.3} hpa EventHPAPodMetricsPost group_uid:{:?} pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
                     self.ctx.time(), group_uid, pod_uid, current_phase, current_cpu, current_memory
                 );
 
@@ -194,7 +194,7 @@ impl dsc::EventHandler for HPA {
             }
 
             EventAddPod { pod } => {
-                dp_hpa!("{:.12} hpa EventAddPod pod:{:?}", self.ctx.time(), pod);
+                dp_hpa!("{:.3} hpa EventAddPod pod:{:?}", self.ctx.time(), pod);
 
                 // If this pod should not be managed by HPA -> return
                 if !self.managed_groups.contains_key(&pod.metadata.group_uid) {
@@ -208,7 +208,7 @@ impl dsc::EventHandler for HPA {
             }
 
             EvenAddPodGroup { pod_group } => {
-                dp_hpa!("{:.12} hpa EvenAddPodGroup pod_group:{:?}", self.ctx.time(), pod_group);
+                dp_hpa!("{:.3} hpa EvenAddPodGroup pod_group:{:?}", self.ctx.time(), pod_group);
                 assert!(!self.managed_groups.contains_key(&pod_group.group_uid));
 
                 // If this group should not be managed by HPA -> return
@@ -224,7 +224,7 @@ impl dsc::EventHandler for HPA {
 
             EventRemovePodGroup { group_uid } => {
                 dp_hpa!(
-                    "{:.12} hpa EventRemovePodGroup group_uid:{:?}",
+                    "{:.3} hpa EventRemovePodGroup group_uid:{:?}",
                     self.ctx.time(),
                     group_uid
                 );

@@ -108,7 +108,7 @@ impl dsc::EventHandler for APIServer {
                 node_uid,
             } => {
                 dp_api_server!(
-                    "{:.12} api_server EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} node_uid:{:?} new_phase:{:?}",
+                    "{:.3} api_server EventUpdatePodFromScheduler pod_uid:{:?} preempt_uids:{:?} node_uid:{:?} new_phase:{:?}",
                     self.ctx.time(), pod_uid, preempt_uids, node_uid, new_phase
                 );
 
@@ -136,7 +136,7 @@ impl dsc::EventHandler for APIServer {
                         });
 
                         dp_api_server!(
-                            "{:.12} api_server INNER EventUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?} NOT IN ROUTE",
+                            "{:.3} api_server INNER EventUpdatePodFromScheduler pod_uid:{:?} node_uid:{:?} new_phase:{:?} NOT IN ROUTE",
                             self.ctx.time(), pod_uid, node_uid, new_phase
                         );
                     }
@@ -150,7 +150,7 @@ impl dsc::EventHandler for APIServer {
                 current_memory,
             } => {
                 dp_api_server!(
-                    "{:.12} api_server EventUpdatePodFromKubelet pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
+                    "{:.3} api_server EventUpdatePodFromKubelet pod_uid:{:?} current_phase:{:?} current_cpu:{:?} current_memory:{:?}",
                     self.ctx.time(), pod_uid, current_phase, current_cpu, current_memory
                 );
 
@@ -173,7 +173,7 @@ impl dsc::EventHandler for APIServer {
             }
 
             EventAddPod { pod } => {
-                dp_api_server!("{:.12} api_server EventAddPod pod:{:?}", self.ctx.time(), pod);
+                dp_api_server!("{:.3} api_server EventAddPod pod:{:?}", self.ctx.time(), pod);
 
                 // Check that pod was properly prepared
                 assert_ne!(pod.metadata.uid, 0);
@@ -190,7 +190,7 @@ impl dsc::EventHandler for APIServer {
 
             EvenAddPodGroup { pod_group } => {
                 dp_api_server!(
-                    "{:.12} api_server EvenAddPodGroup pod_group:{:?}",
+                    "{:.3} api_server EvenAddPodGroup pod_group:{:?}",
                     self.ctx.time(),
                     pod_group
                 );
@@ -213,11 +213,7 @@ impl dsc::EventHandler for APIServer {
             }
 
             EventRemovePod { pod_uid } => {
-                dp_api_server!(
-                    "{:.12} api_server EventRemovePod pod_uid:{:?}",
-                    self.ctx.time(),
-                    pod_uid
-                );
+                dp_api_server!("{:.3} api_server EventRemovePod pod_uid:{:?}", self.ctx.time(), pod_uid);
 
                 // Notify scheduler
                 self.notify_scheduler(EventRemovePod { pod_uid });
@@ -226,7 +222,7 @@ impl dsc::EventHandler for APIServer {
 
             EventRemovePodGroup { group_uid } => {
                 dp_api_server!(
-                    "{:.12} api_server EventRemovePodGroup group_uid:{:?}",
+                    "{:.3} api_server EventRemovePodGroup group_uid:{:?}",
                     self.ctx.time(),
                     group_uid
                 );
@@ -244,7 +240,7 @@ impl dsc::EventHandler for APIServer {
             }
 
             EventAddNode { kubelet_sim_id, node } => {
-                dp_api_server!("{:.12} api_server EventAddNode node:{:?}", self.ctx.time(), node);
+                dp_api_server!("{:.3} api_server EventAddNode node:{:?}", self.ctx.time(), node);
 
                 // Check that node was properly prepared
                 assert_ne!(node.metadata.uid, 0);
@@ -258,7 +254,7 @@ impl dsc::EventHandler for APIServer {
             }
 
             EventRemoveNode { node_uid } => {
-                dp_api_server!("{:.12} api_server EventRemoveNode node:{:?}", self.ctx.time(), node_uid);
+                dp_api_server!("{:.3} api_server EventRemoveNode node:{:?}", self.ctx.time(), node_uid);
 
                 // Remove node_uid from routing
                 match self.kubelets.remove(&node_uid) {
@@ -270,7 +266,7 @@ impl dsc::EventHandler for APIServer {
                     }
                     None => {
                         dp_api_server!(
-                            "{:.12} api_server INNER EventRemoveNode node:{:?} NOT IN ROUTE",
+                            "{:.3} api_server INNER EventRemoveNode node:{:?} NOT IN ROUTE",
                             self.ctx.time(),
                             node_uid
                         );
@@ -280,7 +276,7 @@ impl dsc::EventHandler for APIServer {
 
             EventRemoveNodeAck { node_uid } => {
                 dp_api_server!(
-                    "{:.12} api_server EventRemoveNodeAck node_uid:{:?}",
+                    "{:.3} api_server EventRemoveNodeAck node_uid:{:?}",
                     self.ctx.time(),
                     node_uid
                 );
@@ -294,7 +290,7 @@ impl dsc::EventHandler for APIServer {
                 available_nodes,
             } => {
                 dp_api_server!(
-                    "{:.12} api_server EventGetCAMetrics used_nodes:{:?} available_nodes:{:?}",
+                    "{:.3} api_server EventGetCAMetrics used_nodes:{:?} available_nodes:{:?}",
                     self.ctx.time(),
                     used_nodes,
                     available_nodes
@@ -313,7 +309,7 @@ impl dsc::EventHandler for APIServer {
                 may_help,
             } => {
                 dp_api_server!(
-                    "{:.12} api_server EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}",
+                    "{:.3} api_server EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}",
                     self.ctx.time(), pending_pod_count, used_nodes_utilization, may_help
                 );
 

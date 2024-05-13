@@ -241,7 +241,7 @@ impl Monitoring {
 
         self.pending_pod.push(self.pending_pod_counter);
         print!(
-            "{:>16.12}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9} Pending:{:<9} Running:{:<9} Succeed:{:<9} Failed:{:<9} Removed:{:<9} Evicted:{:<9} Preempted:{:<9}\n",
+            "{:>6.3}  CPU: {:7.3}% / {:7.3}%  Memory: {:7.3}% / {:7.3}%  Nodes:{:<9} Pending:{:<9} Running:{:<9} Succeed:{:<9} Failed:{:<9} Removed:{:<9} Evicted:{:<9} Preempted:{:<9}\n",
             self.ctx.time(),
             (self.kubelets_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
             (self.scheduler_used_cpu as f64) / (self.total_installed_cpu as f64) * 100.0f64,
