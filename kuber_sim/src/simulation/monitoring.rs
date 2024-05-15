@@ -144,6 +144,7 @@ impl Monitoring {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    #[inline(always)]
     pub fn scheduler_on_node_consume(&mut self, cpu: i64, memory: i64) {
         self.scheduler_used_cpu += cpu;
         self.scheduler_used_memory += memory;
@@ -153,6 +154,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn scheduler_on_node_restore(&mut self, cpu: i64, memory: i64) {
         assert!(self.scheduler_used_cpu >= cpu);
         assert!(self.scheduler_used_memory >= memory);
@@ -199,6 +201,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn scheduler_update_pending_pod_count(&mut self, count: usize) {
         self.pending_pod_counter = count;
 
@@ -207,6 +210,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn scheduler_update_running_pod_count(&mut self, count: usize) {
         self.running_pod_counter = count;
 
@@ -215,6 +219,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn scheduler_on_pod_succeed(&mut self) {
         self.succeed_pod_counter += 1;
 
@@ -223,6 +228,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn scheduler_on_pod_failed(&mut self) {
         self.failed_pod_counter += 1;
 
@@ -231,6 +237,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn scheduler_on_pod_removed(&mut self) {
         self.removed_pod_counter += 1;
 
@@ -239,6 +246,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn scheduler_on_pod_evicted(&mut self) {
         self.evicted_pod_counter += 1;
 
@@ -247,6 +255,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn scheduler_on_pod_preempted(&mut self) {
         self.preempted_pod_counter += 1;
 
@@ -257,6 +266,7 @@ impl Monitoring {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    #[inline(always)]
     pub fn kubelet_on_pod_placed(&mut self, cpu: i64, memory: i64) {
         self.kubelets_used_cpu += cpu;
         self.kubelets_used_memory += memory;
@@ -266,6 +276,7 @@ impl Monitoring {
         }
     }
 
+    #[inline(always)]
     pub fn kubelet_on_pod_unplaced(&mut self, cpu: i64, memory: i64) {
         self.kubelets_used_cpu -= cpu;
         self.kubelets_used_memory -= memory;
@@ -319,19 +330,25 @@ impl Monitoring {
     }
 
     pub fn dump_statistics(&self) {
-        let file = File::create(self.out_path.clone()).unwrap();
-        file.set_len(0).unwrap();
-        let mut fout = BufWriter::new(file);
+        let mut file = None;
+        let mut counter: usize = 0;
+        while file.is_none() {
+            match File::create_new(self.out_path.clone() + "_" + &*counter.to_string() + ".csv") {
+                Ok(new_file) => file = Some(new_file),
+                Err(_) => counter += 1,
+            }
+        }
+        let mut fout = BufWriter::new(file.unwrap());
 
         write!(
             fout,
-            "time nodes total_cpu total_memory scheduler_used_cpu scheduler_used_memory kubelets_used_cpu kubelets_used_memory pending running succeed failed evicted removed preempted\n"
+            "time,nodes,total_cpu,total_memory,scheduler_used_cpu,scheduler_used_memory,kubelets_used_cpu,kubelets_used_memory,pending,running,succeed,failed,evicted,removed,preempted\n"
         ).unwrap();
 
         for i in 0..self.time_record.len() {
             write!(
                 fout,
-                "{:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?} {:?}\n",
+                "{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?},{:?}\n",
                 self.time_record[i],
                 self.node_counter_record[i],
                 self.total_installed_cpu_record[i],

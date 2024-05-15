@@ -5,9 +5,6 @@ pub struct Simulation {
     // init_config: Rc<RefCell<InitConfig>>,
     monitoring: Rc<RefCell<Monitoring>>,
     // api: Rc<RefCell<APIServer>>,
-    ca: Option<Rc<RefCell<CA>>>,
-    hpa: Option<Rc<RefCell<HPA>>>,
-    vpa: Option<Rc<RefCell<VPA>>>,
 }
 
 impl Simulation {
@@ -67,11 +64,10 @@ impl Simulation {
         let scheduler_id = sim.add_handler("scheduler", scheduler.clone());
 
         // Add CA if needed
-        let mut ca = None;
         let mut ca_id = None;
         if flag_add_ca {
             let ca_ctx = sim.create_context("ca");
-            ca = Some(Rc::new(RefCell::new(CA::new(
+            let ca = Some(Rc::new(RefCell::new(CA::new(
                 &mut sim,
                 ca_ctx,
                 init_config_ptr.clone(),
@@ -86,10 +82,9 @@ impl Simulation {
         }
 
         // Add HPA if needed
-        let mut hpa = None;
         let mut hpa_id = None;
         if flag_add_hpa {
-            hpa = Some(Rc::new(RefCell::new(HPA::new(
+            let hpa = Some(Rc::new(RefCell::new(HPA::new(
                 sim.create_context("hpa"),
                 init_config_ptr.clone(),
                 api_id,
@@ -101,10 +96,9 @@ impl Simulation {
         }
 
         // Add VPA if needed
-        let mut vpa = None;
         let mut vpa_id = None;
         if flag_add_vpa {
-            vpa = Some(Rc::new(RefCell::new(VPA::new(
+            let vpa = Some(Rc::new(RefCell::new(VPA::new(
                 sim.create_context("vpa"),
                 init_config_ptr.clone(),
                 api_id,
@@ -132,12 +126,7 @@ impl Simulation {
 
         Self {
             sim,
-            // init_config: init_config_ptr.clone(),
             monitoring,
-            // api,
-            ca,
-            hpa,
-            vpa,
         }
     }
 
@@ -163,30 +152,6 @@ impl Simulation {
 
     pub fn clear_records(&mut self) {
         self.monitoring.borrow_mut().clear_records();
-    }
-
-    pub fn enable_ca(&self) {
-        self.ca.clone().unwrap().borrow_mut().turn_on();
-    }
-
-    pub fn disable_ca(&self) {
-        self.ca.clone().unwrap().borrow_mut().turn_off();
-    }
-
-    pub fn enable_hpa(&self) {
-        self.hpa.clone().unwrap().borrow_mut().turn_on();
-    }
-
-    pub fn disable_hpa(&self) {
-        self.hpa.clone().unwrap().borrow_mut().turn_off();
-    }
-
-    pub fn enable_vpa(&self) {
-        self.vpa.clone().unwrap().borrow_mut().turn_on();
-    }
-
-    pub fn disable_vpa(&self) {
-        self.vpa.clone().unwrap().borrow_mut().turn_off();
     }
 
     pub fn step_until_no_events(&mut self) {

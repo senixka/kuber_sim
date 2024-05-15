@@ -3,4 +3,9 @@
 .idea
 dhat.out.*
 out_*
-
+google_cluster_log/*.yaml
+google_cluster_log/*.csv
+examples/playground/out.txt
+examples/google_trace/*
+explore_output/*.csv
+explore_output/*.png

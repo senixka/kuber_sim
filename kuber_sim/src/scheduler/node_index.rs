@@ -19,7 +19,7 @@ impl NodeRTree {
         Self { 0: RTree::new() }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn find_suitable_nodes(&self, target_cpu: i64, target_memory: i64, result: &mut Vec<Node>) {
         let query_box = AABB::from_corners((target_cpu, target_memory, i64::MIN), (i64::MAX, i64::MAX, i64::MAX));
 
@@ -29,10 +29,12 @@ impl NodeRTree {
         }
     }
 
+    #[inline(always)]
     pub fn insert(&mut self, node: Node) {
         self.0.insert(node);
     }
 
+    #[inline(always)]
     pub fn remove(&mut self, node: &Node) -> Node {
         return self.0.remove(node).unwrap();
     }
