@@ -40,9 +40,9 @@ impl FromStr for Constant {
         let (memory_str, duration_str) = other.split_once(';').unwrap();
 
         Ok(Self {
-            cpu: str::parse(cpu_str).unwrap(),
-            memory: str::parse(memory_str).unwrap(),
-            duration: str::parse(duration_str).unwrap(),
+            cpu: sim_ok!(str::parse(cpu_str), "Constant. Invalid value for cpu."),
+            memory: sim_ok!(str::parse(memory_str), "Constant. Invalid value for memory."),
+            duration: sim_ok!(str::parse(duration_str), "Constant. Invalid value for duration."),
             start_time: 0.0,
         })
     }

@@ -24,10 +24,22 @@ impl FromStr for LoadType {
         let enum_inner = enum_inner.trim();
 
         match enum_index {
-            "0" => Ok(LoadType::Constant(str::parse(enum_inner).unwrap())),
-            "1" => Ok(LoadType::ConstantInfinite(str::parse(enum_inner).unwrap())),
-            "2" => Ok(LoadType::BusyBox(str::parse(enum_inner).unwrap())),
-            "3" => Ok(LoadType::BusyBoxInfinite(str::parse(enum_inner).unwrap())),
+            "0" => Ok(LoadType::Constant(sim_ok!(
+                str::parse(enum_inner),
+                "LoadType. Cannot parse Constant workload model."
+            ))),
+            "1" => Ok(LoadType::ConstantInfinite(sim_ok!(
+                str::parse(enum_inner),
+                "LoadType. Cannot parse ConstantInfinite workload model."
+            ))),
+            "2" => Ok(LoadType::BusyBox(sim_ok!(
+                str::parse(enum_inner),
+                "LoadType. Cannot parse BusyBox workload model."
+            ))),
+            "3" => Ok(LoadType::BusyBoxInfinite(sim_ok!(
+                str::parse(enum_inner),
+                "LoadType. Cannot parse BusyBoxInfinite workload model."
+            ))),
             _ => Err(()),
         }
     }

@@ -17,6 +17,7 @@ pub struct Experiment {
     is_done: bool,
     simulations: LinkedList<(SimConfig, fn(&mut Simulation))>,
     pids: LinkedList<thread::JoinHandle<()>>,
+    pid_names: LinkedList<String>,
 }
 
 impl Experiment {
@@ -25,6 +26,7 @@ impl Experiment {
             is_done: false,
             simulations: LinkedList::new(),
             pids: LinkedList::new(),
+            pid_names: LinkedList::new(),
         }
     }
 
@@ -41,7 +43,7 @@ impl Experiment {
         flag_add_vpa: bool,
         runner: fn(&mut Simulation),
     ) {
-        assert!(!self.is_done);
+        sim_assert!(!self.is_done, "Experiment is done. No more add_simulation.");
 
         self.simulations.push_back((
             SimConfig {
@@ -60,10 +62,11 @@ impl Experiment {
     }
 
     pub fn spawn_all(&mut self) {
-        assert!(!self.is_done);
+        sim_assert!(!self.is_done, "Experiment is done. Cannot do experiment again.");
         self.is_done = true;
 
         while let Some(sim_config) = self.simulations.pop_front() {
+            self.pid_names.push_back(sim_config.0.output_file_path.clone());
             self.pids.push_back(thread::spawn(move || {
                 let mut sim = Simulation::new(
                     sim_config.0.output_file_path,
@@ -83,13 +86,13 @@ impl Experiment {
     }
 
     pub fn join_all(&mut self) {
-        while let Some(pid) = self.pids.pop_front() {
+        while let (Some(pid), pid_name) = (self.pids.pop_front(), self.pid_names.pop_front()) {
             match pid.join() {
-                Result::Ok(_) => {
-                    println!("Finished Ok")
+                Ok(_) => {
+                    println!("Finished Ok: {:?}", pid_name.unwrap());
                 }
-                Result::Err(e) => {
-                    println!("Finished Err:{:?}", e);
+                Err(_) => {
+                    println!("Finished Err: {:?}", pid_name.unwrap());
                 }
             }
         }

@@ -44,11 +44,20 @@ impl FromStr for BusyBoxInfinite {
         let (memory_up_str, shift_time_str) = other.split_once(';').unwrap();
 
         Ok(Self {
-            cpu_down: str::parse(cpu_down_str).unwrap(),
-            memory_down: str::parse(memory_down_str).unwrap(),
-            cpu_up: str::parse(cpu_up_str).unwrap(),
-            memory_up: str::parse(memory_up_str).unwrap(),
-            shift_time: str::parse(shift_time_str).unwrap(),
+            cpu_down: sim_ok!(str::parse(cpu_down_str), "BusyBoxInfinite. Invalid value for cpu_down."),
+            memory_down: sim_ok!(
+                str::parse(memory_down_str),
+                "BusyBoxInfinite. Invalid value for memory_down."
+            ),
+            cpu_up: sim_ok!(str::parse(cpu_up_str), "BusyBoxInfinite. Invalid value for cpu_up."),
+            memory_up: sim_ok!(
+                str::parse(memory_up_str),
+                "BusyBoxInfinite. Invalid value for memory_up."
+            ),
+            shift_time: sim_ok!(
+                str::parse(shift_time_str),
+                "BusyBoxInfinite. Invalid value for shift_time."
+            ),
             start_time: 0.0,
         })
     }

@@ -2,9 +2,7 @@ use crate::my_imports::*;
 
 pub struct Simulation {
     sim: dsc::Simulation,
-    // init_config: Rc<RefCell<InitConfig>>,
     monitoring: Rc<RefCell<Monitoring>>,
-    // api: Rc<RefCell<APIServer>>,
 }
 
 impl Simulation {
@@ -45,8 +43,14 @@ impl Simulation {
         // Copy scheduler pipeline config
         let pconf = pipeline_config.clone();
 
-        assert_eq!(pconf.scorers.len(), pconf.score_normalizers.len());
-        assert_eq!(pconf.scorers.len(), pconf.scorer_weights.len());
+        sim_assert!(
+            pconf.scorers.len() == pconf.score_normalizers.len(),
+            "PipelineConfig.scorers.len() must be == PipelineConfig.score_normalizers.len()"
+        );
+        sim_assert!(
+            pconf.scorers.len() == pconf.scorer_weights.len(),
+            "PipelineConfig.scorers.len() must be == PipelineConfig.scorer_weights.len()"
+        );
 
         let scheduler = Rc::new(RefCell::new(Scheduler::new(
             sim.create_context("scheduler"),
@@ -124,10 +128,7 @@ impl Simulation {
         // Prepare cluster with trace
         init_trace.submit(&api.borrow().ctx, api_id);
 
-        Self {
-            sim,
-            monitoring,
-        }
+        Self { sim, monitoring }
     }
 
     pub fn dump_stats(&self) {

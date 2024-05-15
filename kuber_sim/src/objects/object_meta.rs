@@ -20,7 +20,7 @@ impl FromStr for ObjectMeta {
         let mut labels: BTreeMap<String, String> = BTreeMap::new();
 
         for key_value in data {
-            let (key, value) = key_value.split_once(':').unwrap();
+            let (key, value) = sim_some!(key_value.split_once(':'), "ObjectMeta. Invalid format.");
             labels.insert(key.to_string(), value.to_string());
         }
 

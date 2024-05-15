@@ -24,8 +24,8 @@ impl FromStr for ConstantInfinite {
         let (cpu_str, memory_str) = s.split_once(';').unwrap();
 
         Ok(Self {
-            cpu: str::parse(cpu_str).unwrap(),
-            memory: str::parse(memory_str).unwrap(),
+            cpu: sim_ok!(str::parse(cpu_str), "ConstantInfinite. Invalid value for cpu."),
+            memory: sim_ok!(str::parse(memory_str), "ConstantInfinite. Invalid value for memory."),
         })
     }
 }

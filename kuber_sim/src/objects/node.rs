@@ -40,8 +40,11 @@ impl Node {
 
         self.metadata.group_uid = group_uid;
 
-        assert!(self.spec.installed_cpu > 0);
-        assert!(self.spec.installed_memory > 0);
+        sim_assert!(self.spec.installed_cpu > 0, "Node.spec.installed_cpu must be > 0.");
+        sim_assert!(
+            self.spec.installed_memory > 0,
+            "Node.spec.installed_memory must be > 0."
+        );
     }
 
     pub fn is_both_consumable(&self, cpu: i64, memory: i64) -> bool {

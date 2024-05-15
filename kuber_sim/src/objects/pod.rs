@@ -209,7 +209,7 @@ impl Pod {
         UID_COUNTER.fetch_add(1, Ordering::Relaxed);
 
         self.metadata.group_uid = group_uid;
-        assert_ne!(group_uid, 0);
+        sim_assert!(group_uid != 0, "Pod. group_uid must be != 0.");
 
         self.status.phase = PodPhase::Pending;
         self.status.node_uid = None;
@@ -245,12 +245,18 @@ impl Pod {
             self.status.qos_class = QoSClass::BestEffort;
         }
 
-        assert!(self.spec.limit_cpu >= self.spec.request_cpu);
-        assert!(self.spec.limit_memory >= self.spec.request_memory);
-        assert!(self.spec.request_cpu > 0);
-        assert!(self.spec.request_memory > 0);
-        assert!(self.spec.request_cpu >= 0);
-        assert!(self.spec.request_memory >= 0);
+        sim_assert!(
+            self.spec.limit_cpu >= self.spec.request_cpu,
+            "Pod.spec.limit_cpu must be >= Pod.spec.request_cpu."
+        );
+        sim_assert!(
+            self.spec.limit_memory >= self.spec.request_memory,
+            "Pod.spec.limit_memory must be >= Pod.spec.request_memory."
+        );
+        sim_assert!(self.spec.request_cpu > 0, "Pod.spec.request_cpu must be > 0.");
+        sim_assert!(self.spec.request_memory > 0, "Pod.spec.request_memory must be > 0.");
+        sim_assert!(self.spec.request_cpu >= 0, "Pod.spec.request_cpu must be >= 0.");
+        sim_assert!(self.spec.request_memory >= 0, "Pod.spec.request_memory must be >= 0.");
     }
 
     pub fn is_usage_matches_limits(&self, cpu: i64, memory: i64) -> bool {

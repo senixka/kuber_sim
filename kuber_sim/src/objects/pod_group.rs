@@ -66,6 +66,6 @@ impl PodGroup {
         self.group_uid = UID_COUNTER.load(Ordering::Relaxed);
         UID_COUNTER.fetch_add(1, Ordering::Relaxed);
 
-        assert!(self.group_duration >= 0.0);
+        sim_assert!(self.group_duration >= 0.0, "PodGroup. group_duration must be >= 0.");
     }
 }

@@ -1,4 +1,46 @@
 #[macro_export]
+macro_rules! sim_assert {
+    ($condition:expr, $msg:expr) => {
+        if !($condition) {
+            println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+            println!("Assertion failed: {}", $msg);
+            println!("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+            exit(1);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! sim_ok {
+    ($expr:expr, $msg:expr) => {
+        match $expr {
+            Ok(val) => val,
+            Err(_) => {
+                println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+                println!("Assertion failed: {}", $msg);
+                println!("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+                exit(1);
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! sim_some {
+    ($expr:expr, $msg:expr) => {
+        match $expr {
+            Some(val) => val,
+            None => {
+                println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+                println!("Assertion failed: {}", $msg);
+                println!("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+                exit(1);
+            }
+        }
+    };
+}
+
+#[macro_export]
 #[cfg(feature = "dp_all")]
 macro_rules! debug_print {
     ($( $args:expr ),*) => { println!( $( $args ),* ); }
