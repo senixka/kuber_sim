@@ -284,42 +284,6 @@ impl dsc::EventHandler for APIServer {
                 // Notify CA
                 self.notify_ca(EventRemoveNodeAck { node_uid });
             }
-
-            EventGetCAMetrics {
-                used_nodes,
-                available_nodes,
-            } => {
-                dp_api_server!(
-                    "{:.3} api_server EventGetCAMetrics used_nodes:{:?} available_nodes:{:?}",
-                    self.ctx.time(),
-                    used_nodes,
-                    available_nodes
-                );
-
-                // Send metrics request to scheduler
-                self.notify_scheduler(EventGetCAMetrics {
-                    used_nodes,
-                    available_nodes,
-                });
-            }
-
-            EventPostCAMetrics {
-                pending_pod_count,
-                used_nodes_utilization,
-                may_help,
-            } => {
-                dp_api_server!(
-                    "{:.3} api_server EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}",
-                    self.ctx.time(), pending_pod_count, used_nodes_utilization, may_help
-                );
-
-                // Send metrics to CA
-                self.notify_ca(EventPostCAMetrics {
-                    pending_pod_count,
-                    used_nodes_utilization,
-                    may_help,
-                });
-            }
         });
     }
 }

@@ -76,6 +76,7 @@ impl Simulation {
                 ca_ctx,
                 init_config_ptr.clone(),
                 init_nodes_ptr.clone(),
+                scheduler.clone(),
                 monitoring.clone(),
                 api_id,
             ))));

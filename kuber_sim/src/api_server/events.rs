@@ -118,19 +118,7 @@ pub struct EventKubeletNextChange {
 
 ///////////////////////////////////////// CA ///////////////////////////////////////////////////////
 
-// [Emit]:      { CA } -> Api
-// [Consume]:   Api -> { Scheduler }
+// [Emit self]:      { CA }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventGetCAMetrics {
-    pub used_nodes: Vec<u64>,
-    pub available_nodes: Vec<NodeGroup>,
-}
-
-// [Emit]:      { Scheduler } -> Api
-// [Consume]:   Api -> { CA }
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventPostCAMetrics {
-    pub pending_pod_count: u64,
-    pub used_nodes_utilization: Vec<(u64, f64, f64)>,
-    pub may_help: Option<u64>,
+pub struct EventUpdateCAMetrics {
 }

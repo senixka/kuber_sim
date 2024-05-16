@@ -241,7 +241,7 @@ fn vpa_gap_memory() -> f64 {
 }
 /// Analog of recommendation-margin-fraction
 fn vpa_recommendation_margin_fraction() -> f64 {
-    0.15
+    1.15
 }
 /// Analog of
 fn vpa_limit_margin_fraction() -> f64 {

@@ -184,4 +184,37 @@ impl IScorePlugin for ScoreNodeAffinity {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////// Test /////////////////////////////////////////////////
+
+#[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_score_tetris() {
+        let (r, p): (HashMap<u64, Pod>, HashMap<u64, Pod>) = (HashMap::new(), HashMap::new());
+        let n: HashMap<u64, Node> = HashMap::new();
+
+        let tetris = ScoreTetris.clone();
+
+        // Create Node
+        let mut n1 = Node::default(); n1.spec.installed_cpu = 50; n1.spec.installed_memory = 100;
+        n1.prepare(1);
+
+        // Create Pod
+        let mut p1 = Pod::default(); p1.spec.request_cpu = 10; p1.spec.request_memory = 10;
+        let mut p2 = Pod::default(); p2.spec.request_cpu = 10; p2.spec.request_memory = 5;
+        let mut p3 = Pod::default(); p3.spec.request_cpu = 5;  p3.spec.request_memory = 10;
+
+        let s1 = tetris.score(&r, &p, &n, &p1, &n1);
+        let s2 = tetris.score(&r, &p, &n, &p2, &n1);
+        let s3 = tetris.score(&r, &p, &n, &p3, &n1);
+
+        println!("{:?}", tetris.score(&r, &p, &n, &p1, &n1) as f64 / 10000.0);
+        println!("{:?}", tetris.score(&r, &p, &n, &p2, &n1) as f64 / 10000.0);
+        println!("{:?}", tetris.score(&r, &p, &n, &p3, &n1) as f64 / 10000.0);
+
+        assert_eq!(s3, s1.max(s2).max(s3));
+    }
+}

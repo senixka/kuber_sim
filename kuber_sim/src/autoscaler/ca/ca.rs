@@ -6,6 +6,8 @@ pub struct CA {
     ctx: dsc::SimulationContext,
     /// Configuration constants of components in simulation.
     init_config: Rc<RefCell<InitConfig>>,
+    /// Scheduler.
+    scheduler: Rc<RefCell<Scheduler>>,
     /// API-Server simulation DSlab-Core Id.
     api_sim_id: dsc::Id,
 
@@ -28,12 +30,14 @@ impl CA {
         ctx: dsc::SimulationContext,
         init_config: Rc<RefCell<InitConfig>>,
         init_nodes: Rc<RefCell<InitNodes>>,
+        scheduler: Rc<RefCell<Scheduler>>,
         monitoring: Rc<RefCell<Monitoring>>,
         api_sim_id: dsc::Id,
     ) -> Self {
         let mut ca = Self {
             ctx,
             init_config: init_config.clone(),
+            scheduler: scheduler.clone(),
             api_sim_id,
 
             // CA is created in turned off state
@@ -146,7 +150,7 @@ impl CA {
             }
         }
 
-        // If it's not enough pending pods to start up-scaling-> return
+        // If it's not enough pending pods to start up-scaling -> return
         if pending_pod_count <= self.init_config.borrow().ca.add_node_pending_threshold {
             return;
         }
@@ -193,6 +197,59 @@ impl CA {
             }
         }
     }
+
+    pub fn update_metrics(&mut self) {
+        let available_nodes: Vec<NodeGroup> = self
+            .free_nodes_by_group
+            .iter()
+            .filter_map(|(_, group)| if group.amount > 0 { Some(group.clone()) } else { None })
+            .collect();
+
+        // Get view on scheduler
+        let scheduler = self.scheduler.borrow();
+
+        // For pending pods look available node which may help
+        let mut may_help: Option<u64> = None;
+        let mut pending_pod_count = 0;
+        for (_, pod) in scheduler.pending_pods.iter() {
+            // Only pods which cannot be scheduled due to insufficient resources on nodes
+            if !pod.status.cluster_resource_starvation {
+                continue;
+            }
+            pending_pod_count += 1;
+
+            // Try to find node which may help
+            if may_help.is_none() {
+                for node_group in available_nodes.iter() {
+                    if node_group
+                        .node
+                        .is_both_consumable(pod.spec.request_cpu, pod.spec.request_memory)
+                    {
+                        may_help = Some(node_group.group_uid);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Count utilization for requested nodes
+        let mut used_nodes_utilization: Vec<(u64, f64, f64)> = Vec::with_capacity(self.used_nodes.len());
+        for node_uid in self.used_nodes.keys() {
+            let node = scheduler.nodes.get(node_uid);
+            if node.is_some() {
+                let spec = node.unwrap().spec.clone();
+                let cpu: f64 = ((spec.installed_cpu - spec.available_cpu) as f64) / (spec.installed_cpu as f64);
+                let memory: f64 =
+                    ((spec.installed_memory - spec.available_memory) as f64) / (spec.installed_memory as f64);
+
+                used_nodes_utilization.push((*node_uid, cpu, memory));
+            }
+        }
+        drop(scheduler);
+
+        // Process scheduler metrics
+        self.process_metrics(pending_pod_count, &used_nodes_utilization, may_help);
+    }
 }
 
 impl dsc::EventHandler for CA {
@@ -215,39 +272,18 @@ impl dsc::EventHandler for CA {
 
                 assert!(self.is_turned_on, "Logic error. Self update should be canceled for CA.");
 
-                // Request metrics for future process
-                self.ctx.emit(
-                    EventGetCAMetrics {
-                        used_nodes: self.used_nodes.keys().map(|x| *x).collect(),
-                        available_nodes: self
-                            .free_nodes_by_group
-                            .iter()
-                            .filter_map(|(_, group)| if group.amount > 0 { Some(group.clone()) } else { None })
-                            .collect(),
-                    },
-                    self.api_sim_id,
-                    self.init_config.borrow().network_delays.ca2api,
-                );
+                // Emulate metrics request
+                self.ctx.emit_self(EventUpdateCAMetrics {}, self.init_config.borrow().network_delays.ca2api);
 
                 // Emit Self-Update
-                self.ctx
-                    .emit_self(EventSelfUpdate {}, self.init_config.borrow().ca.self_update_period);
+                self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().ca.self_update_period);
             }
 
-            EventPostCAMetrics {
-                pending_pod_count,
-                used_nodes_utilization,
-                may_help,
-            } => {
-                dp_ca!(
-                    "{:.3} ca EventPostCAMetrics pending_pod_count:{:?} used_nodes_utilization:{:?} may_help:{:?}",
-                    self.ctx.time(),
-                    pending_pod_count,
-                    used_nodes_utilization,
-                    may_help
-                );
+            EventUpdateCAMetrics {} => {
+                dp_ca!("{:.3} ca EventUpdateCAMetrics", self.ctx.time());
 
-                self.process_metrics(pending_pod_count, &used_nodes_utilization, may_help);
+                // Update with scheduler metrics
+                self.update_metrics();
             }
 
             EventRemoveNodeAck { node_uid } => {

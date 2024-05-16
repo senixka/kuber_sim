@@ -10,23 +10,23 @@ pub struct Scheduler {
     self_update_enabled: bool,
 
     // Cache
-    running_pods: HashMap<u64, Pod>, // HashMap<pod_uid, Pod>
-    pending_pods: HashMap<u64, Pod>, // HashMap<pod_uid, Pod>
-    nodes: HashMap<u64, Node>,       // HashMap<node_uid, Node>
-    node_rtree: NodeRTree,
+    pub running_pods: HashMap<u64, Pod>, // HashMap<pod_uid, Pod>
+    pub pending_pods: HashMap<u64, Pod>, // HashMap<pod_uid, Pod>
+    pub nodes: HashMap<u64, Node>,       // HashMap<node_uid, Node>
+    pub node_rtree: NodeRTree,
 
     // Queues
-    active_queue: Box<dyn IActiveQ + Send>,
-    unschedulable_queue: BackOffQConstant,
-    backoff_queue: Box<dyn IBackOffQ + Send>,
-    failed_attempts: HashMap<u64, u64>,
+    pub active_queue: Box<dyn IActiveQ + Send>,
+    pub unschedulable_queue: BackOffQConstant,
+    pub backoff_queue: Box<dyn IBackOffQ + Send>,
+    pub failed_attempts: HashMap<u64, u64>,
 
     // Pipeline
-    filters: Vec<Box<dyn IFilterPlugin + Send>>,
-    post_filters: Vec<Box<dyn IFilterPlugin + Send>>,
-    scorers: Vec<Box<dyn IScorePlugin + Send>>,
-    score_normalizers: Vec<Box<dyn IScoreNormalizePlugin + Send>>,
-    scorer_weights: Vec<i64>,
+    pub filters: Vec<Box<dyn IFilterPlugin + Send>>,
+    pub post_filters: Vec<Box<dyn IFilterPlugin + Send>>,
+    pub scorers: Vec<Box<dyn IScorePlugin + Send>>,
+    pub score_normalizers: Vec<Box<dyn IScoreNormalizePlugin + Send>>,
+    pub scorer_weights: Vec<i64>,
 }
 
 impl Scheduler {
@@ -492,57 +492,6 @@ impl Scheduler {
             self.init_config.borrow().network_delays.kubelet2api,
         );
     }
-
-    pub fn count_and_send_ca_metrics(&mut self, used_nodes: &Vec<u64>, available_nodes: &Vec<NodeGroup>) {
-        // For pending pods look available node which may help
-        let mut may_help: Option<u64> = None;
-        let mut pending_pod_count = 0;
-        for (_, pod) in self.pending_pods.iter() {
-            // Only pods which cannot be scheduled due to insufficient resources on nodes
-            if !pod.status.cluster_resource_starvation {
-                continue;
-            }
-            pending_pod_count += 1;
-
-            // Try to find node which may help
-            if may_help.is_none() {
-                for node_group in available_nodes {
-                    if node_group
-                        .node
-                        .is_both_consumable(pod.spec.request_cpu, pod.spec.request_memory)
-                    {
-                        may_help = Some(node_group.group_uid);
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Count utilization for requested nodes
-        let mut used_nodes_utilization: Vec<(u64, f64, f64)> = Vec::with_capacity(used_nodes.len());
-        for node_uid in used_nodes {
-            let node = self.nodes.get(node_uid);
-            if node.is_some() {
-                let spec = node.unwrap().spec.clone();
-                let cpu: f64 = ((spec.installed_cpu - spec.available_cpu) as f64) / (spec.installed_cpu as f64);
-                let memory: f64 =
-                    ((spec.installed_memory - spec.available_memory) as f64) / (spec.installed_memory as f64);
-
-                used_nodes_utilization.push((*node_uid, cpu, memory));
-            }
-        }
-
-        // Send metrics
-        self.ctx.emit(
-            EventPostCAMetrics {
-                pending_pod_count,
-                used_nodes_utilization,
-                may_help,
-            },
-            self.api_sim_id,
-            self.init_config.borrow().network_delays.scheduler2api,
-        );
-    }
 }
 
 impl dsc::EventHandler for Scheduler {
@@ -712,15 +661,6 @@ impl dsc::EventHandler for Scheduler {
                 } else {
                     self.self_update_off();
                 }
-            }
-
-            EventGetCAMetrics {
-                used_nodes,
-                available_nodes,
-            } => {
-                dp_scheduler!("{:.3} scheduler EventGetCAMetrics", self.ctx.time());
-
-                self.count_and_send_ca_metrics(&used_nodes, &available_nodes);
             }
         });
 
