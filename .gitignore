@@ -9,3 +9,7 @@ examples/playground/out.txt
 examples/google_trace/*
 explore_output/*.csv
 explore_output/*.png
+trace_google/data_out/*.csv
+trace_google/data_out/*.yaml
+generate/data_out/*.csv
+generate/data_out/*.yaml
