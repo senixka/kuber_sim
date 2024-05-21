@@ -1,21 +1,26 @@
 import matplotlib.pyplot as plt
 import matplotlib
 import seaborn as sns
+from os.path import isfile, join
+import os
 
 sns.set_theme()
 matplotlib.use('Agg')
 plt.ioff()
+
 
 def number_type(value: str):
     if value.count('.') > 0:
         return float(value)
     return int(value)
 
+
 def smart_percent(a, b):
     a, b = float(a), float(b)
     if b != 0:
         return a / b
     return 0
+
 
 def get_metrics_from_file(input_file_path: str):
     metrics = {}
@@ -48,106 +53,103 @@ def process_metrics(metrics: dict):
     return metrics
 
 
-def build_plots(metrics: dict):
+def build_plots(metrics: dict, prefix: str):
     mTimes = metrics['time']
 
     # ////////////////////// Pod counters //////////////////////
 
     plt.figure(figsize=(12, 5))
-    plt.title('Pod Counters')
-    plt.xlabel('Time (in seconds)')
+    plt.title('Number of pods by phase')
+    plt.xlabel('Time in simulation (s)')
     plt.ylabel('Pod count')
 
-    plt.plot(mTimes, metrics['pending'], label='Pending pod')
-    plt.plot(mTimes, metrics['running'], label='Running pod')
-    plt.plot(mTimes, metrics['succeed'], label='Succeed pod')
-    plt.plot(mTimes, metrics['failed'], label='Failed pod')
-    plt.plot(mTimes, metrics['evicted'], label='Evicted pod')
-    plt.plot(mTimes, metrics['removed'], label='Removed pod')
-    plt.plot(mTimes, metrics['preempted'], label='Preempted pod')
+    plt.plot(mTimes, metrics['pending'], label='Pending')
+    plt.plot(mTimes, metrics['running'], label='Running')
+    plt.plot(mTimes, metrics['succeed'], label='Succeed pods')
+    plt.plot(mTimes, metrics['failed'], label='Failed')
+    plt.plot(mTimes, metrics['evicted'], label='Evicted')
+    plt.plot(mTimes, metrics['removed'], label='Removed')
+    plt.plot(mTimes, metrics['preempted'], label='Preempted')
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig('pod_counters.png')
+    plt.savefig(prefix + '_pod_counters.png')
     plt.close()
 
     # ////////////////////// Node counter //////////////////////
 
     plt.figure(figsize=(12, 5))
-    plt.title('Node Counter')
-    plt.xlabel('Time (in seconds)')
+    plt.title('Number of running nodes on cluster')
+    plt.xlabel('Time in simulation (s)')
     plt.ylabel('Node count')
 
     plt.plot(mTimes, metrics['nodes'], label='Nodes')
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig('node_counter.png')
+    plt.savefig(prefix + '_node_counter.png')
     plt.close()
 
-    # ////////////////////// Utilization percent //////////////////////
+    # ////////////////////// Node utilization percent //////////////////////
 
     plt.figure(figsize=(12, 5))
-    plt.title('Utilization percent')
-    plt.xlabel('Time (in seconds)')
-    plt.ylabel('Div')
+    plt.title('Overall utilization of nodes')
+    plt.xlabel('Time in simulation (s)')
+    plt.ylabel('Actual consumption / Total available')
 
-    # plt.plot(mTimes, metrics['total_cpu'], label='Total cpu')
-    # plt.plot(mTimes, metrics['total_memory'], label='Total memory')
-    plt.plot(mTimes, metrics['scheduler_used_cpu_percent'], label='Scheduler used cpu')
-    plt.plot(mTimes, metrics['scheduler_used_memory_percent'], label='Scheduler used memory')
-    plt.plot(mTimes, metrics['kubelets_used_cpu_percent'], label='Kubelets used cpu')
-    plt.plot(mTimes, metrics['kubelets_used_memory_percent'], label='Kubelets used memory')
-    # plt.plot(mTimes, metrics['nodes'], label='Nodes')
+    plt.plot(mTimes, metrics['kubelets_used_cpu_percent'], label='Cpu')
+    plt.plot(mTimes, metrics['kubelets_used_memory_percent'], label='Memory')
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig('utilization_percent.png')
+    plt.savefig(prefix + '_utilization_percent.png')
     plt.close()
 
 
-    # ////////////////////// Utilization units //////////////////////
+    # ///////////////////////////////// Node utilization units //////////////////////////
 
     plt.figure(figsize=(12, 5))
-    plt.title('Utilization')
-    plt.xlabel('Time (in seconds)')
-    plt.ylabel('Units')
+    plt.title('Overall utilization of nodes')
+    plt.xlabel('Time in simulation (s)')
+    plt.ylabel('Resource units')
 
     plt.plot(mTimes, metrics['total_cpu'], label='Total cpu')
     plt.plot(mTimes, metrics['total_memory'], label='Total memory')
-    plt.plot(mTimes, metrics['scheduler_used_cpu'], label='Scheduler used cpu')
-    plt.plot(mTimes, metrics['scheduler_used_memory'], label='Scheduler used memory')
-    plt.plot(mTimes, metrics['kubelets_used_cpu'], label='Kubelets used cpu')
-    plt.plot(mTimes, metrics['kubelets_used_memory'], label='Kubelets used memory')
-    # plt.plot(mTimes, metrics['nodes'], label='Nodes')
+    plt.plot(mTimes, metrics['kubelets_used_cpu'], label='Used cpu')
+    plt.plot(mTimes, metrics['kubelets_used_memory'], label='Used memory')
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig('utilization_units.png')
+    plt.savefig(prefix + '_utilization_units.png')
     plt.close()
 
-    # ////////////////////// Utilization Diff //////////////////////
+    # ////////////////////// Utilization scheduler vs kubelets diff /////////////////////
 
     plt.figure(figsize=(12, 5))
-    plt.title('Utilization difference')
-    plt.xlabel('Time (in seconds)')
-    plt.ylabel('Div')
+    plt.title('The ratio of actual pods consumption to their requests')
+    plt.xlabel('Time in simulation (s)')
+    plt.ylabel('Actual consumption / Request')
 
-    plt.plot(mTimes, metrics["cpu_diff_percent"], label='Cpu: Kubelets / Scheduler')
-    plt.plot(mTimes, metrics["memory_diff_percent"], label='Memory: Kubelets / Scheduler')
+    plt.plot(mTimes, metrics["cpu_diff_percent"], label='Cpu')
+    plt.plot(mTimes, metrics["memory_diff_percent"], label='Memory')
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig('utilization_diff.png')
+    plt.savefig(prefix + '_utilization_diff.png')
     plt.close()
-
 
 
 def main():
-    file_path = input("Enter file path: ").strip()
-    metrics = get_metrics_from_file(file_path)
-    metrics = process_metrics(metrics)
-    build_plots(metrics)
+    # Get all files in input directory
+    template_files = [f for f in os.listdir("./data_in/") if isfile(join("./data_in/", f))]
+    # For each template file generate trace
+    for file_name in template_files:
+        # Read file with metrics
+        metrics = get_metrics_from_file('./data_in/' + file_name)
+        # Count extra metrics
+        metrics = process_metrics(metrics)
+        # Build plots
+        build_plots(metrics, './data_out/' + os.path.splitext(os.path.basename(file_name))[0])
 
 
 if __name__ == '__main__':

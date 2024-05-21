@@ -13,3 +13,6 @@ trace_google/data_out/*.csv
 trace_google/data_out/*.yaml
 generate/data_out/*.csv
 generate/data_out/*.yaml
+explore_output/data_in/*.csv
+explore_output/data_in/*.txt
+explore_output/data_out/*.png
