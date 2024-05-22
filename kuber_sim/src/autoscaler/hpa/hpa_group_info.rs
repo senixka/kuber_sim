@@ -61,8 +61,6 @@ impl HPAGroupInfo {
         match last_phase {
             PodPhase::Running => {
                 // Remove pod's previous utilization from group
-                assert!(self.numerator_cpu >= last_cpu);
-                assert!(self.numerator_memory >= last_memory);
                 self.numerator_cpu -= last_cpu;
                 self.numerator_memory -= last_memory;
 

@@ -25,7 +25,7 @@ fn main() {
 
     // Create simulation
     let mut sim = Simulation::new(
-        "./out_scheduler_filter_node_affinity.txt".to_string(),
+        "./out_scheduler_filter_node_affinity".to_string(),
         &init_config,
         &init_nodes,
         &init_trace,

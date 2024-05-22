@@ -82,7 +82,6 @@ impl VPAPodInfo {
                     PodPhase::Running => {
                         // Changing: OnReschedule -> Running
                         self.start_time = current_time;
-                        // TODO: maybe clear hists?
                     }
                     PodPhase::Succeeded | PodPhase::Failed | PodPhase::Removed => {
                         // OnReschedule -> Finished
@@ -167,15 +166,15 @@ impl VPAPodInfo {
 
         // Count cpu absolute values from baseline and given percent
         let _lower_bound_cpu =
-            ((self.baseline_request_cpu as f64 * cpu_data[0] * init_config.vpa.recommendation_margin_fraction) as i64)
+            ((self.baseline_request_cpu as f64 * cpu_data[0] * init_config.vpa.recommendation_margin_fraction + 1.0) as i64)
                 .max(profile.min_allowed_cpu)
                 .min(profile.max_allowed_cpu);
         let target_cpu =
-            ((self.baseline_request_cpu as f64 * cpu_data[1] * init_config.vpa.recommendation_margin_fraction) as i64)
+            ((self.baseline_request_cpu as f64 * cpu_data[1] * init_config.vpa.recommendation_margin_fraction + 1.0) as i64)
                 .max(profile.min_allowed_cpu)
                 .min(profile.max_allowed_cpu);
         let _upper_bound_cpu =
-            ((self.baseline_request_cpu as f64 * cpu_data[2] * init_config.vpa.recommendation_margin_fraction) as i64)
+            ((self.baseline_request_cpu as f64 * cpu_data[2] * init_config.vpa.recommendation_margin_fraction + 1.0) as i64)
                 .max(profile.min_allowed_cpu)
                 .min(profile.max_allowed_cpu);
 
@@ -198,17 +197,17 @@ impl VPAPodInfo {
         // Count memory absolute values from baseline and given percent
         let _lower_bound_memory = ((self.baseline_request_memory as f64
             * memory_data[0]
-            * init_config.vpa.recommendation_margin_fraction) as i64)
+            * init_config.vpa.recommendation_margin_fraction + 1.0) as i64)
             .max(profile.min_allowed_memory)
             .min(profile.max_allowed_memory);
         let target_memory = ((self.baseline_request_memory as f64
             * memory_data[1]
-            * init_config.vpa.recommendation_margin_fraction) as i64)
+            * init_config.vpa.recommendation_margin_fraction + 1.0) as i64)
             .max(profile.min_allowed_memory)
             .min(profile.max_allowed_memory);
         let _upper_bound_memory = ((self.baseline_request_memory as f64
             * memory_data[2]
-            * init_config.vpa.recommendation_margin_fraction) as i64)
+            * init_config.vpa.recommendation_margin_fraction + 1.0) as i64)
             .max(profile.min_allowed_memory)
             .min(profile.max_allowed_memory);
 

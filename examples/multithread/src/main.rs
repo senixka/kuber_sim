@@ -28,7 +28,7 @@ fn main() {
 
     // Add first simulation
     experiment.add_simulation(
-        "./out_multithread_1.txt".to_string(),
+        "./out_multithread_1".to_string(),
         &init_config,
         &init_nodes,
         &init_trace,
@@ -61,7 +61,7 @@ fn main() {
 
     // Add second simulation
     experiment.add_simulation(
-        "./out_multithread_2.txt".to_string(),
+        "./out_multithread.txt".to_string(),
         &init_config,
         &init_nodes,
         &init_trace,

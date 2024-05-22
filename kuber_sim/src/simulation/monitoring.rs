@@ -46,11 +46,11 @@ pub struct Monitoring {
     removed_pod_counter_record: Vec<u64>,
     preempted_pod_counter_record: Vec<u64>,
 
-    out_path: String,
+    out_path_prefix: String,
 }
 
 impl Monitoring {
-    pub fn new(ctx: dsc::SimulationContext, init_config: Rc<RefCell<InitConfig>>, out_path: &String) -> Self {
+    pub fn new(ctx: dsc::SimulationContext, init_config: Rc<RefCell<InitConfig>>, out_path_prefix: &String) -> Self {
         Self {
             ctx,
             self_update_enabled: false,
@@ -82,7 +82,7 @@ impl Monitoring {
             evicted_pod_counter: 0,
             removed_pod_counter: 0,
             node_counter: 0,
-            out_path: out_path.clone(),
+            out_path_prefix: out_path_prefix.clone(),
             node_counter_record: vec![],
             kubelets_used_memory_record: vec![],
             preempted_pod_counter_record: vec![],
@@ -333,7 +333,7 @@ impl Monitoring {
         let mut file = None;
         let mut counter: usize = 0;
         while file.is_none() {
-            match File::create_new(self.out_path.clone() + "_" + &*counter.to_string() + ".csv") {
+            match File::create_new(self.out_path_prefix.clone() + "_" + &*counter.to_string() + ".csv") {
                 Ok(new_file) => file = Some(new_file),
                 Err(_) => counter += 1,
             }

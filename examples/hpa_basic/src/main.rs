@@ -25,7 +25,7 @@ fn main() {
 
     // Create simulation
     let mut sim = Simulation::new(
-        "./out_hpa_basic.txt".to_string(),
+        "./out_hpa_basic".to_string(),
         &init_config,
         &init_nodes,
         &init_trace,

@@ -25,7 +25,7 @@ fn main() {
 
     // Create simulation
     let mut sim = Simulation::new(
-        "./out_failed.txt".to_string(),
+        "./out_failed".to_string(),
         &init_config,
         &init_nodes,
         &init_trace,

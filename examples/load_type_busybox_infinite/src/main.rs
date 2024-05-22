@@ -25,7 +25,7 @@ fn main() {
 
     // Create simulation
     let mut sim = Simulation::new(
-        "./out_load_type_busybox_infinite.txt".to_string(),
+        "./out_load_type_busybox_infinite".to_string(),
         &init_config,
         &init_nodes,
         &init_trace,
