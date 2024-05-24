@@ -1,7 +1,12 @@
-use crate::my_imports::*;
+use crate::load_types::types::LoadType;
+use crate::objects::object_meta::ObjectMeta;
+use crate::scheduler::features::node_affinity::NodeAffinity;
+use crate::scheduler::features::taints_tolerations::Toleration;
+use crate::simulation::init_trace::InitTrace;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podspec-v1-core
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PodSpec {
     #[serde(default)]
     pub request_cpu: i64,
@@ -19,14 +24,14 @@ pub struct PodSpec {
     pub load: LoadType,
 
     #[serde(default)]
-    pub node_selector: BTreeMap<String, String>,
+    pub node_selector: std::collections::BTreeMap<String, String>,
     #[serde(default)]
     pub tolerations: Vec<Toleration>,
     #[serde(default)]
     pub node_affinity: NodeAffinity,
 }
 
-impl FromStr for PodSpec {
+impl std::str::FromStr for PodSpec {
     type Err = ();
 
     /// Expects "<i64>;<i64>;<i64>;<i64>;<i64>;{<LoadType>};{<node_selector>};{<tolerations>};{<NodeAffinity>}"
@@ -75,7 +80,7 @@ impl FromStr for PodSpec {
         let node_affinity_str = &other[tolerations_end + 3..node_affinity_end];
         assert_eq!(node_affinity_end + 1, other.len());
 
-        let mut node_selector = BTreeMap::<String, String>::new();
+        let mut node_selector = std::collections::BTreeMap::<String, String>::new();
         if !node_selector_str.is_empty() {
             for key_value in node_selector_str.split(',') {
                 let (key, value) = key_value.split_once(':').unwrap();
@@ -110,7 +115,7 @@ impl FromStr for PodSpec {
 }
 
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum PodPhase {
     // [Kubelet IN]:    {}
     // [Kubelet OUT]:   { When pod is removed because kubelet turns off }
@@ -143,7 +148,7 @@ pub enum PodPhase {
 }
 
 // https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/#quality-of-service-classes
-#[derive(Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum QoSClass {
     #[default]
     BestEffort = 0,
@@ -152,7 +157,7 @@ pub enum QoSClass {
 }
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podstatus-v1-core
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PodStatus {
     #[serde(skip)]
     pub phase: PodPhase,
@@ -168,7 +173,7 @@ pub struct PodStatus {
 }
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Pod {
     pub spec: PodSpec,
 
@@ -178,7 +183,7 @@ pub struct Pod {
     pub status: PodStatus,
 }
 
-impl FromStr for Pod {
+impl std::str::FromStr for Pod {
     type Err = ();
 
     /// Expects "{<ObjectMeta>};{<PodSpec>}"
@@ -274,6 +279,7 @@ impl Pod {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
 
     #[test]
     fn test_pod_many_times() {

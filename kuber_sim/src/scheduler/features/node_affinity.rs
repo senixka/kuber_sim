@@ -1,7 +1,7 @@
-use crate::my_imports::*;
+use crate::objects::node::Node;
 
 // https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#operators
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum NodeAffinityOperator {
     /// In = The label value is present in the supplied set of strings.
     #[default]
@@ -20,7 +20,7 @@ pub enum NodeAffinityOperator {
     Lt = 5,
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NodeAffinityMatchExpression {
     /// The label key that the selector applies to.
     pub key: String,
@@ -71,7 +71,7 @@ impl NodeAffinityMatchExpression {
     }
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NodeAffinityPreferredTerm {
     /// A list of node selector preferences by node's labels.
     /// The terms are ANDed.
@@ -80,7 +80,7 @@ pub struct NodeAffinityPreferredTerm {
     pub weight: i64,
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NodeAffinityRequiredTerm {
     /// A list of node selector requirements by node's labels.
     /// The terms are ANDed.
@@ -88,7 +88,7 @@ pub struct NodeAffinityRequiredTerm {
 }
 
 // https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NodeAffinity {
     /// Analog of preferredDuringSchedulingIgnoredDuringExecution.
     #[serde(default)]
@@ -99,7 +99,7 @@ pub struct NodeAffinity {
     pub required_terms: Vec<NodeAffinityRequiredTerm>,
 }
 
-impl FromStr for NodeAffinity {
+impl std::str::FromStr for NodeAffinity {
     type Err = ();
 
     /// Expects "{Vec<NodeAffinityPreferredTerm>};{Vec<NodeAffinityRequiredTerm>}"
@@ -151,6 +151,7 @@ impl NodeAffinity {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_node_affinity() {

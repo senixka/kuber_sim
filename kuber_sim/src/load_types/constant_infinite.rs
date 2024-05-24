@@ -1,6 +1,4 @@
-use crate::my_imports::*;
-
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ConstantInfinite {
     pub cpu: i64,
     pub memory: i64,
@@ -16,7 +14,7 @@ impl ConstantInfinite {
     }
 }
 
-impl FromStr for ConstantInfinite {
+impl std::str::FromStr for ConstantInfinite {
     type Err = ();
 
     /// Expects "i64;i64"

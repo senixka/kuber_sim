@@ -1,4 +1,12 @@
-use crate::my_imports::*;
+use crate::api_server::events::*;
+use crate::autoscaler::hpa::hpa_group_info::HPAGroupInfo;
+use crate::common_imports::*;
+use crate::dp_hpa;
+use crate::objects::pod::Pod;
+use crate::simulation::init_config::InitConfig;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 /// The component of the Kubernetes responsible for horizontal pod autoscaling.
 pub struct HPA {

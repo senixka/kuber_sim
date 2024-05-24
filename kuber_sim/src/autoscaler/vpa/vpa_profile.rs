@@ -1,6 +1,4 @@
-use crate::my_imports::*;
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VPAProfile {
     /// Min allowed cpu value when down-scale pod cpu request
     pub min_allowed_cpu: i64,
@@ -13,7 +11,7 @@ pub struct VPAProfile {
     pub max_allowed_memory: i64,
 }
 
-impl FromStr for VPAProfile {
+impl std::str::FromStr for VPAProfile {
     type Err = ();
 
     /// Expects "<i64>;<i64>;<i64>;<i64>"

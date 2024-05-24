@@ -1,6 +1,7 @@
-use crate::my_imports::*;
+use crate::objects::node::Node;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct NodeGroup {
     #[serde(skip)]
     pub group_uid: u64,

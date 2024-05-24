@@ -1,6 +1,6 @@
-use crate::my_imports::*;
+pub use crate::common_imports::dsc;
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BusyBoxInfinite {
     #[serde(skip)]
     pub start_time: f64,
@@ -33,7 +33,7 @@ impl BusyBoxInfinite {
     }
 }
 
-impl FromStr for BusyBoxInfinite {
+impl std::str::FromStr for BusyBoxInfinite {
     type Err = ();
 
     /// Expects "i64;i64;64;i64;f64"

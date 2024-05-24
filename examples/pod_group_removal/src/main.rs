@@ -1,4 +1,4 @@
-use kuber_sim::my_imports::*;
+use kuber_sim::*;
 
 /// This example shows how group_duration works for pod groups.
 /// When duration expires, all pods of the corresponding group are removed.

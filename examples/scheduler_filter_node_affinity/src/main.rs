@@ -1,4 +1,4 @@
-use kuber_sim::my_imports::*;
+use kuber_sim::*;
 
 /// This example shows how filter affinity works in scheduler pipeline
 fn main() {

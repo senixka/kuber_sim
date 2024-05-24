@@ -1,7 +1,5 @@
-use crate::my_imports::*;
-
 // https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TaintTolerationEffect {
     /// No Pods will be scheduled on the tainted node unless they have a matching toleration.
     #[default]
@@ -11,7 +9,7 @@ pub enum TaintTolerationEffect {
     PreferNoSchedule = 1,
 }
 
-impl FromStr for TaintTolerationEffect {
+impl std::str::FromStr for TaintTolerationEffect {
     type Err = ();
 
     /// Expects "u8"
@@ -25,7 +23,7 @@ impl FromStr for TaintTolerationEffect {
 }
 
 // https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TaintTolerationOperator {
     /// Equal = A value of the label with this key on the object is equal to the supplied value.
     #[default]
@@ -34,7 +32,7 @@ pub enum TaintTolerationOperator {
     Exists = 1,
 }
 
-impl FromStr for TaintTolerationOperator {
+impl std::str::FromStr for TaintTolerationOperator {
     type Err = ();
 
     /// Expects "u8"
@@ -47,7 +45,7 @@ impl FromStr for TaintTolerationOperator {
     }
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Taint {
     /// The taint key to be applied to a node.
     pub key: String,
@@ -57,7 +55,7 @@ pub struct Taint {
     pub effect: TaintTolerationEffect,
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Toleration {
     /// Key is the taint key that the toleration applies to. Empty means match all taint keys.
     /// If the key is empty, operator must be Exists; this combination means to match all values and all keys.
@@ -71,7 +69,7 @@ pub struct Toleration {
     pub effect: TaintTolerationEffect,
 }
 
-impl FromStr for Toleration {
+impl std::str::FromStr for Toleration {
     type Err = ();
 
     /// Expects "<key: String>,<value: String>,<TaintTolerationOperator>,<TaintTolerationEffect>"

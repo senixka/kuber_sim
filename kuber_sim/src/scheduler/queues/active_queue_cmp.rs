@@ -1,4 +1,4 @@
-use crate::my_imports::*;
+use crate::objects::pod::Pod;
 
 pub trait TraitActiveQCmp: Ord {
     fn wrap(pod: Pod) -> Self;
@@ -87,7 +87,9 @@ impl Eq for ActiveQCmpPriority {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::active_queue::*;
     use rand::Rng;
+    use std::collections::HashSet;
 
     #[test]
     fn test_active_queue_many_times() {

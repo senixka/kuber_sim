@@ -1,6 +1,4 @@
-use crate::my_imports::*;
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct HPAProfile {
     /// Min allowed group size
     pub min_size: u64,
@@ -16,7 +14,7 @@ pub struct HPAProfile {
     pub scale_up_mean_memory_fraction: f64,
 }
 
-impl FromStr for HPAProfile {
+impl std::str::FromStr for HPAProfile {
     type Err = ();
 
     /// Expects "<u64>;<u64>;<f64>;<f64>;<f64>;<f64>"

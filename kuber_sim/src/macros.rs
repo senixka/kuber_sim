@@ -5,7 +5,7 @@ macro_rules! sim_assert {
             println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
             println!("Assertion failed: {}", $msg);
             println!("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-            exit(1);
+            std::process::exit(1);
         }
     };
 }
@@ -19,7 +19,7 @@ macro_rules! sim_ok {
                 println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
                 println!("Assertion failed: {}", $msg);
                 println!("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-                exit(1);
+                std::process::exit(1);
             }
         }
     };
@@ -34,22 +34,10 @@ macro_rules! sim_some {
                 println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
                 println!("Assertion failed: {}", $msg);
                 println!("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-                exit(1);
+                std::process::exit(1);
             }
         }
     };
-}
-
-#[macro_export]
-#[cfg(feature = "dp_all")]
-macro_rules! debug_print {
-    ($( $args:expr ),*) => { println!( $( $args ),* ); }
-}
-
-#[macro_export]
-#[cfg(not(feature = "dp_all"))]
-macro_rules! debug_print {
-    ($( $args:expr ),*) => {};
 }
 
 #[macro_export]

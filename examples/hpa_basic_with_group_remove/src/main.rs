@@ -1,4 +1,4 @@
-use kuber_sim::my_imports::*;
+use kuber_sim::*;
 
 /// This example shows that HPA reacts on group remove event.
 fn main() {

@@ -1,4 +1,4 @@
-use kuber_sim::my_imports::*;
+use kuber_sim::*;
 
 /// This example shows that when pods on the kubelet try to consume more memory than is available on the node, an eviction process occurs.
 /// Eviction works only for memory. This mechanism is not required for CPU due to the presence of throttling.

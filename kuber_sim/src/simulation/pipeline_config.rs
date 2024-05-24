@@ -1,4 +1,8 @@
-use crate::my_imports::*;
+use crate::scheduler::pipeline::filter::IFilterPlugin;
+use crate::scheduler::pipeline::score::IScorePlugin;
+use crate::scheduler::pipeline::score_normalize::IScoreNormalizePlugin;
+use crate::scheduler::queues::active_queue::IActiveQ;
+use crate::scheduler::queues::backoff_queue::IBackOffQ;
 
 pub struct PipelineConfig {
     pub active_queue: Box<dyn IActiveQ + Send>,

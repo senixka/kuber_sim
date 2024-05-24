@@ -1,6 +1,10 @@
-use crate::my_imports::*;
+use crate::autoscaler::hpa::hpa_profile::HPAProfile;
+use crate::autoscaler::vpa::vpa_profile::VPAProfile;
+use crate::objects::pod::Pod;
+use crate::simulation::init_trace::InitTrace;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PodGroup {
     pub pod_count: u64,
     #[serde(default)]
@@ -17,7 +21,7 @@ pub struct PodGroup {
     pub group_uid: u64,
 }
 
-impl FromStr for PodGroup {
+impl std::str::FromStr for PodGroup {
     type Err = ();
 
     /// Expects "<pod_count: u64>;<group_duration: f64>;{<Pod>};{<HPAProfile>};{<VPAProfile>}"

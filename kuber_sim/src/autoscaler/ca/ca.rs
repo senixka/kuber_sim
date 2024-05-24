@@ -1,4 +1,16 @@
-use crate::my_imports::*;
+use crate::api_server::events::*;
+use crate::common_imports::*;
+use crate::dp_ca;
+use crate::kubelet::kubelet::Kubelet;
+use crate::objects::node::Node;
+use crate::objects::node_group::NodeGroup;
+use crate::scheduler::scheduler::Scheduler;
+use crate::simulation::init_config::InitConfig;
+use crate::simulation::init_nodes::InitNodes;
+use crate::simulation::monitoring::Monitoring;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::rc::Rc;
 
 /// The component of the Kubernetes responsible for cluster autoscaling.
 pub struct CA {
@@ -273,10 +285,12 @@ impl dsc::EventHandler for CA {
                 assert!(self.is_turned_on, "Logic error. Self update should be canceled for CA.");
 
                 // Emulate metrics request
-                self.ctx.emit_self(EventUpdateCAMetrics {}, self.init_config.borrow().network_delays.ca2api);
+                self.ctx
+                    .emit_self(EventUpdateCAMetrics {}, self.init_config.borrow().network_delays.ca2api);
 
                 // Emit Self-Update
-                self.ctx.emit_self(EventSelfUpdate {}, self.init_config.borrow().ca.self_update_period);
+                self.ctx
+                    .emit_self(EventSelfUpdate {}, self.init_config.borrow().ca.self_update_period);
             }
 
             EventUpdateCAMetrics {} => {

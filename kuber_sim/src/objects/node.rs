@@ -1,6 +1,8 @@
-use crate::my_imports::*;
+use crate::objects::object_meta::ObjectMeta;
+use crate::scheduler::features::taints_tolerations::Taint;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NodeSpec {
     pub installed_cpu: i64,    // in milli-CPU (1000 milli-CPU = 1 CPU = 1 vCPU)
     pub installed_memory: i64, // in bytes
@@ -14,12 +16,12 @@ pub struct NodeSpec {
     pub taints: Vec<Taint>,
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NodeStatus {
-    pub pods: HashSet<u64>,
+    pub pods: std::collections::HashSet<u64>,
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Node {
     pub spec: NodeSpec,
 

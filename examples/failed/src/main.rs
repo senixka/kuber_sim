@@ -1,4 +1,4 @@
-use kuber_sim::my_imports::*;
+use kuber_sim::*;
 
 /// This example shows that pod fails when it tries to consume more cpu or memory than its limits
 fn main() {

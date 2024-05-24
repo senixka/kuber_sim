@@ -1,8 +1,6 @@
-use crate::my_imports::*;
-
 /////////////////////////////////////////// NetworkDelays //////////////////////////////////////////
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct NetworkDelays {
     // Scheduler
     #[serde(default)]
@@ -67,7 +65,7 @@ impl NetworkDelays {
 
 ///////////////////////////////////////// ConfigMonitoring /////////////////////////////////////////
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConfigMonitoring {
     pub self_update_period: f64,
 }
@@ -83,7 +81,7 @@ impl ConfigMonitoring {
 
 ///////////////////////////////////////// ConfigScheduler //////////////////////////////////////////
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConfigScheduler {
     pub unschedulable_queue_backoff_delay: f64,
     pub self_update_period: f64,
@@ -133,7 +131,7 @@ fn ca_remove_node_cycle_delay_default() -> u64 {
     3
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConfigCA {
     #[serde(default = "ca_self_update_period")]
     pub self_update_period: f64,
@@ -194,7 +192,7 @@ fn hpa_self_update_period() -> f64 {
     15.0
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConfigHPA {
     #[serde(default = "hpa_self_update_period")]
     pub self_update_period: f64,
@@ -248,7 +246,7 @@ fn vpa_limit_margin_fraction() -> f64 {
     1.1
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConfigVPA {
     #[serde(default = "vpa_self_update_period")]
     pub self_update_period: f64,
@@ -309,7 +307,7 @@ impl ConfigVPA {
 
 //////////////////////////////////////////// InitConfig ////////////////////////////////////////////
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InitConfig {
     #[serde(default)]
     pub network_delays: NetworkDelays,
@@ -328,7 +326,7 @@ pub struct InitConfig {
 impl InitConfig {
     pub fn from_yaml(path: &String) -> Self {
         // Read file to string
-        let s: String = fs::read_to_string(path).expect(format!("Unable to read file: {0}", path).as_str());
+        let s: String = std::fs::read_to_string(path).expect(format!("Unable to read file: {0}", path).as_str());
         // Build struct from string
         let mut init_config: InitConfig = serde_yaml::from_str(s.as_str()).unwrap();
 

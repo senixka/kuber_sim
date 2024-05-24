@@ -1,4 +1,11 @@
-use crate::my_imports::*;
+use crate::api_server::events::*;
+use crate::autoscaler::vpa::vpa_group_info::VPAGroupInfo;
+use crate::common_imports::*;
+use crate::dp_vpa;
+use crate::simulation::init_config::InitConfig;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 /// The component of the Kubernetes responsible for vertical pod autoscaling.
 pub struct VPA {

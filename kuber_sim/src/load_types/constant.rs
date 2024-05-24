@@ -1,6 +1,6 @@
-use crate::my_imports::*;
+pub use crate::common_imports::dsc;
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Constant {
     #[serde(skip)]
     pub start_time: f64,
@@ -31,7 +31,7 @@ impl Constant {
     }
 }
 
-impl FromStr for Constant {
+impl std::str::FromStr for Constant {
     type Err = ();
 
     /// Expects "i64;i64;f64"

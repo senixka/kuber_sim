@@ -1,4 +1,5 @@
-use crate::my_imports::*;
+use crate::objects::node::Node;
+use rstar::{RTree, RTreeObject, AABB};
 
 pub struct NodeRTree(RTree<Node>);
 

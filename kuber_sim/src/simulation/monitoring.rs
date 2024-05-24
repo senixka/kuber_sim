@@ -1,5 +1,10 @@
-use super::super::my_imports::*;
-use std::io::Write;
+use super::super::common_imports::*;
+use crate::api_server::events::*;
+use crate::objects::node::Node;
+use crate::simulation::init_config::InitConfig;
+use std::cell::RefCell;
+use std::io::{BufWriter, Write};
+use std::rc::Rc;
 
 pub struct Monitoring {
     pub ctx: dsc::SimulationContext,
@@ -333,7 +338,7 @@ impl Monitoring {
         let mut file = None;
         let mut counter: usize = 0;
         while file.is_none() {
-            match File::create_new(self.out_path_prefix.clone() + "_" + &*counter.to_string() + ".csv") {
+            match std::fs::File::create_new(self.out_path_prefix.clone() + "_" + &*counter.to_string() + ".csv") {
                 Ok(new_file) => file = Some(new_file),
                 Err(_) => counter += 1,
             }

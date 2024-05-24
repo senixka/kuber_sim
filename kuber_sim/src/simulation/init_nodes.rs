@@ -1,6 +1,13 @@
-use crate::my_imports::*;
+use crate::api_server::events::*;
+use crate::common_imports::*;
+use crate::kubelet::kubelet::Kubelet;
+use crate::objects::node_group::NodeGroup;
+use crate::simulation::init_config::InitConfig;
+use crate::simulation::monitoring::Monitoring;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InitNodes {
     #[serde(default)]
     pub nodes: Vec<NodeGroup>,
@@ -12,7 +19,7 @@ pub struct InitNodes {
 impl InitNodes {
     pub fn from_yaml(path: &String) -> Self {
         // Read file to string
-        let s: String = fs::read_to_string(path).expect(format!("Unable to read file: {0}", path).as_str());
+        let s: String = std::fs::read_to_string(path).expect(format!("Unable to read file: {0}", path).as_str());
         // Build struct from string
         let mut cluster_state: InitNodes = serde_yaml::from_str(s.as_str()).unwrap();
 

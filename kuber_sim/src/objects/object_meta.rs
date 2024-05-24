@@ -1,9 +1,7 @@
-use crate::my_imports::*;
-
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#objectmeta-v1-meta
-#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ObjectMeta {
-    pub labels: BTreeMap<String, String>,
+    pub labels: std::collections::BTreeMap<String, String>,
 
     #[serde(skip)]
     pub uid: u64,
@@ -11,13 +9,13 @@ pub struct ObjectMeta {
     pub group_uid: u64,
 }
 
-impl FromStr for ObjectMeta {
+impl std::str::FromStr for ObjectMeta {
     type Err = ();
 
     /// Expects "key_1:value_1,key_2:value_2,..."
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let data: Vec<&str> = s.split(',').collect();
-        let mut labels: BTreeMap<String, String> = BTreeMap::new();
+        let mut labels = std::collections::BTreeMap::<String, String>::new();
 
         for key_value in data {
             let (key, value) = sim_some!(key_value.split_once(':'), "ObjectMeta. Invalid format.");

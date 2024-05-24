@@ -1,4 +1,4 @@
-use kuber_sim::my_imports::*;
+use kuber_sim::*;
 
 /// This example shows how to create a basic simulation and run it for 50 seconds
 fn main() {

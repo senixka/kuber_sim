@@ -1,4 +1,7 @@
-use crate::my_imports::*;
+use crate::objects::node::Node;
+use crate::objects::pod::Pod;
+use crate::scheduler::features::taints_tolerations::TaintTolerationEffect;
+use std::collections::HashMap;
 
 pub type ScorePluginF = fn(&HashMap<u64, Pod>, &HashMap<u64, Pod>, &HashMap<u64, Node>, &Pod, &Node) -> i64;
 

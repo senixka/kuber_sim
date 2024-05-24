@@ -1,4 +1,6 @@
-use crate::my_imports::*;
+use crate::objects::node::Node;
+use crate::objects::pod::Pod;
+use std::collections::HashMap;
 
 pub type ScoreNormalizePluginF =
     fn(&HashMap<u64, Pod>, &HashMap<u64, Pod>, &HashMap<u64, Node>, &Pod, &Vec<Node>, &mut Vec<i64>);

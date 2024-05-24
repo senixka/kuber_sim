@@ -1,4 +1,9 @@
-use crate::my_imports::*;
+use crate::autoscaler::vpa::vpa_pod_info::VPAPodInfo;
+use crate::autoscaler::vpa::vpa_profile::VPAProfile;
+use crate::objects::pod::{Pod, PodPhase};
+use crate::objects::pod_group::PodGroup;
+use crate::simulation::init_config::InitConfig;
+use std::collections::HashMap;
 
 #[derive(Debug, Default)]
 pub struct VPAGroupInfo {
