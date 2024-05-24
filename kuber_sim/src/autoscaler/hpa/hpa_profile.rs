@@ -19,7 +19,7 @@ pub struct HPAProfile {
 impl FromStr for HPAProfile {
     type Err = ();
 
-    /// Expects "<u64>,<u64>,<f64>,<f64>,<f64>,<f64>"
+    /// Expects "<u64>;<u64>;<f64>;<f64>;<f64>;<f64>"
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let data: Vec<&str> = s.split(';').collect();
         sim_assert!(data.len() == 6, "Invalid number of arguments in HPAProfile.");

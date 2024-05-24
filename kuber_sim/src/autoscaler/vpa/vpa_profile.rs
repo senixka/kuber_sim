@@ -16,7 +16,7 @@ pub struct VPAProfile {
 impl FromStr for VPAProfile {
     type Err = ();
 
-    /// Expects "<i64>,<i64>,<i64>,<i64>"
+    /// Expects "<i64>;<i64>;<i64>;<i64>"
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let data: Vec<&str> = s.split(';').collect();
         sim_assert!(data.len() == 4, "Invalid number of arguments in VPAProfile.");

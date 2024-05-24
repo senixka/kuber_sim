@@ -104,7 +104,6 @@ impl FromStr for NodeAffinity {
 
     /// Expects "{Vec<NodeAffinityPreferredTerm>};{Vec<NodeAffinityRequiredTerm>}"
     fn from_str(_: &str) -> Result<Self, Self::Err> {
-        // TODO: impl
         return Ok(Self::default());
     }
 }
